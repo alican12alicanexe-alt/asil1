@@ -63,23 +63,17 @@ platforms:
 
   # Kingsford: a through road and one loop.
   - {id: KINGSFORD_1, station: KINGSFORD, track: ML, length_m: 220, y_offset: 0.0}
-  - {id: KINGSFORD_2, station: KINGSFORD, track: ML, length_m: 220,
-     max_speed_kmh: 60, y_offset: 0.5}
+  - {id: KINGSFORD_2, station: KINGSFORD, track: ML, length_m: 220, max_speed_kmh: 60, y_offset: 0.5}
 
   # Marlowe: the overtaking station. Road 1 is the through road at line speed;
   # 2, 3 and 4 are loops, which is why they are slower - points and a shorter
   # radius, exactly as at a real passing place.
   - {id: MARLOWE_1, station: MARLOWE, track: ML, length_m: 240, y_offset: 0.0}
-  - {id: MARLOWE_2, station: MARLOWE, track: ML, length_m: 240,
-     max_speed_kmh: 60, y_offset: 0.5}
-  - {id: MARLOWE_3, station: MARLOWE, track: ML, length_m: 240,
-     max_speed_kmh: 60, y_offset: 1.0}
-  - {id: MARLOWE_4, station: MARLOWE, track: ML, length_m: 240,
-     max_speed_kmh: 40, y_offset: 1.5}
+  - {id: MARLOWE_2, station: MARLOWE, track: ML, length_m: 240, max_speed_kmh: 60, y_offset: 0.5}
+  - {id: MARLOWE_3, station: MARLOWE, track: ML, length_m: 240, max_speed_kmh: 60, y_offset: 1.0}
+  - {id: MARLOWE_4, station: MARLOWE, track: ML, length_m: 240, max_speed_kmh: 40, y_offset: 1.5}
 
   # Ashdown: a through road and two loops.
   - {id: ASHDOWN_1, station: ASHDOWN, track: ML, length_m: 220, y_offset: 0.0}
-  - {id: ASHDOWN_2, station: ASHDOWN, track: ML, length_m: 220,
-     max_speed_kmh: 60, y_offset: 0.5}
-  - {id: ASHDOWN_3, station: ASHDOWN, track: ML, length_m: 220,
-     max_speed_kmh: 60, y_offset: 1.0}
+  - {id: ASHDOWN_2, station: ASHDOWN, track: ML, length_m: 220, max_speed_kmh: 60, y_offset: 0.5}
+  - {id: ASHDOWN_3, station: ASHDOWN, track: ML, length_m: 220, max_speed_kmh: 60, y_offset: 1.0}
