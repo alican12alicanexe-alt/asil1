@@ -48,28 +48,28 @@ services:
     ready_lead_s: 60
     calls:
       - {station: ALPHA, platform: ALPHA_UF, departure: "07:00:00", dwell_s: 30}
-      - {station: GAMMA, platform: GAMMA_UF, arrival: "07:11:33", dwell_s: 30}
+      - {station: GAMMA, platform: GAMMA_UF, arrival: "07:11:43", dwell_s: 30}
   - id: F2
     stock: EXPRESS
     departure: "07:08:00"
     ready_lead_s: 60
     calls:
       - {station: ALPHA, platform: ALPHA_UF, departure: "07:08:00", dwell_s: 30}
-      - {station: GAMMA, platform: GAMMA_UF, arrival: "07:19:33", dwell_s: 30}
+      - {station: GAMMA, platform: GAMMA_UF, arrival: "07:19:43", dwell_s: 30}
   - id: F3
     stock: EXPRESS
     departure: "07:16:00"
     ready_lead_s: 60
     calls:
       - {station: ALPHA, platform: ALPHA_UF, departure: "07:16:00", dwell_s: 30}
-      - {station: GAMMA, platform: GAMMA_UF, arrival: "07:27:33", dwell_s: 30}
+      - {station: GAMMA, platform: GAMMA_UF, arrival: "07:27:43", dwell_s: 30}
   - id: F4
     stock: EXPRESS
     departure: "07:24:00"
     ready_lead_s: 60
     calls:
       - {station: ALPHA, platform: ALPHA_UF, departure: "07:24:00", dwell_s: 30}
-      - {station: GAMMA, platform: GAMMA_UF, arrival: "07:35:33", dwell_s: 30}
+      - {station: GAMMA, platform: GAMMA_UF, arrival: "07:35:43", dwell_s: 30}
 # Up slow: all stations, never leaves the slow line.
   - id: S1
     stock: STOPPER
@@ -77,32 +77,32 @@ services:
     ready_lead_s: 60
     calls:
       - {station: ALPHA, platform: ALPHA_US, departure: "07:02:00", dwell_s: 30}
-      - {station: BETA, platform: BETA_US, arrival: "07:09:18", departure: "07:10:18", dwell_s: 60}
-      - {station: GAMMA, platform: GAMMA_US, arrival: "07:18:37", dwell_s: 30}
+      - {station: BETA, platform: BETA_US, arrival: "07:09:22", departure: "07:10:22", dwell_s: 60}
+      - {station: GAMMA, platform: GAMMA_US, arrival: "07:18:47", dwell_s: 30}
   - id: S2
     stock: STOPPER
     departure: "07:10:00"
     ready_lead_s: 60
     calls:
       - {station: ALPHA, platform: ALPHA_US, departure: "07:10:00", dwell_s: 30}
-      - {station: BETA, platform: BETA_US, arrival: "07:17:18", departure: "07:18:18", dwell_s: 60}
-      - {station: GAMMA, platform: GAMMA_US, arrival: "07:26:37", dwell_s: 30}
+      - {station: BETA, platform: BETA_US, arrival: "07:17:22", departure: "07:18:22", dwell_s: 60}
+      - {station: GAMMA, platform: GAMMA_US, arrival: "07:26:47", dwell_s: 30}
   - id: S3
     stock: STOPPER
     departure: "07:18:00"
     ready_lead_s: 60
     calls:
       - {station: ALPHA, platform: ALPHA_US, departure: "07:18:00", dwell_s: 30}
-      - {station: BETA, platform: BETA_US, arrival: "07:25:18", departure: "07:26:18", dwell_s: 60}
-      - {station: GAMMA, platform: GAMMA_US, arrival: "07:34:37", dwell_s: 30}
+      - {station: BETA, platform: BETA_US, arrival: "07:25:22", departure: "07:26:22", dwell_s: 60}
+      - {station: GAMMA, platform: GAMMA_US, arrival: "07:34:47", dwell_s: 30}
   - id: S4
     stock: STOPPER
     departure: "07:26:00"
     ready_lead_s: 60
     calls:
       - {station: ALPHA, platform: ALPHA_US, departure: "07:26:00", dwell_s: 30}
-      - {station: BETA, platform: BETA_US, arrival: "07:33:18", departure: "07:34:18", dwell_s: 60}
-      - {station: GAMMA, platform: GAMMA_US, arrival: "07:42:37", dwell_s: 30}
+      - {station: BETA, platform: BETA_US, arrival: "07:33:22", departure: "07:34:22", dwell_s: 60}
+      - {station: GAMMA, platform: GAMMA_US, arrival: "07:42:47", dwell_s: 30}
 # Up semi-fast: calls at Beta on the slow line, then crosses to the fast line at XO_UP and runs through. This is the train the crossover exists for, and the one that has to be fitted in.
   - id: X1
     stock: EXPRESS
@@ -110,32 +110,32 @@ services:
     ready_lead_s: 60
     calls:
       - {station: ALPHA, platform: ALPHA_US, departure: "07:05:00", dwell_s: 30}
-      - {station: BETA, platform: BETA_US, arrival: "07:12:24", departure: "07:13:24", dwell_s: 60}
-      - {station: GAMMA, platform: GAMMA_UF, arrival: "07:20:45", dwell_s: 30}
+      - {station: BETA, platform: BETA_US, arrival: "07:12:27", departure: "07:13:27", dwell_s: 60}
+      - {station: GAMMA, platform: GAMMA_UF, arrival: "07:21:00", dwell_s: 30}
   - id: X2
     stock: EXPRESS
     departure: "07:13:00"
     ready_lead_s: 60
     calls:
       - {station: ALPHA, platform: ALPHA_US, departure: "07:13:00", dwell_s: 30}
-      - {station: BETA, platform: BETA_US, arrival: "07:20:24", departure: "07:21:24", dwell_s: 60}
-      - {station: GAMMA, platform: GAMMA_UF, arrival: "07:28:45", dwell_s: 30}
+      - {station: BETA, platform: BETA_US, arrival: "07:20:27", departure: "07:21:27", dwell_s: 60}
+      - {station: GAMMA, platform: GAMMA_UF, arrival: "07:29:00", dwell_s: 30}
   - id: X3
     stock: EXPRESS
     departure: "07:21:00"
     ready_lead_s: 60
     calls:
       - {station: ALPHA, platform: ALPHA_US, departure: "07:21:00", dwell_s: 30}
-      - {station: BETA, platform: BETA_US, arrival: "07:28:24", departure: "07:29:24", dwell_s: 60}
-      - {station: GAMMA, platform: GAMMA_UF, arrival: "07:36:45", dwell_s: 30}
+      - {station: BETA, platform: BETA_US, arrival: "07:28:27", departure: "07:29:27", dwell_s: 60}
+      - {station: GAMMA, platform: GAMMA_UF, arrival: "07:37:00", dwell_s: 30}
   - id: X4
     stock: EXPRESS
     departure: "07:29:00"
     ready_lead_s: 60
     calls:
       - {station: ALPHA, platform: ALPHA_US, departure: "07:29:00", dwell_s: 30}
-      - {station: BETA, platform: BETA_US, arrival: "07:36:24", departure: "07:37:24", dwell_s: 60}
-      - {station: GAMMA, platform: GAMMA_UF, arrival: "07:44:45", dwell_s: 30}
+      - {station: BETA, platform: BETA_US, arrival: "07:36:27", departure: "07:37:27", dwell_s: 60}
+      - {station: GAMMA, platform: GAMMA_UF, arrival: "07:45:00", dwell_s: 30}
 # Down fast: Gamma to Alpha non-stop.
   - id: FD1
     stock: EXPRESS
@@ -143,28 +143,28 @@ services:
     ready_lead_s: 60
     calls:
       - {station: GAMMA, platform: GAMMA_DF, departure: "07:04:00", dwell_s: 30}
-      - {station: ALPHA, platform: ALPHA_DF, arrival: "07:15:33", dwell_s: 30}
+      - {station: ALPHA, platform: ALPHA_DF, arrival: "07:15:43", dwell_s: 30}
   - id: FD2
     stock: EXPRESS
     departure: "07:12:00"
     ready_lead_s: 60
     calls:
       - {station: GAMMA, platform: GAMMA_DF, departure: "07:12:00", dwell_s: 30}
-      - {station: ALPHA, platform: ALPHA_DF, arrival: "07:23:33", dwell_s: 30}
+      - {station: ALPHA, platform: ALPHA_DF, arrival: "07:23:43", dwell_s: 30}
   - id: FD3
     stock: EXPRESS
     departure: "07:20:00"
     ready_lead_s: 60
     calls:
       - {station: GAMMA, platform: GAMMA_DF, departure: "07:20:00", dwell_s: 30}
-      - {station: ALPHA, platform: ALPHA_DF, arrival: "07:31:33", dwell_s: 30}
+      - {station: ALPHA, platform: ALPHA_DF, arrival: "07:31:43", dwell_s: 30}
   - id: FD4
     stock: EXPRESS
     departure: "07:28:00"
     ready_lead_s: 60
     calls:
       - {station: GAMMA, platform: GAMMA_DF, departure: "07:28:00", dwell_s: 30}
-      - {station: ALPHA, platform: ALPHA_DF, arrival: "07:39:33", dwell_s: 30}
+      - {station: ALPHA, platform: ALPHA_DF, arrival: "07:39:43", dwell_s: 30}
 # Down slow: all stations.
   - id: SD1
     stock: STOPPER
@@ -172,32 +172,32 @@ services:
     ready_lead_s: 60
     calls:
       - {station: GAMMA, platform: GAMMA_DS, departure: "07:06:00", dwell_s: 30}
-      - {station: BETA, platform: BETA_DS, arrival: "07:14:18", departure: "07:15:18", dwell_s: 60}
-      - {station: ALPHA, platform: ALPHA_DS, arrival: "07:22:37", dwell_s: 30}
+      - {station: BETA, platform: BETA_DS, arrival: "07:14:22", departure: "07:15:22", dwell_s: 60}
+      - {station: ALPHA, platform: ALPHA_DS, arrival: "07:22:47", dwell_s: 30}
   - id: SD2
     stock: STOPPER
     departure: "07:14:00"
     ready_lead_s: 60
     calls:
       - {station: GAMMA, platform: GAMMA_DS, departure: "07:14:00", dwell_s: 30}
-      - {station: BETA, platform: BETA_DS, arrival: "07:22:18", departure: "07:23:18", dwell_s: 60}
-      - {station: ALPHA, platform: ALPHA_DS, arrival: "07:30:37", dwell_s: 30}
+      - {station: BETA, platform: BETA_DS, arrival: "07:22:22", departure: "07:23:22", dwell_s: 60}
+      - {station: ALPHA, platform: ALPHA_DS, arrival: "07:30:47", dwell_s: 30}
   - id: SD3
     stock: STOPPER
     departure: "07:22:00"
     ready_lead_s: 60
     calls:
       - {station: GAMMA, platform: GAMMA_DS, departure: "07:22:00", dwell_s: 30}
-      - {station: BETA, platform: BETA_DS, arrival: "07:30:18", departure: "07:31:18", dwell_s: 60}
-      - {station: ALPHA, platform: ALPHA_DS, arrival: "07:38:37", dwell_s: 30}
+      - {station: BETA, platform: BETA_DS, arrival: "07:30:22", departure: "07:31:22", dwell_s: 60}
+      - {station: ALPHA, platform: ALPHA_DS, arrival: "07:38:47", dwell_s: 30}
   - id: SD4
     stock: STOPPER
     departure: "07:30:00"
     ready_lead_s: 60
     calls:
       - {station: GAMMA, platform: GAMMA_DS, departure: "07:30:00", dwell_s: 30}
-      - {station: BETA, platform: BETA_DS, arrival: "07:38:18", departure: "07:39:18", dwell_s: 60}
-      - {station: ALPHA, platform: ALPHA_DS, arrival: "07:46:37", dwell_s: 30}
+      - {station: BETA, platform: BETA_DS, arrival: "07:38:22", departure: "07:39:22", dwell_s: 60}
+      - {station: ALPHA, platform: ALPHA_DS, arrival: "07:46:47", dwell_s: 30}
 # Down semi-fast: leaves the fast line at XO_DN to call at Beta.
   - id: XD1
     stock: EXPRESS
@@ -205,29 +205,29 @@ services:
     ready_lead_s: 60
     calls:
       - {station: GAMMA, platform: GAMMA_DF, departure: "07:01:00", dwell_s: 30}
-      - {station: BETA, platform: BETA_DS, arrival: "07:08:10", departure: "07:09:10", dwell_s: 60}
-      - {station: ALPHA, platform: ALPHA_DS, arrival: "07:16:36", dwell_s: 30}
+      - {station: BETA, platform: BETA_DS, arrival: "07:08:20", departure: "07:09:20", dwell_s: 60}
+      - {station: ALPHA, platform: ALPHA_DS, arrival: "07:16:51", dwell_s: 30}
   - id: XD2
     stock: EXPRESS
     departure: "07:09:00"
     ready_lead_s: 60
     calls:
       - {station: GAMMA, platform: GAMMA_DF, departure: "07:09:00", dwell_s: 30}
-      - {station: BETA, platform: BETA_DS, arrival: "07:16:10", departure: "07:17:10", dwell_s: 60}
-      - {station: ALPHA, platform: ALPHA_DS, arrival: "07:24:36", dwell_s: 30}
+      - {station: BETA, platform: BETA_DS, arrival: "07:16:20", departure: "07:17:20", dwell_s: 60}
+      - {station: ALPHA, platform: ALPHA_DS, arrival: "07:24:51", dwell_s: 30}
   - id: XD3
     stock: EXPRESS
     departure: "07:17:00"
     ready_lead_s: 60
     calls:
       - {station: GAMMA, platform: GAMMA_DF, departure: "07:17:00", dwell_s: 30}
-      - {station: BETA, platform: BETA_DS, arrival: "07:24:10", departure: "07:25:10", dwell_s: 60}
-      - {station: ALPHA, platform: ALPHA_DS, arrival: "07:32:36", dwell_s: 30}
+      - {station: BETA, platform: BETA_DS, arrival: "07:24:20", departure: "07:25:20", dwell_s: 60}
+      - {station: ALPHA, platform: ALPHA_DS, arrival: "07:32:51", dwell_s: 30}
   - id: XD4
     stock: EXPRESS
     departure: "07:25:00"
     ready_lead_s: 60
     calls:
       - {station: GAMMA, platform: GAMMA_DF, departure: "07:25:00", dwell_s: 30}
-      - {station: BETA, platform: BETA_DS, arrival: "07:32:10", departure: "07:33:10", dwell_s: 60}
-      - {station: ALPHA, platform: ALPHA_DS, arrival: "07:40:36", dwell_s: 30}
+      - {station: BETA, platform: BETA_DS, arrival: "07:32:20", departure: "07:33:20", dwell_s: 60}
+      - {station: ALPHA, platform: ALPHA_DS, arrival: "07:40:51", dwell_s: 30}

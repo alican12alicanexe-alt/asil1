@@ -297,6 +297,11 @@ def _build_timetable(spec: dict, infra: Infrastructure) -> Timetable:
     return Timetable(services=services)
 
 
+def _optional_float(value) -> Optional[float]:
+    """``None`` stays ``None`` - it is what tells RollingStock to derive a value."""
+    return None if value is None else float(value)
+
+
 def _build_stock(entries: List[dict]) -> Dict[str, RollingStock]:
     stock: Dict[str, RollingStock] = {}
     for entry in entries:
@@ -313,6 +318,17 @@ def _build_stock(entries: List[dict]) -> Dict[str, RollingStock]:
                 emergency_brake=float(entry.get("emergency_brake", 1.2)),
                 etcs_level=str(entry.get("etcs_level", "none")).lower(),
                 tims=bool(entry.get("tims", False)),
+                # Dynamics. Anything left out is derived in RollingStock from
+                # the size and performance above, so a timetable written before
+                # there was a traction curve still describes a plausible train.
+                mass_t=float(entry.get("mass_t", 0.0)),
+                rotating_mass_pct=float(entry.get("rotating_mass_pct", 8.0)),
+                power_kw=float(entry.get("power_kw", 0.0)),
+                davis_a_n=_optional_float(entry.get("davis_a_n")),
+                davis_b_n_per_ms=_optional_float(entry.get("davis_b_n_per_ms")),
+                davis_c_n_per_ms2=_optional_float(entry.get("davis_c_n_per_ms2")),
+                adhesion=float(entry.get("adhesion", 0.30)),
+                brake_buildup_s=float(entry.get("brake_buildup_s", 2.0)),
             )
         except KeyError as exc:
             raise ScenarioError("timetable: stock entry missing %s" % (exc,))

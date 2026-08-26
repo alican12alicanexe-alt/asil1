@@ -80,7 +80,7 @@ services:
     departure: "07:02:00"
     calls:
       - {station: ALPHA, platform: ALPHA_1, departure: "07:02:00", dwell_s: 30}
-      - {station: GAMMA, platform: GAMMA_1, arrival: "07:16:00", dwell_s: 60}
+      - {station: GAMMA, platform: GAMMA_1, arrival: "07:16:26", dwell_s: 60}
 
   - id: F2
     name: 0712 Alpha - Gamma fast
@@ -88,7 +88,7 @@ services:
     departure: "07:12:00"
     calls:
       - {station: ALPHA, platform: ALPHA_1, departure: "07:12:00", dwell_s: 30}
-      - {station: GAMMA, platform: GAMMA_1, arrival: "07:26:00", dwell_s: 60}
+      - {station: GAMMA, platform: GAMMA_1, arrival: "07:26:26", dwell_s: 60}
 
   - id: F3
     name: 0722 Alpha - Gamma fast
@@ -96,7 +96,7 @@ services:
     departure: "07:22:00"
     calls:
       - {station: ALPHA, platform: ALPHA_1, departure: "07:22:00", dwell_s: 30}
-      - {station: GAMMA, platform: GAMMA_1, arrival: "07:36:00", dwell_s: 60}
+      - {station: GAMMA, platform: GAMMA_1, arrival: "07:36:26", dwell_s: 60}
 
   # -------------------------------------------------------------- down stoppers
   - id: D1

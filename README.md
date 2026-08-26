@@ -18,7 +18,7 @@ python run.py scenarios/corridor3 --system etcs_moving_block   # watch one
 python run.py scenarios/metro --compare        # the other line, opposite answer
 python run.py scenarios/metro/scenario-disrupted.yaml --propagation
 python run.py scenarios/junction --check       # a real junction's route table
-python run_tests.py                            # 182 tests, stdlib unittest
+python run_tests.py                            # 217 tests, stdlib unittest
 ```
 
 Requires Python 3.7+. `requirements-optional.txt` lists things that make it
@@ -134,6 +134,73 @@ Fixed timestep, 1 simulated second per tick, deterministic. Each tick:
 3. **decide and move** — the driver turns the authority into an acceleration
 4. **update** — rebuild occupancy and aspects, then assert that no block holds
    two trains
+
+### The physics
+
+A train is a body with mass, pushed by a traction system that fades, dragged
+back by the air and pulled at by gravity. `core/dynamics.py` is that force
+balance:
+
+    m_eff · a  =  F_traction(v)  −  R(v)  −  m · g · sin θ
+
+**Traction is flat, then falling.** Below *base speed* the motors are current
+limited and produce constant tractive effort; above it they are power limited,
+so effort falls as `P / v`. This is the term that matters most. A 200 m EMU used
+to reach 140 km/h in 43 seconds and 840 metres — roughly twice as good as any
+real one. It now takes 66 seconds and 1.5 km, because the last 20 km/h cost
+about as much distance as the first 80. Every run time and every headway
+downstream of that was optimistic before, and the timetables have been rebooked
+on the new figures.
+
+**Resistance is the Davis equation**, `R = A + Bv + Cv²`: rolling and journal
+resistance that barely varies, a flange term linear in speed, and aerodynamic
+drag that dominates above about 100 km/h. `A` and `B` scale with mass, `C` with
+length, and the default coefficients put a 200 m EMU at ~35 N per tonne at
+140 km/h, which is where measured stock of that kind sits. It is what makes a
+coasting train slow down and why the last few km/h take so long to gain.
+
+**Gradient is `g · sin θ`**, near enough `g · ‰ / 1000`. Ten per thousand is
+0.098 m/s², a ninth of an EMU's starting acceleration and three times its air
+drag at line speed — after the brake, gravity is the largest force acting on a
+train, which is why a run-time calculation asks for a gradient profile first.
+
+Two more limits sit on the brake rather than in the force balance. **Adhesion**
+caps any retardation at `μ · g` — 2.9 m/s² on dry rail, well above any service
+rate here, so it only bites if a scenario asks for a brake nobody could deliver.
+**Build-up** is the second or two the retardation takes to come in; the driver
+allows for it by starting to brake earlier, exactly as an ERTMS braking curve
+does, and it lengthens the moving-block envelope by 39 m at 140 km/h.
+
+The split between the driver and the train is the point. The driver asks for an
+acceleration — it is closing a loop on speed and does not know which forces get
+it there. The train answers with what it can deliver. So the driver model did not
+have to learn about any of this, and neither did the signalling.
+
+**Gradients on the railway.** A track may be laid on a gradient, per stretch:
+
+```yaml
+tracks:
+  - id: UP
+    serves: [ALPHA, BETA, GAMMA]
+    gradients:
+      - {from: ALPHA, to: BETA,  grade_permille: 10}   # 1 in 100 up to the ridge
+      - {from: BETA,  to: GAMMA, grade_permille: -5}
+```
+
+Rise per thousand, in the direction the entry is written; the down line reads the
+same entries negated, because a bank that climbs one way falls the other. What
+follows from it is not symmetrical, and that is the interesting part. Working up
+a bank costs real time, because the train has that much less acceleration to
+spare. Running down one buys none of it back: line speed is line speed, so the
+surplus has nowhere to go — and it is spent again on a longer braking distance
+into the next stop. A 20 per thousand fall lengthens the signal spacing a
+three-aspect layout needs from 1222 m to 1600 m, and `--check` says so.
+
+Nothing shipped is on a gradient yet: every scenario here is level, so every
+number in this file is comparable with the one before it. The rolling stock keys
+are the same story — `mass_t`, `power_kw`, the Davis coefficients, `adhesion`
+and `brake_buildup_s` are all optional, and what a timetable does not say is
+derived from the length, speed and acceleration it already declared.
 
 ### The seam that matters
 
@@ -866,7 +933,7 @@ single approach block ahead of the divergence can only ever hold one train.
 **On block lengths.** They are not uniform, because in practice they are not.
 The floor is braking distance — under three aspects a driver passing a yellow
 must stop at the next signal, so `block ≥ braking distance + reaction + margin`
-(about 1180 m at 140 km/h here). The ceiling is capacity — minimum headway is
+(about 1222 m at 140 km/h here). The ceiling is capacity — minimum headway is
 roughly the time to clear two blocks plus the train's length, so shorter blocks
 mean more trains per hour, paid for with more signals. So the busy Alpha–Beta
 section is signalled at 1425 m and the fast open line at 2486 m. `--check`
@@ -891,10 +958,13 @@ PyYAML on every shipped file. `.json` scenario files work too.
 
 ## Verification
 
-`python run_tests.py` — 182 tests covering:
+`python run_tests.py` — 217 tests covering:
 
 - **braking** — a train stops within the computed service braking distance and
-  berths on its stopping point to within a metre
+  berths on its stopping point to within a metre, on the level and on a bank
+- **dynamics** — the traction curve, Davis resistance, gradient force, adhesion
+  and brake build-up, each checked against the figure a traction engineer would
+  expect rather than against whatever the code produces
 - **block exclusivity** — asserted every tick of the full corridor3 run
 - **red signals** — a train driven at an occupied block stops *before* the
   protecting signal, never past it, and gets going again when it clears

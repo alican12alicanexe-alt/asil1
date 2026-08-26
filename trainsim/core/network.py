@@ -50,6 +50,11 @@ class Segment:
     #: junction link ramps from one line's alignment to another's, and is the
     #: only thing here that is not drawn parallel to the rest of the railway.
     y_end: Optional[float] = None
+    #: Rise per thousand *in the direction of travel*: positive is a climb,
+    #: negative a fall. Segments are one-way, so the same physical bank is
+    #: recorded as +10 on the up line and -10 on the down, and neither the
+    #: dynamics nor the driver has to reason about which way round it is.
+    grade_permille: float = 0.0
 
     @property
     def is_platform(self) -> bool:

@@ -41,17 +41,20 @@ INFRASTRUCTURE = frozenset({"name", "defaults", "stations", "tracks",
                             "platforms", "crossovers"})
 DEFAULTS = frozenset({
     "platform_zone_m", "block_length_m", "max_speed_kmh", "stop_margin_m",
-    "platform_y_step",
+    "platform_y_step", "grade_permille",
 })
 STATION = frozenset({"id", "name", "km"})
 TRACK = frozenset({
     "id", "direction", "y", "max_speed_kmh", "block_length_m", "platform_zone_m",
-    "serves", "block_lengths", "junction",
+    "serves", "block_lengths", "junction", "grade_permille", "gradients",
 })
 BLOCK_LENGTHS = frozenset({"from", "to", "block_length_m"})
-JUNCTION = frozenset({"track", "at", "length_m", "max_speed_kmh", "grade_separated"})
+GRADIENTS = frozenset({"from", "to", "grade_permille"})
+JUNCTION = frozenset({"track", "at", "length_m", "max_speed_kmh",
+                      "grade_separated", "grade_permille"})
 PLATFORM = frozenset({
     "id", "station", "track", "length_m", "max_speed_kmh", "y_offset",
+    "grade_permille",
 })
 CROSSOVER = frozenset({
     "id", "from", "to", "km", "length_m", "max_speed_kmh", "bidirectional",
@@ -62,6 +65,11 @@ TIMETABLE = frozenset({"stock", "services"})
 STOCK = frozenset({
     "id", "name", "length_m", "max_speed_kmh", "max_accel", "service_brake",
     "emergency_brake", "etcs_level", "tims",
+    # Dynamics. All optional: what is not given is derived from the size and
+    # performance already declared, in trainsim/core/dynamics.py.
+    "mass_t", "rotating_mass_pct", "power_kw",
+    "davis_a_n", "davis_b_n_per_ms", "davis_c_n_per_ms2",
+    "adhesion", "brake_buildup_s",
 })
 SERVICE = frozenset({"id", "name", "stock", "departure", "ready_lead_s", "calls"})
 CALL = frozenset({"station", "platform", "arrival", "departure", "dwell_s"})

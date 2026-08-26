@@ -63,13 +63,42 @@ class TestBraking(unittest.TestCase):
         sim, infra, timetable = support.build_test_sim()
         train = timetable.services[0].create_train()
         train.state = "running"
-        train.speed_ms = 2.0
+        train.speed_ms = 0.5
+        train.applied_accel = -1.2
         start = train.chainage_m
-        moved = train.advance(-10.0, 1.0)
+        moved = train.advance(-1.2, 1.0)
         self.assertEqual(train.speed_ms, 0.0)
         self.assertGreater(moved, 0.0)
-        self.assertAlmostEqual(moved, 0.2, places=6)  # 0.5 * 2.0 * (2.0/10.0)
+        self.assertLess(moved, 0.5)  # less than a full second at 0.5 m/s
         self.assertAlmostEqual(train.chainage_m - start, moved, places=6)
+
+    def test_a_brake_demand_beyond_the_brake_is_not_delivered(self):
+        """The driver may ask for anything; the train answers with what it has.
+
+        Demanding 10 m/s2 of a unit whose emergency brake is 1.2 used to be
+        obeyed to the letter, which quietly let a train stop in a tenth of the
+        distance physics allows whenever the arithmetic asked it to.
+        """
+        sim, infra, timetable = support.build_test_sim()
+        train = timetable.services[0].create_train()
+        train.state = "running"
+        train.speed_ms = 30.0
+
+        # The brake builds up over the first few seconds rather than appearing
+        # whole, so the first tick is softer than the rest.
+        first = train.speed_ms
+        train.advance(-10.0, 1.0)
+        self.assertGreater(train.speed_ms, first - train.stock.service_brake)
+
+        for _ in range(5):
+            train.advance(-10.0, 1.0)
+        before = train.speed_ms
+        train.advance(-10.0, 1.0)
+        # Fully built up: the emergency brake plus running resistance, and not
+        # one metre per second per second beyond it.
+        lost = before - train.speed_ms
+        self.assertGreater(lost, train.stock.emergency_brake)
+        self.assertLess(lost, train.stock.emergency_brake + 0.1)
 
     def test_train_never_exceeds_its_speed_limit(self):
         sim, infra, timetable = support.build_test_sim()

@@ -60,6 +60,9 @@ DEFAULTS = {
     "max_speed_kmh": 140.0,
     "stop_margin_m": 40.0,
     "platform_y_step": 0.45,
+    #: Rise per thousand. Level unless a track says otherwise, which keeps a
+    #: scenario that does not care about gradients exactly as it was.
+    "grade_permille": 0.0,
 }
 
 
@@ -90,6 +93,9 @@ class _Builder(object):
             for entry in track.get("block_lengths") or []:
                 _check("track %r block_lengths entry" % track_id, entry,
                        schema.BLOCK_LENGTHS)
+            for entry in track.get("gradients") or []:
+                _check("track %r gradients entry" % track_id, entry,
+                       schema.GRADIENTS)
             if track.get("junction") is not None:
                 _check("track %r junction" % track_id, track["junction"],
                        schema.JUNCTION)
@@ -292,6 +298,11 @@ class _Builder(object):
                 km_end=self.nodes[end].km,
                 y=from_y,
                 y_end=to_y,
+                # A crossover lies between two parallel lines at the same
+                # place, so it is on whatever gradient the line it leaves is on.
+                grade_permille=float(
+                    self.tracks_spec[from_id].get(
+                        "grade_permille", self.defaults["grade_permille"])),
             )
             self.segments.append(segment)
             # Registered as a ramp so that a connection reaching across an
@@ -432,6 +443,8 @@ class _Builder(object):
                                                self.defaults["max_speed_kmh"])))
         block_length = float(track.get("block_length_m",
                                        self.defaults["block_length_m"]))
+        track_grade = float(track.get("grade_permille",
+                                      self.defaults["grade_permille"]))
         zone_length = float(track.get("platform_zone_m",
                                       self.defaults["platform_zone_m"]))
 
@@ -443,7 +456,7 @@ class _Builder(object):
         # and a junction link bridges the rest. The branch also measures itself
         # to the *attachment node* rather than to the station's centre, so that
         # the link is drawn the length it actually is.
-        junction = self._junction_spec(track_id, track, serves)
+        junction = self._junction_spec(track_id, track, serves, track_grade)
         if junction is not None:
             start_km = (junction["node_km"] if not junction["joining"]
                         else float(self.stations_spec[serves[0]]["km"]))
@@ -483,6 +496,7 @@ class _Builder(object):
         )
 
         overrides = self._stretch_overrides(track_id, track)
+        gradients = self._gradient_overrides(track_id, track)
         self.track_layout[track_id] = {
             "sign": sign, "start_km": start_km, "y": track_y,
             "zones": {station: (start, end) for station, start, end in zones},
@@ -490,34 +504,38 @@ class _Builder(object):
 
         if junction is not None and not junction["joining"]:
             self._emit_junction_link(track_id, track, track_y, sign, start_km,
-                                     junction, 0.0, layout_from)
+                                     junction, 0.0, layout_from, track_grade)
 
         counter = 0
         cursor = layout_from
         previous_station = None
         for station_id, zone_start, zone_end in zones:
             if zone_start > cursor + 1e-6:
-                stretch_length = overrides.get(
-                    (previous_station, station_id), block_length)
+                stretch = (previous_station, station_id)
                 counter = self._emit_open_line(
                     track_id, track_y, sign, start_km, cursor, zone_start,
-                    stretch_length, line_speed, counter,
+                    overrides.get(stretch, block_length), line_speed, counter,
+                    gradients.get(stretch, track_grade),
                 )
+            # Stations are taken to stand on the track's own gradient: a
+            # platform is levelled where it can be, and a stretch gradient
+            # describes the run between two stations rather than the stop at
+            # either end of it.
             self._emit_platform_zone(
                 track_id, track_y, sign, start_km, station_id,
-                zone_start, zone_end, line_speed,
+                zone_start, zone_end, line_speed, track_grade,
             )
             cursor = zone_end
             previous_station = station_id
         if cursor < layout_to - 1e-6:
             self._emit_open_line(
                 track_id, track_y, sign, start_km, cursor, layout_to,
-                block_length, line_speed, counter,
+                block_length, line_speed, counter, track_grade,
             )
 
         if junction is not None and junction["joining"]:
             self._emit_junction_link(track_id, track, track_y, sign, start_km,
-                                     junction, layout_to, total)
+                                     junction, layout_to, total, track_grade)
 
     def _stretch_overrides(self, track_id, track) -> Dict[Tuple[str, str], float]:
         """Per-stretch block lengths, keyed by the stations either side.
@@ -549,7 +567,56 @@ class _Builder(object):
                 )
         return overrides
 
-    def _junction_spec(self, track_id, track, serves) -> Optional[dict]:
+    def _gradient_overrides(self, track_id, track
+                            ) -> Dict[Tuple[str, str], float]:
+        """Per-stretch gradients, keyed by the stations either side.
+
+        A gradient profile is how a railway is actually described - "1 in 100
+        against up trains from Alpha to Beta" - so that is how it is written
+        here, as rise per thousand *in the direction the entry is written in*:
+
+            gradients:
+              - {from: ALPHA, to: BETA, grade_permille: 10}   # a climb
+
+        The same bank appears on the down line as a fall, and a scenario may say
+        so either by writing the pair the other way round on that track or by
+        writing the same pair with the sign flipped. Both are accepted: an entry
+        found in reverse is negated, because a bank that climbs one way falls the
+        other and there is no third possibility.
+        """
+        overrides: Dict[Tuple[str, str], float] = {}
+        for entry in track.get("gradients") or []:
+            if not isinstance(entry, dict):
+                raise InfrastructureError(
+                    "track %r: each gradients entry must be a mapping"
+                    % (track_id,)
+                )
+            try:
+                start, end = str(entry["from"]), str(entry["to"])
+                grade = float(entry["grade_permille"])
+            except KeyError as exc:
+                raise InfrastructureError(
+                    "track %r: gradients entry missing %s" % (track_id, exc)
+                )
+            for station_id in (start, end):
+                if station_id not in self.stations_spec:
+                    raise InfrastructureError(
+                        "track %r: gradients entry names unknown station %r"
+                        % (track_id, station_id)
+                    )
+            if abs(grade) > 100.0:
+                raise InfrastructureError(
+                    "track %r: gradient %g per thousand between %s and %s is "
+                    "steeper than 1 in 10 - check the units, which are rise per "
+                    "thousand and not a percentage"
+                    % (track_id, grade, start, end)
+                )
+            overrides[(start, end)] = grade
+            overrides.setdefault((end, start), -grade)
+        return overrides
+
+    def _junction_spec(self, track_id, track, serves,
+                       track_grade: float = 0.0) -> Optional[dict]:
         """Parse ``junction:`` - how this branch attaches to the line it works to.
 
         A branch is not a separate railway: it joins a running line at a set of
@@ -606,6 +673,7 @@ class _Builder(object):
             # A flyover or a dive-under: the link gets past whatever is in the
             # way without sharing any track with it, so nothing has to be held.
             "grade_separated": bool(spec.get("grade_separated", False)),
+            "grade_permille": float(spec.get("grade_permille", track_grade)),
             "node": self._node_id(other_id, attach_chainage),
             "node_km": (layout["start_km"]
                         + layout["sign"] * attach_chainage / 1000.0),
@@ -613,7 +681,7 @@ class _Builder(object):
         }
 
     def _emit_junction_link(self, track_id, track, track_y, sign, start_km,
-                            junction, from_ch, to_ch) -> None:
+                            junction, from_ch, to_ch, grade_permille=0.0) -> None:
         """The connecting road between a branch and the line it works to.
 
         Its own block and its own signal, because it is the piece of railway two
@@ -658,6 +726,10 @@ class _Builder(object):
             # which is what correctly makes the main line normal here.
             y=y,
             y_end=y_end,
+            #: A flyover climbs whichever way it is written; a scenario that
+            #: says so declares it on the junction itself, since it is not the
+            #: gradient of either line it connects.
+            grade_permille=junction["grade_permille"],
         )
         self.segments.append(segment)
         self.ramps.append((seg_id, junction))
@@ -715,7 +787,8 @@ class _Builder(object):
     # ----------------------------------------------------------------- emitters
 
     def _emit_open_line(self, track_id, track_y, sign, start_km, from_ch, to_ch,
-                        block_length, line_speed, counter) -> int:
+                        block_length, line_speed, counter,
+                        grade_permille=0.0) -> int:
         """Divide a stretch of open line into blocks, each with a signal.
 
         Split first at any chainage that *must* be a block boundary - where a
@@ -731,7 +804,7 @@ class _Builder(object):
             for piece_start, piece_end in zip(bounds, bounds[1:]):
                 counter = self._emit_open_line(
                     track_id, track_y, sign, start_km, piece_start, piece_end,
-                    block_length, line_speed, counter,
+                    block_length, line_speed, counter, grade_permille,
                 )
             return counter
 
@@ -755,11 +828,13 @@ class _Builder(object):
                 max_speed_ms=line_speed,
                 platform=None,
                 station=None,
+                grade_permille=grade_permille,
             )
         return counter
 
     def _emit_platform_zone(self, track_id, track_y, sign, start_km, station_id,
-                            zone_start, zone_end, line_speed) -> None:
+                            zone_start, zone_end, line_speed,
+                            grade_permille=0.0) -> None:
         """Emit one block per platform road at a station, in parallel."""
         roads = [
             (pid, p) for pid, p in self.platforms_spec.items()
@@ -793,6 +868,7 @@ class _Builder(object):
                 max_speed_ms=max_speed,
                 platform=platform_id,
                 station=station_id,
+                grade_permille=float(plat.get("grade_permille", grade_permille)),
             )
             self.platforms.append(Platform(
                 id=platform_id,
@@ -805,7 +881,8 @@ class _Builder(object):
             self.station_platforms.setdefault(station_id, []).append(platform_id)
 
     def _emit_block(self, track_id, seg_id, block_id, start_ch, end_ch, sign,
-                    start_km, y, max_speed_ms, platform, station) -> None:
+                    start_km, y, max_speed_ms, platform, station,
+                    grade_permille=0.0) -> None:
         start_node = self._node(track_id, start_ch, sign, start_km, y,
                                 "station" if station else "plain")
         end_node = self._node(track_id, end_ch, sign, start_km, y,
@@ -825,6 +902,7 @@ class _Builder(object):
             y=y,
             platform=platform,
             station=station,
+            grade_permille=grade_permille,
         )
         self.segments.append(segment)
 

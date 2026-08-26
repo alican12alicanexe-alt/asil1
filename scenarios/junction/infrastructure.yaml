@@ -30,7 +30,12 @@
 name: junction
 
 defaults:
-  platform_zone_m: 1200
+  # 1250 m rather than a round 1200: a platform road is a block section like any
+  # other, and a train running through one at 140 km/h has to be able to stop at
+  # its exit signal from a yellow at the entry. That takes 1080 m of braking, the
+  # 39 m the brake spends building up, the driver's two seconds of reaction and
+  # the standing margin - 1222 m in all, which 1200 m did not cover.
+  platform_zone_m: 1250
   block_length_m: 1800
   max_speed_kmh: 140
   stop_margin_m: 40

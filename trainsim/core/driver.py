@@ -14,6 +14,7 @@ of this file.
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
+from . import dynamics
 from .disruption import SpeedLimits
 from .units import braking_distance, speed_from_braking_distance
 
@@ -60,9 +61,20 @@ class Driver:
             target = authority.ceiling_speed_ms
             reason = authority.reason or "authority ceiling"
 
-        constraints = self._constraints(train, authority, speed, limits)
+        # The rate to compute braking curves against. Not the brake's own rate:
+        # a falling gradient takes some of it away, and the curve has to hold
+        # over the whole of the braking distance rather than just where the
+        # train is now, so the worst gradient inside that distance decides.
+        rate = self._braking_rate(train, speed)
+        lost_to_buildup = dynamics.brake_buildup_distance_m(stock, speed)
+
+        constraints = self._constraints(train, authority, speed, limits, rate)
         for distance, limit, label in constraints:
-            allowed = speed_from_braking_distance(distance, stock.service_brake, limit)
+            # Braking effectively starts a moment after it is demanded, so the
+            # distance the curve may count on is short by what the train covers
+            # while the brake builds up.
+            usable = max(0.0, distance - lost_to_buildup)
+            allowed = speed_from_braking_distance(usable, rate, limit)
             if allowed < target:
                 target = allowed
                 reason = label
@@ -88,7 +100,15 @@ class Driver:
 
     # ---------------------------------------------------------------- internals
 
-    def _constraints(self, train, authority, speed: float, limits
+    def _braking_rate(self, train, speed: float) -> float:
+        """Service braking rate allowing for the gradient over the braking distance."""
+        stock = train.stock
+        flat = braking_distance(speed, stock.service_brake)
+        worst = train.path.steepest_fall_ahead(train.chainage_m, flat)
+        return dynamics.braking_rate_on_grade(stock, worst)
+
+    def _constraints(self, train, authority, speed: float, limits,
+                     rate: Optional[float] = None
                      ) -> List[Tuple[float, float, str]]:
         """``(distance, speed_at_that_point, label)`` for everything ahead."""
         cfg = self.config
@@ -113,7 +133,8 @@ class Driver:
 
         # Slower stretches coming up - permanent, like a loop road, or a
         # temporary restriction laid on for this run. Brake before reaching them.
-        lookahead = braking_distance(stock.max_speed_ms, stock.service_brake) + 200.0
+        lookahead = braking_distance(
+            stock.max_speed_ms, rate or stock.service_brake) + 200.0
         for distance, limit in limits.ahead(train, train.chainage_m, lookahead):
             if limit < speed:
                 found.append((max(0.0, distance), limit, "speed restriction"))

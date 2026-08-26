@@ -77,11 +77,32 @@ class TestBrakingEnvelope(unittest.TestCase):
     def test_a_stationary_train_needs_nothing(self):
         self.assertEqual(self._train(0).stopping_distance_m(2.0), 0.0)
 
-    def test_it_matches_the_braking_curve(self):
+    def test_it_matches_the_braking_curve_plus_brake_build_up(self):
+        """The curve, plus the ground covered while the brake comes in.
+
+        A brake demand is not a brake application: the retardation ramps in over
+        a couple of seconds, and the train keeps running while it does. ERTMS
+        counts that as an equivalent time at half the build-up, and so does the
+        envelope moving block hands out - otherwise the authority would be short
+        by the length of a coach or two at line speed, which is exactly the sort
+        of margin a safety case is made of.
+        """
+        from trainsim.core import dynamics
         from trainsim.core.units import braking_distance
         train = self._train(140)
-        expected = braking_distance(train.speed_ms, train.stock.service_brake)
+        expected = (braking_distance(train.speed_ms, train.stock.service_brake)
+                    + dynamics.brake_buildup_distance_m(train.stock,
+                                                        train.speed_ms))
         self.assertAlmostEqual(train.stopping_distance_m(0.0), expected, places=6)
+
+    def test_a_falling_gradient_lengthens_it(self):
+        """Gravity takes some of the brake's rate away, and the envelope grows."""
+        level = self._train(140).stopping_distance_m(0.0)
+        _, _, timetable = support.build_test_sim(
+            infra_spec=support.sloped_infra(-20))
+        downhill = timetable.services[0].create_train()
+        downhill.speed_ms = kmh_to_ms(140)
+        self.assertGreater(downhill.stopping_distance_m(0.0), level * 1.1)
 
     def test_reaction_time_adds_the_distance_run_before_braking(self):
         train = self._train(140)

@@ -90,11 +90,30 @@ class TestWhatSeparationBuys(unittest.TestCase):
             self.assertEqual(metrics.completed, metrics.services, metrics.system)
             self.assertEqual(metrics.violations, 0, metrics.system)
 
-    def test_moving_block_delivers_the_plan_exactly(self):
-        """No train late, and no train ever held back by another."""
-        self.assertEqual(self.moving.total_restrained_s, 0.0)
-        self.assertAlmostEqual(self.moving.mean_delay_s, 0.0, delta=1.0)
-        self.assertEqual(max(self.moving.delays.values()), 0.0)
+    def test_moving_block_all_but_delivers_the_plan(self):
+        """Every train runs its booked path to within a few seconds of it.
+
+        Not to the second, and the reason is worth stating. The plan is booked on
+        the run times of a *single* unimpeded train, and a real train takes the
+        better part of half a minute to get back up to line speed after a call.
+        So in a flight at a 75-second headway the following train closes on the
+        one in front while that one is braking into the next platform, and its
+        authority - the rear of the train ahead, less its own braking distance -
+        checks it from 89 to about 80 km/h on each station approach. Four
+        stations, about eleven seconds of easing off at each.
+
+        That is the station reoccupation limit showing through, which is this
+        scenario's whole subject. It costs three seconds a train here. Fixed
+        block, on the same plan and the same physics, costs ninety-seven.
+        """
+        self.assertLess(self.moving.mean_delay_s, 5.0)
+        self.assertLess(max(self.moving.delays.values()), 6.0)
+        # Held back on the approaches, not held at a stand: an order of
+        # magnitude less restraint than the section-separated systems.
+        self.assertLess(self.moving.total_restrained_s,
+                        0.35 * self.fixed.total_restrained_s)
+        for train_id, seconds in self.moving.restrained_s.items():
+            self.assertLess(seconds, 60.0, train_id)
 
     def test_fixed_block_loses_about_a_headway_per_train(self):
         self.assertGreater(self.fixed.mean_delay_s, 0.6 * HEADWAY_S)
@@ -141,8 +160,13 @@ class TestWhatSeparationBuys(unittest.TestCase):
         """
         fine = run(support.METRO, "etcs_hybrid_l3", vss_per_block=12)
         self.assertGreater(self.hybrid.total_restrained_s, 0.0)
-        self.assertEqual(fine.total_restrained_s, 0.0)
-        self.assertAlmostEqual(fine.mean_delay_s, 0.0, delta=1.0)
+        self.assertLess(fine.total_restrained_s,
+                        0.5 * self.hybrid.total_restrained_s)
+        # Down to the residual every system pays on this plan - the approach
+        # check behind a train that is still getting away from the platform in
+        # front - and nothing more. The coarse setting loses three times as much.
+        self.assertLess(fine.mean_delay_s, 5.0)
+        self.assertLess(fine.mean_delay_s, 0.5 * self.hybrid.mean_delay_s)
 
 
 class TestTheLimitsOnTheOtherSide(unittest.TestCase):
@@ -174,15 +198,25 @@ class TestTheLimitsOnTheOtherSide(unittest.TestCase):
         """
         self.assertGreater(self.mixed.total_restrained_s, 100.0)
 
-        self.assertEqual(self.mixed.restrained_s.get("U06", 0.0), 0.0)
-        self.assertEqual(self.mixed.delays["U06"], 0.0)
-        self.assertGreater(self.mixed.restrained_s.get("U07", 0.0), 0.0)
-        self.assertGreater(self.mixed.delays["U07"], 0.0)
+        # Everything in the flight pays the few seconds of approach check that
+        # a 75-second headway costs whatever the signalling; what marks the
+        # unfitted unit is that it pays nothing *else*, while the train behind
+        # it is pushed back to section separation and loses minutes.
+        unfitted = self.mixed.restrained_s.get("U06", 0.0)
+        self.assertLess(unfitted, 60.0)
+        self.assertLess(self.mixed.delays["U06"], 5.0)
+        self.assertGreater(self.mixed.restrained_s.get("U07", 0.0),
+                           10.0 * unfitted)
+        self.assertGreater(self.mixed.delays["U07"],
+                           10.0 * self.mixed.delays["U06"])
 
-        # Trains ahead of it are untouched; the flight only degrades behind.
+        # Trains ahead of it are untouched by it: none of them is checked any
+        # harder than the train at the head of the flight that has nothing in
+        # front of it at all.
         for train_id in ("U01", "U02", "U03", "U04", "U05"):
-            self.assertEqual(self.mixed.restrained_s.get(train_id, 0.0), 0.0,
-                             train_id)
+            self.assertLess(self.mixed.restrained_s.get(train_id, 0.0), 60.0,
+                            train_id)
+            self.assertLess(self.mixed.delays[train_id], 5.0, train_id)
 
     def test_the_delay_does_not_wash_out(self):
         """A plan booked at the achievable headway has no slack to recover in."""

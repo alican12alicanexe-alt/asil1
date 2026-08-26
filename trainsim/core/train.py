@@ -10,6 +10,7 @@ trivially reversible for testing.
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
+from . import dynamics
 from .network import Network, Segment
 from .units import braking_distance
 
@@ -29,7 +30,7 @@ class RollingStock:
     name: str
     length_m: float
     max_speed_ms: float
-    max_accel: float          # m/s^2, traction
+    max_accel: float          # m/s^2, traction, at a stand
     service_brake: float      # m/s^2, normal braking
     emergency_brake: float    # m/s^2, reserved for degraded cases
 
@@ -38,10 +39,94 @@ class RollingStock:
     #: Train Integrity Monitoring: can the train confirm its rear is still there?
     tims: bool = False
 
+    # ------------------------------------------------------- dynamics, physical
+    #
+    # These describe the train as a body being pushed along a rail rather than
+    # as a set of performance figures, and they are what
+    # :mod:`trainsim.core.dynamics` works in. Every one of them may be left out
+    # of a scenario file: what is derived then is a plausible unit of the size
+    # and performance already declared, so an existing timetable keeps working
+    # and only gains the falling traction curve it should always have had.
+
+    #: Tare + load, tonnes. Derived from length at 1.8 t/m when not given.
+    mass_t: float = 0.0
+    #: How much heavier the train behaves than it weighs, because wheels, gears
+    #: and armatures have to be spun up as well as moved.
+    rotating_mass_pct: float = 8.0
+    #: Traction power at the wheel, kW. Derived so that the constant-effort
+    #: branch of the curve ends at 40% of the train's maximum speed.
+    power_kw: float = 0.0
+    #: Davis resistance ``A + Bv + Cv^2`` in N, with v in m/s. Derived from
+    #: mass and length when not given.
+    davis_a_n: Optional[float] = None
+    davis_b_n_per_ms: Optional[float] = None
+    davis_c_n_per_ms2: Optional[float] = None
+    #: Wheel-rail friction coefficient - the ceiling on any brake rate.
+    adhesion: float = 0.30
+    #: Seconds for a brake demand to become the retardation asked for.
+    brake_buildup_s: float = 2.0
+
+    def __post_init__(self):
+        """Fill in whatever the scenario left unsaid, consistently.
+
+        Frozen dataclasses do not assign, so this goes through
+        ``object.__setattr__``; the values are still fixed for the life of the
+        object, which is what being frozen is for.
+        """
+        set_field = object.__setattr__
+        if self.mass_t <= 0.0:
+            set_field(self, "mass_t", dynamics.MASS_T_PER_M * self.length_m)
+        if self.power_kw <= 0.0:
+            # Enough power to hold the starting effort up to base speed, and no
+            # more. Below that the train would never reach line speed; far above
+            # it, acceleration would stay flat and we would be back where we
+            # started.
+            base_speed = dynamics.BASE_SPEED_FRACTION * self.max_speed_ms
+            set_field(self, "power_kw",
+                      self.starting_effort_n * base_speed / 1000.0)
+        davis_a, davis_b, davis_c = dynamics.default_davis(
+            self.mass_t, self.length_m)
+        if self.davis_a_n is None:
+            set_field(self, "davis_a_n", davis_a)
+        if self.davis_b_n_per_ms is None:
+            set_field(self, "davis_b_n_per_ms", davis_b)
+        if self.davis_c_n_per_ms2 is None:
+            set_field(self, "davis_c_n_per_ms2", davis_c)
+
     @property
     def reports_position(self) -> bool:
         """Whether the trackside can know where this train is between balises."""
         return self.etcs_level in ("l2", "l3")
+
+    # ------------------------------------------------------------------ physics
+
+    @property
+    def mass_kg(self) -> float:
+        return self.mass_t * 1000.0
+
+    @property
+    def power_w(self) -> float:
+        return self.power_kw * 1000.0
+
+    @property
+    def starting_effort_n(self) -> float:
+        """Tractive effort below base speed.
+
+        Defined *from* ``max_accel`` rather than declared alongside it, so that a
+        train still accelerates away from a platform at exactly the rate its
+        scenario asks for. What changes is what happens afterwards.
+        """
+        return self.max_accel * dynamics.effective_mass_kg(self)
+
+    @property
+    def base_speed_ms(self) -> float:
+        """Where constant effort gives way to constant power."""
+        return dynamics.base_speed_ms(self)
+
+    @property
+    def balancing_speed_ms(self) -> float:
+        """Fastest this train can go on level track, whatever its data sheet says."""
+        return dynamics.balancing_speed_ms(self)
 
 
 @dataclass(frozen=True)
@@ -203,6 +288,29 @@ class Path:
     def speed_limit_at(self, chainage_m: float) -> float:
         return self.entry_at(chainage_m).segment.max_speed_ms
 
+    def grade_at(self, chainage_m: float) -> float:
+        """Rise per thousand where the train's front is, in its own direction."""
+        return self.entry_at(chainage_m).segment.grade_permille
+
+    def steepest_fall_ahead(self, chainage_m: float, distance_m: float) -> float:
+        """The most adverse gradient between here and ``distance_m`` ahead.
+
+        Adverse for *braking*, so the most negative one: a train that starts
+        braking on the level and runs onto a falling gradient halfway down its
+        braking distance will not stop where the level-track curve promised. A
+        braking curve is computed against the worst gradient it will meet, which
+        is what this returns, and never against the one under the train now.
+        """
+        worst = self.grade_at(chainage_m)
+        limit = chainage_m + max(0.0, distance_m)
+        for entry in self.entries:
+            if entry.end_m <= chainage_m:
+                continue
+            if entry.start_m > limit:
+                break
+            worst = min(worst, entry.segment.grade_permille)
+        return worst
+
     def restrictions_ahead(self, chainage_m: float,
                            lookahead_m: float) -> List[Tuple[float, float]]:
         """``(distance_ahead, speed_limit)`` for segments starting within lookahead.
@@ -276,6 +384,10 @@ class Train:
 
     chainage_m: float = 0.0
     speed_ms: float = 0.0
+    #: The acceleration the train actually achieved last tick, kept because the
+    #: next one may not differ from it by more than the jerk limit - a brake or
+    #: a traction demand takes a second or two to become a force.
+    applied_accel: float = 0.0
     state: str = "waiting"  # waiting | running | dwelling | finished
     next_stop_index: int = 0
     dwell_until_s: Optional[float] = None
@@ -303,6 +415,8 @@ class Train:
     authority_reason: str = "not started"
     #: Distance the last movement authority extended to, for metrics and the view.
     last_authority_m: Optional[float] = None
+    #: Gradient under the train, for the view and the event log.
+    grade_permille: float = 0.0
     target_speed_ms: float = 0.0
     delay_s: float = 0.0
     actual_arrivals: Dict[str, float] = field(default_factory=dict)
@@ -332,9 +446,35 @@ class Train:
         Under fixed block this is invisible - separation is a whole block whether
         the train is doing 40 or 140. Under moving block it *is* the separation,
         which is why it shrinks as the train slows and why the schematic draws it.
+
+        Two things lengthen it beyond the textbook curve, and both are real
+        distance the train covers before it is stopped: the brake takes a second
+        or two to build up, and a falling gradient over the braking distance robs
+        the brake of some of its rate. The gradient is found by solving once on
+        the level and then re-solving against the worst gradient inside that
+        first answer, which converges immediately for any gradient a railway is
+        actually built to.
         """
-        return (braking_distance(self.speed_ms, self.stock.service_brake)
+        rate = dynamics.braking_rate_on_grade(
+            self.stock, self.path.grade_at(self.chainage_m))
+        first_pass = braking_distance(self.speed_ms, rate)
+        worst = self.path.steepest_fall_ahead(self.chainage_m, first_pass)
+        rate = dynamics.braking_rate_on_grade(self.stock, worst)
+        return (braking_distance(self.speed_ms, rate)
+                + dynamics.brake_buildup_distance_m(self.stock, self.speed_ms)
                 + self.speed_ms * reaction_s)
+
+    # ---------------------------------------------------------------- diagnostics
+
+    @property
+    def resistance_accel(self) -> float:
+        """Retardation from running resistance at the speed the train is doing."""
+        return dynamics.resistance_accel(self.stock, self.speed_ms)
+
+    @property
+    def traction_accel_available(self) -> float:
+        """What the traction curve still has to give at this speed."""
+        return dynamics.traction_accel(self.stock, self.speed_ms)
 
     def occupied_blocks(self) -> List[str]:
         if not self.is_active:
@@ -354,14 +494,37 @@ class Train:
 
     # ---------------------------------------------------------------- kinematics
 
-    def advance(self, accel: float, dt: float) -> float:
-        """Integrate one tick at constant acceleration; returns distance moved.
+    def advance(self, demanded_accel: float, dt: float) -> float:
+        """Integrate one tick; returns distance moved.
+
+        The driver asks for an acceleration; the train delivers whatever the
+        force balance allows. Traction falls away with speed, drag and gravity
+        take their share whether or not anyone asked, the brake cannot beat
+        adhesion, and neither traction nor brake changes instantly. All of that
+        is resolved in :func:`~trainsim.core.dynamics.achievable_accel`; what is
+        left here is the integration.
 
         Trapezoidal, with the special case that matters at a red signal: if the
         train would cross zero speed inside the tick, it stops partway through
         rather than reversing.
         """
         v0 = self.speed_ms
+        self.grade_permille = self.path.grade_at(self.chainage_m)
+
+        # The tick that ends at a stand is the one where the brake is already
+        # applied and being modulated onto the mark, so the build-up limit does
+        # not apply to it. Without this a berthing train would overshoot its
+        # stopping point by the metre or so the jerk limit costs.
+        stopping = demanded_accel < 0.0 and v0 + demanded_accel * dt <= 1e-9
+
+        accel = dynamics.achievable_accel(
+            self.stock, v0, demanded_accel,
+            grade_permille=self.grade_permille,
+            previous_accel=self.applied_accel,
+            dt=dt,
+            immediate=stopping,
+        )
+
         v1 = v0 + accel * dt
         if v1 <= 0.0:
             if accel < 0.0:
@@ -370,9 +533,13 @@ class Train:
             else:
                 distance = 0.0
             v1 = 0.0
+            # At a stand the brakes are holding and nothing is building up; the
+            # next application or notch starts from rest like any other.
+            accel = 0.0
         else:
             v1 = min(v1, self.stock.max_speed_ms)
             distance = 0.5 * (v0 + v1) * dt
+        self.applied_accel = accel
         self.speed_ms = v1
         self.chainage_m = min(self.chainage_m + distance, self.path.total_m)
         return distance

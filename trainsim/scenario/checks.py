@@ -28,6 +28,7 @@ Four-aspect signalling, which gives two blocks of warning and so permits blocks
 from dataclasses import dataclass
 from typing import List, Optional
 
+from ..core import dynamics
 from ..core.units import braking_distance, format_clock, ms_to_kmh
 
 
@@ -43,6 +44,9 @@ class BlockCheck:
     worst_stock: str
     #: Approximate minimum headway this block implies, in seconds.
     headway_s: float
+    #: Steepest fall in the section, per thousand. Zero on a level railway, and
+    #: the reason ``required_m`` is longer than the level-track curve when not.
+    grade_permille: float = 0.0
 
     @property
     def ok(self) -> bool:
@@ -71,6 +75,11 @@ def check_block_lengths(infrastructure, timetable, driver_config,
         # so the section still has to be long enough to brake in.
         segment = infrastructure.network.segments[block.segment_ids[0]]
         line_speed = segment.max_speed_ms
+        # The gradient a train braking in this section is on. The steepest fall
+        # decides, because that is the one that takes rate away from the brake
+        # and so asks for the longest section.
+        grade = min(infrastructure.network.segments[seg_id].grade_permille
+                    for seg_id in block.segment_ids)
 
         required = 0.0
         worst = "-"
@@ -78,7 +87,9 @@ def check_block_lengths(infrastructure, timetable, driver_config,
             stock = service.stock
             speed = min(stock.max_speed_ms, line_speed)
             needed = (
-                braking_distance(speed, stock.service_brake)
+                braking_distance(
+                    speed, dynamics.braking_rate_on_grade(stock, grade))
+                + dynamics.brake_buildup_distance_m(stock, speed)
                 + speed * driver_config.reaction_time_s
                 + driver_config.safety_margin_m
             ) / float(warning_blocks)
@@ -101,6 +112,7 @@ def check_block_lengths(infrastructure, timetable, driver_config,
             required_m=required,
             worst_stock=worst,
             headway_s=headway,
+            grade_permille=grade,
         ))
     return results
 
@@ -134,6 +146,15 @@ def summarise(results: List[BlockCheck], aspects: int = 3) -> str:
             % (min(r.headway_s for r in rows), max(r.headway_s for r in rows),
                ms_to_kmh(max(r.line_speed_ms for r in rows)))
         )
+        # Only worth saying on a railway that has gradients, and worth saying
+        # loudly there: a falling gradient is why a section that looks long
+        # enough on the level is not.
+        steepest = min(r.grade_permille for r in rows)
+        if steepest < 0.0:
+            lines.append(
+                "       steepest fall %.0f per thousand, allowed for above"
+                % (steepest,)
+            )
 
     bad = failures(results)
     if bad:
@@ -209,9 +230,41 @@ def minimum_leg_time_s(service, from_stop, to_stop) -> float:
             return float("inf")
         at_limits += overlap / speed
 
-    accel, brake = stock.max_accel, stock.service_brake
-    triangular = (2.0 * distance * (accel + brake) / (accel * brake)) ** 0.5
-    return max(at_limits, triangular)
+    return max(at_limits, _flat_out_run_s(stock, distance))
+
+
+def _flat_out_run_s(stock, distance_m: float, dt: float = 0.5) -> float:
+    """Time to cover ``distance_m`` from rest to rest, flat out and unopposed.
+
+    The old bound here assumed the train could hold ``max_accel`` all the way to
+    line speed, which is a claim no real traction system makes and which this
+    simulator no longer makes either: above base speed the effort falls as power
+    over speed. Integrating the actual traction curve gives a bound that is both
+    tighter and true.
+
+    Still deliberately optimistic - no resistance, no gradient, no brake
+    build-up, no signalling, and the brake applied on the instant it is wanted -
+    so anything it flags is impossible on physics rather than merely hard.
+    """
+    speed = 0.0
+    covered = 0.0
+    elapsed = 0.0
+    ceiling = stock.max_speed_ms
+    #: A day is longer than any leg anyone will book; the guard is there so a
+    #: pathological stock cannot spin here rather than because it can happen.
+    while covered < distance_m and elapsed < 86400.0:
+        remaining = distance_m - covered
+        approach = (2.0 * stock.service_brake * remaining) ** 0.5
+        target = min(ceiling, approach)
+        if speed < target:
+            speed = min(target, speed + dynamics.traction_accel(stock, speed) * dt)
+        else:
+            speed = target
+        if speed <= 0.0:
+            break
+        covered += speed * dt
+        elapsed += dt
+    return elapsed
 
 
 def check_timetable(infrastructure, timetable) -> List["TimetableIssue"]:

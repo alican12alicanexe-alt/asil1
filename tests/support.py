@@ -6,6 +6,7 @@ whose geometry is known exactly, so an assertion can name the metre a train
 should stop on.
 """
 
+import copy
 import os
 import sys
 
@@ -102,11 +103,25 @@ class ManualDispatcher(Dispatcher):
         pass
 
 
+def sloped_infra(grade_permille):
+    """The test line, laid on a constant gradient from A to B.
+
+    Positive is a climb in the direction the single track runs, so a train from
+    A to B is working uphill and one on a negative gradient is running down.
+    """
+    spec = copy.deepcopy(TEST_INFRA)
+    spec["tracks"][0]["gradients"] = [
+        {"from": "A", "to": "B", "grade_permille": grade_permille},
+    ]
+    return spec
+
+
 def build_test_sim(timetable_spec=None, dispatcher=None, duration_s=1800.0,
                    start_time_s=8 * 3600.0, driver_config=None, strict=True,
-                   signalling=None, interlocking=False, disruptions=None):
+                   signalling=None, interlocking=False, disruptions=None,
+                   infra_spec=None):
     """A simulation over the two-station test line."""
-    infra = build_infrastructure(TEST_INFRA)
+    infra = build_infrastructure(infra_spec or TEST_INFRA)
     timetable = build_timetable(timetable_spec or one_service_timetable(), infra)
     lock = None
     if interlocking:
