@@ -1,0 +1,85 @@
+# depotline - a single-track line between two depots, with three stations on it.
+#
+#   WEST DEPOT ---- KINGSFORD ---- MARLOWE ---- ASHDOWN ---- EAST DEPOT
+#     km 0            km 5          km 13        km 21        km 27
+#     1 road         2 plat        4 plat       3 plat        1 road
+#
+# One running line, so every train is behind or in front of every other one and
+# the only way past is through a station. That is what the platform roads are
+# for: they are parallel roads over the same piece of railway, each its own block
+# section, so a train standing in one is not standing in the way of a train
+# running through another. Marlowe has four of them and is where the overtaking
+# is meant to happen; Ashdown has three and Kingsford two.
+#
+# The depots at each end are modelled as single-road termini, because that is
+# what they are from the running line's point of view: somewhere trains come from
+# in the morning and go back to at night, and which has room for exactly one
+# train at a time on the neck.
+#
+# Parallel roads need no switch model to be safe. Each is its own block, and the
+# single approach block ahead of the divergence can only ever hold one train, so
+# two trains can never be presented at the points together. The points and the
+# routes over them are derived from this layout rather than declared - see
+# core/points.py - and the interlocking will refuse the second request for a
+# road that is already promised to somebody.
+
+name: depotline
+
+defaults:
+  # A platform road is a block section like any other: a train running through
+  # one at line speed meets its exit signal at speed, and that signal can be at
+  # danger. So the section has to be long enough to brake in - 911 m at 120 km/h
+  # once the brake build-up and the driver's reaction are counted - and 1200 m
+  # leaves a margin on it.
+  platform_zone_m: 1200
+  block_length_m: 1500
+  max_speed_kmh: 120
+  stop_margin_m: 30
+
+stations:
+  - {id: WDEPOT,    name: West Depot, km: 0.0}
+  - {id: KINGSFORD, name: Kingsford,  km: 5.0}
+  - {id: MARLOWE,   name: Marlowe,    km: 13.0}
+  - {id: ASHDOWN,   name: Ashdown,    km: 21.0}
+  - {id: EDEPOT,    name: East Depot, km: 27.0}
+
+tracks:
+  - id: ML
+    direction: up
+    y: 0.0
+    max_speed_kmh: 120
+    block_length_m: 1500
+    serves: [WDEPOT, KINGSFORD, MARLOWE, ASHDOWN, EDEPOT]
+    block_lengths:
+      # Shorter blocks where trains follow each other closely into the
+      # overtaking station, longer ones on the open stretches either side.
+      - {from: KINGSFORD, to: MARLOWE, block_length_m: 1200}
+      - {from: MARLOWE,   to: ASHDOWN, block_length_m: 1800}
+
+platforms:
+  # The depot necks. One road each, drawn on the running line's own alignment.
+  - {id: WDEPOT_1, station: WDEPOT, track: ML, length_m: 220, max_speed_kmh: 40}
+  - {id: EDEPOT_1, station: EDEPOT, track: ML, length_m: 220, max_speed_kmh: 40}
+
+  # Kingsford: a through road and one loop.
+  - {id: KINGSFORD_1, station: KINGSFORD, track: ML, length_m: 220, y_offset: 0.0}
+  - {id: KINGSFORD_2, station: KINGSFORD, track: ML, length_m: 220,
+     max_speed_kmh: 60, y_offset: 0.5}
+
+  # Marlowe: the overtaking station. Road 1 is the through road at line speed;
+  # 2, 3 and 4 are loops, which is why they are slower - points and a shorter
+  # radius, exactly as at a real passing place.
+  - {id: MARLOWE_1, station: MARLOWE, track: ML, length_m: 240, y_offset: 0.0}
+  - {id: MARLOWE_2, station: MARLOWE, track: ML, length_m: 240,
+     max_speed_kmh: 60, y_offset: 0.5}
+  - {id: MARLOWE_3, station: MARLOWE, track: ML, length_m: 240,
+     max_speed_kmh: 60, y_offset: 1.0}
+  - {id: MARLOWE_4, station: MARLOWE, track: ML, length_m: 240,
+     max_speed_kmh: 40, y_offset: 1.5}
+
+  # Ashdown: a through road and two loops.
+  - {id: ASHDOWN_1, station: ASHDOWN, track: ML, length_m: 220, y_offset: 0.0}
+  - {id: ASHDOWN_2, station: ASHDOWN, track: ML, length_m: 220,
+     max_speed_kmh: 60, y_offset: 0.5}
+  - {id: ASHDOWN_3, station: ASHDOWN, track: ML, length_m: 220,
+     max_speed_kmh: 60, y_offset: 1.0}

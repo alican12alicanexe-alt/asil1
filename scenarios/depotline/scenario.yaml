@@ -1,0 +1,59 @@
+# depotline - a single-track line between two depots, worked by fixed block.
+#
+# Run it:
+#   python run.py scenarios/depotline              (live schematic)
+#   python run.py scenarios/depotline --headless   (no window, prints a summary)
+#   python run.py scenarios/depotline --check      (signal spacing and the plan)
+#
+#   WEST DEPOT ---- KINGSFORD ---- MARLOWE ---- ASHDOWN ---- EAST DEPOT
+#     km 0            km 5          km 13        km 21        km 27
+#     1 road         2 plat        4 plat       3 plat        1 road
+#
+# One running line and no way past except through a station. Six services run it
+# in the morning: four stoppers calling everywhere, and two fast units booked
+# three minutes behind a stopper which have to get past it somewhere. They get
+# past at Marlowe, where the stopper stands in a loop road for three minutes and
+# the fast runs through the main road beside it. That is the whole subject of the
+# scenario - on a single line the loops *are* the capacity, and the timetable is
+# written around where they happen to be rather than the other way round.
+#
+# Three-aspect fixed block throughout, no ETCS fitment: a driver learns the state
+# of the railway when a signal comes into sight and not before, so braking for an
+# occupied section starts at the yellow one block back rather than where braking
+# would actually need to start. The platform roads are separate block sections,
+# which is what makes the overtake possible at all - a train standing in the loop
+# does not occupy the road its overtaker is using.
+#
+# The interlocking is on. Each station's roads diverge over facing points and
+# converge over trailing ones, so the road into a platform has to be requested
+# and set before its signal may clear, and two trains cannot be given the same
+# road. Watch the routes being taken and given back as trains pass.
+
+name: depotline
+description: "A 27 km single-track line between two depots, three stations with 2, 4 and 3 platform roads, three-aspect fixed block, and fast units overtaking stoppers in the loops at Marlowe."
+
+infrastructure: infrastructure.yaml
+timetable: timetable.yaml
+
+simulation:
+  dt: 1.0                 # seconds per tick; microscopic
+  start_time: "06:57:00"
+  duration_s: 4200        # 70 minutes, enough for every service to complete
+  strict: false           # true makes a block-exclusivity violation raise
+
+signalling:
+  system: fixed_block_3aspect
+  sighting_distance_m: 250
+
+interlocking:
+  route_request_distance_m: 2000
+  route_request_lead_s: 60
+
+driver:
+  reaction_time_s: 2.0
+  safety_margin_m: 25.0   # standing distance kept short of a signal at danger
+  stop_tolerance_m: 1.0
+
+view:
+  title: "depotline - West Depot / Kingsford / Marlowe / Ashdown / East Depot"
+  speed: 30               # simulated seconds per real second at startup

@@ -1,0 +1,115 @@
+# depotline timetable - generated, do not edit by hand.
+#
+#   python scenarios/depotline/_generate_timetable.py
+#
+# Four stopping services and two fast ones, all running west depot to east
+# depot over the single line. Every booked time is what an unimpeded train of
+# that type actually achieves on this railway, so the plan is workable on its
+# own; what it is not is conflict-free, and that is the point.
+#
+# A fast is booked three minutes behind a stopper. On a single line with no
+# passing places that would simply mean the fast running at the stopper's speed
+# the whole way. Here it means the stopper stands in the loop at Marlowe for
+# three minutes while the fast comes through the main road past it, which is the
+# cheapest capacity a single-track railway can buy and the reason the station
+# has four roads instead of one.
+
+stock:
+  - id: EMU_STOP
+    name: Stopping unit
+    length_m: 160
+    max_speed_kmh: 100
+    max_accel: 1.0
+    service_brake: 0.8
+    emergency_brake: 1.2
+    # No ETCS fitment anywhere on this line: it is signalled by lineside signals
+    # and worked by drivers reading them, which is what the scenario is about.
+    etcs_level: none
+    tims: false
+
+  - id: EMU_FAST
+    name: Fast unit
+    length_m: 200
+    max_speed_kmh: 120
+    max_accel: 0.9
+    service_brake: 0.7
+    emergency_brake: 1.2
+    etcs_level: none
+    tims: false
+    # Weighed and powered explicitly. Everything else about the dynamics - the
+    # Davis resistance coefficients, adhesion, brake build-up - is derived from
+    # these figures in core/dynamics.py, and can be written here too.
+    mass_t: 360
+    power_kw: 5400
+
+services:
+
+  # ------------------------------------------------- stopping services
+  - id: S1
+    name: 0700 West Depot - East Depot stopping
+    stock: EMU_STOP
+    departure: "07:00:00"
+    ready_lead_s: 60
+    calls:
+      - {station: WDEPOT, platform: WDEPOT_1, departure: "07:00:00", dwell_s: 60}
+      - {station: KINGSFORD, platform: KINGSFORD_2, arrival: "07:03:44", departure: "07:04:29", dwell_s: 45}
+      - {station: MARLOWE, platform: MARLOWE_3, arrival: "07:10:22", departure: "07:13:22", dwell_s: 180}
+      - {station: ASHDOWN, platform: ASHDOWN_2, arrival: "07:19:15", departure: "07:20:00", dwell_s: 45}
+      - {station: EDEPOT, platform: EDEPOT_1, arrival: "07:24:49", dwell_s: 60}
+
+  - id: S2
+    name: 0710 West Depot - East Depot stopping
+    stock: EMU_STOP
+    departure: "07:10:00"
+    ready_lead_s: 60
+    calls:
+      - {station: WDEPOT, platform: WDEPOT_1, departure: "07:10:00", dwell_s: 60}
+      - {station: KINGSFORD, platform: KINGSFORD_2, arrival: "07:13:44", departure: "07:14:29", dwell_s: 45}
+      - {station: MARLOWE, platform: MARLOWE_3, arrival: "07:20:22", departure: "07:23:22", dwell_s: 180}
+      - {station: ASHDOWN, platform: ASHDOWN_2, arrival: "07:29:15", departure: "07:30:00", dwell_s: 45}
+      - {station: EDEPOT, platform: EDEPOT_1, arrival: "07:34:49", dwell_s: 60}
+
+  - id: S3
+    name: 0720 West Depot - East Depot stopping
+    stock: EMU_STOP
+    departure: "07:20:00"
+    ready_lead_s: 60
+    calls:
+      - {station: WDEPOT, platform: WDEPOT_1, departure: "07:20:00", dwell_s: 60}
+      - {station: KINGSFORD, platform: KINGSFORD_2, arrival: "07:23:44", departure: "07:24:29", dwell_s: 45}
+      - {station: MARLOWE, platform: MARLOWE_3, arrival: "07:30:22", departure: "07:33:22", dwell_s: 180}
+      - {station: ASHDOWN, platform: ASHDOWN_2, arrival: "07:39:15", departure: "07:40:00", dwell_s: 45}
+      - {station: EDEPOT, platform: EDEPOT_1, arrival: "07:44:49", dwell_s: 60}
+
+  - id: S4
+    name: 0730 West Depot - East Depot stopping
+    stock: EMU_STOP
+    departure: "07:30:00"
+    ready_lead_s: 60
+    calls:
+      - {station: WDEPOT, platform: WDEPOT_1, departure: "07:30:00", dwell_s: 60}
+      - {station: KINGSFORD, platform: KINGSFORD_2, arrival: "07:33:44", departure: "07:34:29", dwell_s: 45}
+      - {station: MARLOWE, platform: MARLOWE_3, arrival: "07:40:22", departure: "07:43:22", dwell_s: 180}
+      - {station: ASHDOWN, platform: ASHDOWN_2, arrival: "07:49:15", departure: "07:50:00", dwell_s: 45}
+      - {station: EDEPOT, platform: EDEPOT_1, arrival: "07:54:49", dwell_s: 60}
+
+  # ----------------------------------------------------- fast services
+  - id: F1
+    name: 0703 West Depot - East Depot fast
+    stock: EMU_FAST
+    departure: "07:03:00"
+    ready_lead_s: 60
+    calls:
+      - {station: WDEPOT, platform: WDEPOT_1, departure: "07:03:00", dwell_s: 60}
+      - {station: MARLOWE, platform: MARLOWE_1, arrival: "07:10:47", departure: "07:11:32", dwell_s: 45}
+      - {station: EDEPOT, platform: EDEPOT_1, arrival: "07:20:36", dwell_s: 60}
+
+  - id: F2
+    name: 0723 West Depot - East Depot fast
+    stock: EMU_FAST
+    departure: "07:23:00"
+    ready_lead_s: 60
+    calls:
+      - {station: WDEPOT, platform: WDEPOT_1, departure: "07:23:00", dwell_s: 60}
+      - {station: MARLOWE, platform: MARLOWE_1, arrival: "07:30:47", departure: "07:31:32", dwell_s: 45}
+      - {station: EDEPOT, platform: EDEPOT_1, arrival: "07:40:36", dwell_s: 60}
