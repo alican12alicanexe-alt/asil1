@@ -20,9 +20,6 @@ That behaviour is modelled explicitly here:
 Block lengths must exceed the service braking distance from line speed, or a
 driver who passes a yellow cannot stop at the following red. The corridor scenario
 uses 2000 m blocks against a ~1300 m braking distance from 140 km/h.
-
-Two-block working is the same three aspects with the reds spread wider, and it is
-:class:`TwoBlockFixedBlock` below.
 """
 
 from ..signals import Aspect
@@ -123,67 +120,3 @@ class ThreeAspectFixedBlock(SignallingSystem):
         return "conventional 3-aspect fixed block (sighting %.0f m)" % (
             self.sighting_distance_m,
         )
-
-
-class TwoBlockFixedBlock(ThreeAspectFixedBlock):
-    """Three aspects, but a train holds two block sections at danger behind it.
-
-    The aspects and their meanings are exactly those of the class above - red is
-    stop, yellow is stop at the next one, green is at least two sections clear -
-    and the driver model cannot tell the two systems apart. What changes is
-    *where the reds fall*. A signal here answers not only for its own section but
-    for the section beyond it, so a single train puts danger on two signals
-    rather than one:
-
-        conventional   ... GREEN --- YELLOW --- RED  [train] ...
-        two-block      ... GREEN --- YELLOW --- RED --- RED  [train] ...
-
-    **This is not an optimisation.** Four-aspect signalling spends an extra
-    indication to *shorten* blocks; two-block working spends a whole extra
-    section to buy stopping room, and pays for it in headway. The section behind
-    the train is a full-block overlap: it is there so that a train which runs
-    past the red - a brake that does not make its book rate, a driver who reads
-    the yellow late, a trip-stop applied at the last moment - still comes to a
-    stand with a clear section between it and the train ahead.
-
-    That trade is worth making where the overlap is the only thing standing
-    between a SPAD and a collision, and blocks are short enough that losing one
-    to it is affordable: metros with close signal spacing, no preliminary caution
-    aspect to give and an automatic train stop as the backstop. New York's
-    two-block and three-block spacing is the canonical example, and
-    ``blocks_held`` covers both.
-
-    The cost is arithmetic. A follower may run unchecked only from behind a
-    green, which is now one section further back than it was, so the separation
-    it must keep goes from two block lengths to three - half as much line again
-    for the same train. ``--check`` reports the headway that implies, and
-    ``--compare fixed_block_3aspect fixed_block_2block`` measures what it
-    actually costs on a given timetable.
-    """
-
-    name = "fixed_block_2block"
-
-    #: Fewer than this and there is no overlap to speak of.
-    MINIMUM_BLOCKS_HELD = 2
-
-    def __init__(self, sighting_distance_m: float = 250.0, blocks_held: int = 2):
-        #: Sections held at danger behind one train, counting the one it is
-        #: standing in. Two is two-block working; three is three-block working,
-        #: which trades another section for another overlap.
-        blocks_held = int(blocks_held)
-        if blocks_held < self.MINIMUM_BLOCKS_HELD:
-            raise ValueError(
-                "blocks_held must be at least %d, got %d - holding one section "
-                "behind a train is conventional working, which is "
-                "fixed_block_3aspect"
-                % (self.MINIMUM_BLOCKS_HELD, blocks_held)
-            )
-        self.blocks_held = blocks_held
-        # One of the held sections is the train's own; the rest are overlap.
-        self.overlap_blocks = blocks_held - 1
-        super().__init__(sighting_distance_m=sighting_distance_m)
-
-    def describe(self) -> str:
-        return ("%d-block fixed block, 3 aspects (%d-section overlap, "
-                "sighting %.0f m)"
-                % (self.blocks_held, self.overlap_blocks, self.sighting_distance_m))

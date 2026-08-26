@@ -114,15 +114,6 @@ class SignallingSystem:
     #: one block is correct behaviour, not a violation.
     separates_by = SEPARATION_BY_BLOCK
 
-    #: Whole block sections that must be clear *beyond* a signal's own block
-    #: before it may show anything but danger. Zero is conventional working,
-    #: where a signal answers for its own section alone. One is two-block
-    #: working: the section behind a train stands as a full-block overlap, so
-    #: one train holds two signals at red. The kernel passes this to the aspect
-    #: computation, which is the only place it means anything - the driver, the
-    #: interlocking and the physics never learn of it.
-    overlap_blocks = 0
-
     #: Whether the authority may end at a moving point rather than a fixed one.
     #: Only virtual coupling sets this. The kernel reads it to decide whether a
     #: non-zero ``target_speed_ms`` is legitimate or a symptom of a bug, so a
@@ -134,12 +125,6 @@ class SignallingSystem:
             raise ValueError(
                 "%s.separates_by is %r - must be one of %s"
                 % (type(self).__name__, self.separates_by, ", ".join(SEPARATION_MODES))
-            )
-        if self.overlap_blocks < 0:
-            raise ValueError(
-                "%s.overlap_blocks is %r - a negative overlap would have a "
-                "signal clear for a block it has not been given"
-                % (type(self).__name__, self.overlap_blocks)
             )
 
     def observe(self, train: "Train", sim: "Simulation") -> None:

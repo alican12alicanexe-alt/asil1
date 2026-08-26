@@ -11,18 +11,13 @@ trailing point. Modelling one shared signal there would let a train in the loop
 be given an authority the points were not set for.
 
 Aspect logic is conventional three-aspect - red for an occupied block, yellow
-when the block beyond is occupied, green otherwise - with three additions. Two
-come from the interlocking:
+when the block beyond is occupied, green otherwise - with two additions from the
+interlocking:
 
 * a **controlled** signal shows red until a route is set from it, which is what
   makes a station or junction signal different from a plain-line one
 * successors are filtered by **point position**, so a signal only reads towards
   the road the points are actually set for
-
-and one from the signalling system itself:
-
-* an **overlap** of whole block sections may be demanded beyond the signal, which
-  is what turns conventional working into two-block working
 """
 
 from dataclasses import dataclass, field
@@ -158,8 +153,7 @@ class Occupancy:
 
 
 def compute_aspects(blocks: Dict[str, BlockSection], signals: Dict[str, Signal],
-                    occupancy: Occupancy, interlocking=None,
-                    overlap_blocks: int = 0) -> Dict[str, str]:
+                    occupancy: Occupancy, interlocking=None) -> Dict[str, str]:
     """Aspect for every signal.
 
     Done in two passes, because a signal is a function of the signal *ahead* of
@@ -172,16 +166,9 @@ def compute_aspects(blocks: Dict[str, BlockSection], signals: Dict[str, Signal],
     when no route is set over it, and the signal behind must warn a driver about
     that just as it would about an occupied block. Computing from occupancy alone
     would show a green up to a red, with no braking distance in between.
-
-    ``overlap_blocks`` demands that many whole sections *beyond* a signal's own
-    block be clear before it may show anything but danger. Zero is conventional
-    working. One is two-block working: a single train then holds two signals at
-    red, because the section behind it is standing as a full-block overlap for a
-    train that overruns.
     """
     at_danger = {
-        signal.id: _must_stand_at_danger(
-            signal, blocks, occupancy, interlocking, overlap_blocks)
+        signal.id: _must_stand_at_danger(signal, blocks, occupancy, interlocking)
         for signal in signals.values()
     }
 
@@ -200,15 +187,9 @@ def compute_aspects(blocks: Dict[str, BlockSection], signals: Dict[str, Signal],
     return aspects
 
 
-def _must_stand_at_danger(signal, blocks, occupancy, interlocking,
-                          overlap_blocks: int = 0) -> bool:
+def _must_stand_at_danger(signal, blocks, occupancy, interlocking) -> bool:
     """Whether a signal has to show red, before looking at anything ahead."""
     if not occupancy.is_free(signal.block_id):
-        return True
-    if overlap_blocks and _overlap_occupied(
-            signal.block_id, blocks, occupancy, interlocking, overlap_blocks):
-        # Two-block working: the section beyond is the overlap, and an overlap
-        # with a train standing in it is no overlap at all.
         return True
     if signal.controlled and interlocking is not None:
         # A controlled signal reads over points, so it needs a route locked
@@ -216,35 +197,6 @@ def _must_stand_at_danger(signal, blocks, occupancy, interlocking,
         # at all there are no routes, and every signal falls back to plain
         # automatic block working.
         return not interlocking.route_set_from(signal.id)
-    return False
-
-
-def _overlap_occupied(block_id: str, blocks: Dict[str, BlockSection],
-                      occupancy: Occupancy, interlocking, depth: int) -> bool:
-    """Whether any block within ``depth`` sections beyond ``block_id`` is occupied.
-
-    Breadth-first rather than a straight walk, because at a facing point with no
-    route set every road is still reachable and any one of them holding a train
-    is enough to deny the overlap.
-    """
-    frontier = {block_id}
-    seen = {block_id}
-    for _ in range(depth):
-        beyond = set()
-        for current in frontier:
-            block = blocks.get(current)
-            if block is None:
-                continue
-            for successor in reachable_successors(block, blocks, interlocking):
-                if successor in seen or successor not in blocks:
-                    continue
-                if not occupancy.is_free(successor):
-                    return True
-                seen.add(successor)
-                beyond.add(successor)
-        if not beyond:
-            break
-        frontier = beyond
     return False
 
 

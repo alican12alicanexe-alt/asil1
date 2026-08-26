@@ -244,9 +244,6 @@ def _run_view(scenario, sim, speed=None) -> int:
 def _describe(scenario, sim) -> str:
     infra = scenario.infrastructure
     network = infra.network
-    # Sections held at danger behind a train beyond its own, which is what makes
-    # two-block working cost a block of headway. Zero for everything else.
-    overlap = getattr(sim.signalling, "overlap_blocks", 0)
     lines = [
         "scenario       : %s" % scenario.name,
         "description    : %s" % (scenario.description or "-"),
@@ -270,7 +267,8 @@ def _describe(scenario, sim) -> str:
             format_clock(sim.config.start_time_s), sim.config.duration_s / 60.0,
         ),
         "",
-        checks.summarise(_spacing(scenario, overlap), overlap_blocks=overlap),
+        checks.summarise(_spacing(
+            scenario, getattr(sim.signalling, "sighting_distance_m", 0.0))),
         "",
         checks.summarise_timetable(
             checks.check_timetable(scenario.infrastructure, scenario.timetable),
@@ -318,11 +316,11 @@ def _interlocking_report(scenario, sim) -> str:
     return "\n".join(lines)
 
 
-def _spacing(scenario, overlap_blocks: int = 0):
+def _spacing(scenario, sighting_distance_m: float = 0.0):
     """Signal-spacing check results for this scenario."""
     return checks.check_block_lengths(
         scenario.infrastructure, scenario.timetable, scenario.driver_config,
-        overlap_blocks=overlap_blocks,
+        sighting_distance_m=sighting_distance_m,
     )
 
 

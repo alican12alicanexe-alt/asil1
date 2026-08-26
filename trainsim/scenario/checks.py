@@ -13,14 +13,34 @@ at danger - and the simulation would be modelling a railway that could not be
 built. Rather than let that pass silently, it is reported.
 
 The opposite constraint is capacity, and it is not a safety rule so it is not
-enforced here: minimum headway is roughly the time to clear two blocks plus the
-train's own length - three blocks under two-block working, where the section
-behind a train is held as an overlap - so shorter blocks mean more trains per
-hour at the cost of more signals. That trade-off is why real block lengths are not uniform - they are
-short on station approaches, where speeds are low and capacity is wanted, and
-long on fast open line. Scenario files can set ``block_length_m`` per stretch to
-reflect that; this module reports the headway each stretch implies so the
-trade-off is visible rather than assumed.
+enforced here. It is reported as the **all-green headway**: the closest two
+trains may follow each other with the second one never seeing anything but a
+green signal.
+
+That is the figure a timetable is actually written to. Braking for a yellow is a
+degraded state - it means the plan has already failed - so a railway is not
+planned to the point where trains can just about stop in time, it is planned to
+the point where they never have to slow down at all. What that costs is a whole
+train's worth of railway standing empty ahead of every train:
+
+    all-green headway  =  ( two block sections
+                            + the train's own length
+                            + the distance at which a driver reads a signal )
+                          / line speed
+
+Two sections, because the follower may only run unchecked from behind a green,
+and a signal shows green only when the section beyond the one it protects is
+also clear. So a train "uses up" two sections of railway rather than the one it
+is standing in - which is exactly why halving block length nearly halves the
+headway, and why real block lengths are not uniform. They are short on station
+approaches, where speeds are low and capacity is wanted, and long on fast open
+line. Scenario files can set ``block_length_m`` per stretch to reflect that.
+
+This is the *theoretical* figure: it is what the signal spacing allows, and it
+assumes the only thing in a train's way is the train in front. Anywhere trains
+stand - a platform, a depot road, a terminal - reoccupation binds first and the
+line will not hold it. The measured figure, which is the one to believe, comes
+from running the flight: see ``scenarios/depotline/_sweep_headway.py``.
 
 Four-aspect signalling, which gives two blocks of warning and so permits blocks
 *shorter* than braking distance, is a Phase 3 addition alongside the ETCS levels.
@@ -43,7 +63,8 @@ class BlockCheck:
     line_speed_ms: float
     required_m: float
     worst_stock: str
-    #: Approximate minimum headway this block implies, in seconds.
+    #: All-green headway this section implies: the closest two trains may
+    #: follow one another through it with the second never checked by a signal.
     headway_s: float
     #: Steepest fall in the section, per thousand. Zero on a level railway, and
     #: the reason ``required_m`` is longer than the level-track curve when not.
@@ -60,21 +81,19 @@ class BlockCheck:
 
 def check_block_lengths(infrastructure, timetable, driver_config,
                         aspects: int = 3,
-                        overlap_blocks: int = 0) -> List[BlockCheck]:
+                        sighting_distance_m: float = 0.0) -> List[BlockCheck]:
     """Check every running block against the braking distance rule.
 
     ``aspects`` is how many indications the signalling shows: three gives one
     block of warning, four gives two, so a four-aspect layout may use blocks
     roughly half as long.
 
-    ``overlap_blocks`` is how many whole sections are held at danger beyond a
-    signal's own - zero conventionally, one under two-block working. It does not
-    change what a block must be *long* enough for, because a driver still gets
-    one block of warning either way; it changes only the headway the spacing
-    implies, by putting the follower one more section back.
+    ``sighting_distance_m`` is how far off a driver reads a signal, and it is
+    part of the all-green headway rather than of the safety rule: a follower has
+    not run unchecked if it *sighted* a yellow, even one that cleared before it
+    got there. Left at zero the headway is the bare block-and-train figure.
     """
     warning_blocks = max(1, aspects - 2)
-    separation_blocks = 2.0 + max(0, overlap_blocks)
     results = []
 
     for block in infrastructure.blocks.values():
@@ -110,8 +129,13 @@ def check_block_lengths(infrastructure, timetable, driver_config,
             default=line_speed,
         )
         longest_train = max((s.stock.length_m for s in timetable.services), default=0.0)
-        headway = ((separation_blocks * block.length_m + longest_train) / top_speed
-                   if top_speed > 0 else float("inf"))
+        # Two sections, because a green means the section beyond the one the
+        # signal protects is clear too; plus the train's own length, which has
+        # to leave the second section before the signal behind it clears; plus
+        # the sighting distance, because a follower that read a yellow was
+        # checked whether or not it had to brake.
+        headway = ((2.0 * block.length_m + longest_train + sighting_distance_m)
+                   / top_speed if top_speed > 0 else float("inf"))
 
         results.append(BlockCheck(
             block_id=block.id,
@@ -130,20 +154,15 @@ def failures(results: List[BlockCheck]) -> List[BlockCheck]:
     return [r for r in results if not r.ok]
 
 
-def summarise(results: List[BlockCheck], aspects: int = 3,
-              overlap_blocks: int = 0) -> str:
+def summarise(results: List[BlockCheck], aspects: int = 3) -> str:
     """A short report, grouped by track."""
     if not results:
         return "no running blocks to check"
 
-    warning = max(1, aspects - 2)
-    heading = ("signal spacing (%d-aspect, %d block%s of warning"
-               % (aspects, warning, "" if warning == 1 else "s"))
-    if overlap_blocks:
-        heading += (", %d-block working: %d section%s held behind each train"
-                    % (overlap_blocks + 1, overlap_blocks + 1,
-                       "" if overlap_blocks + 1 == 1 else "s"))
-    lines = [heading + ")"]
+    lines = [
+        "signal spacing (%d-aspect, %d block%s of warning)"
+        % (aspects, max(1, aspects - 2), "" if aspects == 3 else "s"),
+    ]
     tracks = sorted({r.track for r in results})
     for track in tracks:
         rows = [r for r in results if r.track == track]
@@ -155,10 +174,13 @@ def summarise(results: List[BlockCheck], aspects: int = 3,
                max(r.length_m for r in rows), tightest.required_m,
                tightest.worst_stock, tightest.margin_m)
         )
+        binding = max(rows, key=lambda r: r.headway_s)
         lines.append(
-            "       implied minimum headway %.0f-%.0f s at %.0f km/h"
+            "       all-green headway %.0f-%.0f s at %.0f km/h; %s sets it at "
+            "%.0f s (%.1f trains/hour)"
             % (min(r.headway_s for r in rows), max(r.headway_s for r in rows),
-               ms_to_kmh(max(r.line_speed_ms for r in rows)))
+               ms_to_kmh(max(r.line_speed_ms for r in rows)),
+               binding.block_id, binding.headway_s, 3600.0 / binding.headway_s)
         )
         # Only worth saying on a railway that has gradients, and worth saying
         # loudly there: a falling gradient is why a section that looks long
@@ -171,6 +193,14 @@ def summarise(results: List[BlockCheck], aspects: int = 3,
             )
 
     bad = failures(results)
+    lines.append(
+        "  all-green headway is what the signal spacing allows with nothing in "
+        "the way but the train in front."
+    )
+    lines.append(
+        "  Anywhere a train stands - a platform, a depot road - reoccupation "
+        "binds first and the line will not hold it."
+    )
     if bad:
         lines.append("  UNSIGNALABLE: %d block(s) shorter than braking distance" % len(bad))
         for row in bad[:5]:

@@ -1,13 +1,22 @@
-"""What headway will this line actually hold?
+"""What is this line's all-green headway?
 
-Runs the same homogeneous flight at every interval from six minutes down to
-one, and reports what each one costs. The plan is rebuilt at each interval from
-the unimpeded run times, so it is always workable in isolation - which means any
-delay that appears belongs to trains getting in each other's way and not to a
-timetable that was never possible.
+The all-green headway is the closest two trains may follow each other with the
+second one never seeing anything but a green signal. It is the figure a timetable
+is written to, because braking for a yellow is a degraded state - it means the
+plan has already failed - and a railway is planned to the interval at which
+trains never have to slow down, not to the one at which they can just about stop
+in time.
+
+``--check`` gives the theoretical figure from signal spacing alone. This gives
+the measured one, which is the one to believe: it runs the same homogeneous
+flight at every interval from five minutes down to one and reports what each
+costs. The plan is rebuilt at each interval from the unimpeded run times, so it
+is always workable in isolation - which means any delay that appears belongs to
+trains getting in each other's way and not to a timetable that was never
+possible.
 
     python scenarios/depotline/_sweep_headway.py
-    python scenarios/depotline/_sweep_headway.py fixed_block_2block
+    python scenarios/depotline/_sweep_headway.py etcs_l2
 
 Three numbers per row:
 
@@ -24,10 +33,12 @@ Three numbers per row:
   mean delay   how late the average train was at its destination.
   worst        the worst single arrival, which is what a passenger notices.
 
-The minimum workable headway is the shortest interval where no train restrains
-another and nothing arrives late. Below it the flight does not fall apart at
-once - it degrades, each train a little later than the one in front, which is
-exactly how a real railway behaves when it is booked tighter than it can work.
+The all-green headway is the shortest interval where no train restrains another
+and nothing arrives late. Below it the flight does not fall apart at once - it
+degrades, each train a little later than the one in front, which is exactly how a
+real railway behaves when it is booked tighter than it can work. That degradation
+is the cost of booking past the all-green headway, and it is why the figure is
+worth measuring rather than assuming.
 """
 import os
 import sys
@@ -40,11 +51,9 @@ from _generate_timetable import COUNT, flight_spec, probe, simulation, INFRA
 from trainsim.analysis.kpi import measure
 from trainsim.scenario.loader import build_timetable
 
-#: Wide enough at the top for two-block working, which needs the best part of
-#: five minutes on this line, and fine enough at the bottom to show conventional
-#: working degrading rather than simply failing.
-HEADWAYS = (360, 330, 300, 285, 270, 240, 210, 180, 165, 150,
-            135, 120, 105, 90, 75, 60)
+#: Wide enough at the top to start clear of anything this line might hold, and
+#: fine enough at the bottom to show it degrading rather than simply failing.
+HEADWAYS = (300, 270, 240, 210, 195, 180, 165, 150, 135, 120, 105, 90, 75, 60)
 
 
 def run(times, headway_s, system, count=COUNT):
@@ -71,7 +80,7 @@ def main(system="fixed_block_3aspect"):
           "signals; the column below is over that.\n" % alone)
     print("  headway   restrained   mean delay      worst   completed")
     print("  " + "-" * 55)
-    workable = None
+    all_green = None
     for headway in HEADWAYS:
         metrics = run(times, headway, system)
         worst = max(metrics.delays.values()) if metrics.delays else 0.0
@@ -79,17 +88,18 @@ def main(system="fixed_block_3aspect"):
         ok = (congestion <= 0.0 and worst <= 1.0
               and metrics.completed == metrics.services)
         if ok:
-            workable = headway
+            all_green = headway
         print("  %5d s   %7.0f s    %7.1f s   %6.0f s   %d/%d %s"
               % (headway, congestion, metrics.mean_delay_s,
                  worst, metrics.completed, metrics.services,
                  "" if ok else "<-- degraded"))
     print()
-    if workable is None:
-        print("nothing in the range held the plan")
+    if all_green is None:
+        print("no interval in the range ran all-green; widen HEADWAYS")
     else:
-        print("shortest interval the line holds cleanly: %d s "
-              "(%.1f trains an hour)" % (workable, 3600.0 / workable))
+        print("all-green headway: %d s (%.1f trains an hour) - the closest these "
+              "trains follow each other" % (all_green, 3600.0 / all_green))
+        print("without one of them ever being checked by a signal.")
 
 
 if __name__ == "__main__":

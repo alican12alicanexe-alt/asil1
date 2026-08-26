@@ -17,15 +17,31 @@
 # loops happen to be; run one train type and what is left is the signalling and
 # the station dwell.
 #
-# HEADWAY, MEASURED
+# THE ALL-GREEN HEADWAY
+#
+# The interval this line is booked at is not the one at which trains can just
+# about stop in time. It is the one at which they never have to slow down at all.
+# Braking for a yellow is a degraded state - it means the plan has already failed
+# - so what is worth measuring is the all-green headway: the closest two trains
+# follow each other with the second never seeing anything but green.
+#
+# `--check` gives the theoretical figure from signal spacing alone. A train uses
+# up two block sections rather than the one it is standing in, because a signal
+# shows green only when the section beyond the one it protects is clear too:
+#
+#     all-green headway = (2 block sections + train length + sighting) / v
+#
+# On the open line here that is 96 s. The measured figure is 150 s, and the gap
+# between them is the whole point of running the thing.
 #
 # `python scenarios/depotline/_sweep_headway.py` books the same flight at every
-# interval from six minutes down to one, rebuilding the plan from the unimpeded
+# interval from five minutes down to one, rebuilding the plan from the unimpeded
 # run times each time so it is always workable in isolation:
 #
 #     headway   restrained   mean delay   worst arrival
-#       150 s          0 s        0.0 s           0 s     <- the line holds this
-#       135 s        323 s       37.8 s          81 s
+#       165 s          0 s        0.0 s           0 s
+#       150 s          0 s        0.0 s           0 s     <- all-green
+#       135 s        323 s       37.8 s          81 s     <- degraded
 #       120 s        759 s       95.4 s         193 s
 #        90 s       1606 s      203.0 s         406 s
 #        60 s       2075 s      308.0 s         616 s
@@ -39,30 +55,15 @@
 # Counting it would put the same floor under every row and hide the thing being
 # looked for.
 #
-# Over that baseline the column is zero down to 150 s and rises from 135 s: down
-# to the interval the line holds, no train on this railway is ever checked by
-# another. What binds first is not signal spacing - the open-line blocks would
-# allow 74-100 s and never get the chance - but the platform. A train cannot be
-# let into a station road until the train in front has cleared it, and on a
-# single track with no way past, reoccupation sets the interval.
+# Over that baseline the column is zero down to 150 s and rises from 135 s. Below
+# the all-green headway the line does not fail, it degrades - each train a little
+# later than the one in front, which is what a real railway does when it is booked
+# tighter than it can work.
 #
-# UNDER TWO-BLOCK WORKING
-#
-#     python run.py scenarios/depotline --compare fixed_block_3aspect fixed_block_2block
-#     python scenarios/depotline/_sweep_headway.py fixed_block_2block
-#
-# `fixed_block_2block` holds the section behind each train as a full-block
-# overlap, so one train puts danger on two signals rather than one. It costs this
-# line close to half its capacity:
-#
-#                           holds cleanly   trains/hour   journey   restrained
-#     fixed_block_3aspect          150 s           24.0     22:40          0 s
-#     fixed_block_2block           285 s           12.6     28:34       3003 s
-#
-# and for the same reason the platform binds in the first place. The open line
-# can afford the overlap - 1200-1800 m blocks still imply 128-338 s with it. The
-# station roads cannot: a train dwelling at Kingsford already holds 1200 m of
-# platform block, and under two-block working it holds the approach section too.
+# What binds first is not signal spacing. The open-line blocks would allow 96 s
+# and never get the chance, because a train cannot be let into a station road
+# until the train in front has cleared it, and on a single track with no way past,
+# reoccupation sets the interval.
 #
 # WHAT THE DEPOTS COST
 #

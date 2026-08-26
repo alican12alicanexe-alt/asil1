@@ -287,48 +287,59 @@ Set `interlocking: {enabled: false}` to run without it, as idealised automatic
 block. On corridor3 that gets the fast train to Gamma 33 s earlier - the
 measurable cost of route-based control.
 
-### Two-block working
+### The all-green headway
 
-`--system fixed_block_2block` is the same three aspects with the reds spread
-wider. A signal answers not only for its own section but for the section beyond
-it, so one train puts danger on two signals instead of one:
+The interval a timetable is written to is not the one at which trains can just
+about stop in time. It is the one at which they never have to slow down at all.
+Braking for a yellow is a *degraded* state - it means the plan has already
+failed - so the figure that matters is the **all-green headway**: the closest two
+trains may follow each other with the second never seeing anything but green.
 
-```
-conventional   ... GREEN --- YELLOW --- RED  [train] ...
-two-block      ... GREEN --- YELLOW --- RED --- RED  [train] ...
-```
-
-**It is not an optimisation, and it is not four-aspect.** Four-aspect spends an
-extra indication to make blocks *shorter*; two-block working spends a whole
-extra section to buy stopping room. The section behind the train is a full-block
-overlap, there so that a train which runs past the red - a brake below its book
-rate, a yellow read late, a trip-stop applied at the last moment - still comes to
-a stand with a clear section in front of it. Metros with close signal spacing, no
-preliminary caution aspect to give and an automatic train stop as the backstop
-are where the trade is worth making; New York's two- and three-block spacing is
-the canonical example, and `blocks_held: 3` covers the second case.
-
-The block-length rule does not change - a driver still gets one block of warning
-either way - so nothing about the layout has to move. What changes is that a
-follower may run unchecked only from behind a green, which is now one section
-further back, so the separation it has to keep goes from two block lengths to
-three. On depotline that is close to half the line's capacity:
+What that costs is a whole extra section of railway standing empty ahead of every
+train. A signal shows green only when the section beyond the one it protects is
+also clear, so a follower may run unchecked only from behind a green, and a train
+effectively uses up **two** block sections rather than the one it is standing in:
 
 ```
-                      holds cleanly    trains/hour   journey   restrained
-fixed_block_3aspect          150 s            24.0     22:40         0 s
-fixed_block_2block           285 s            12.6     28:34      3003 s
+all-green headway = (2 block sections + train length + sighting distance) / v
 ```
 
-*(`python scenarios/depotline/_sweep_headway.py fixed_block_2block`. The
-restrained column is the flight booked at 150 s under each system, over the
-174 s a single train alone already pays at the controlled station signals.)*
+`--check` reports it per stretch, and names the section that binds:
 
-Almost none of that comes from the open line, where blocks are 1200-1800 m and
-would allow 128-338 s even with the overlap. It comes from the station roads. A
-train dwelling at Kingsford already holds 1200 m of platform block; under
-two-block working it holds the approach section as well, and on a single-track
-railway with no way past, that is the whole railway.
+```
+signal spacing (3-aspect, 1 block of warning)
+  ML   28 blocks  1133-1700 m   needs >= 591 m (EMU)   tightest margin +543 m
+       all-green headway 96-253 s at 120 km/h; WDEPOT_1 sets it at 253 s (14.2 trains/hour)
+```
+
+That is the theoretical figure, and it assumes the only thing in a train's way is
+the train in front. The measured one comes from running the flight:
+
+```
+$ python scenarios/depotline/_sweep_headway.py
+
+  headway   restrained   mean delay      worst
+    165 s         0 s        0.0 s        0 s
+    150 s         0 s        0.0 s        0 s     <- all-green
+    135 s       323 s       37.8 s       81 s     <- degraded
+    120 s       759 s       95.4 s      193 s
+     60 s      2075 s      308.0 s      616 s
+
+all-green headway: 150 s (24.0 trains an hour)
+```
+
+Restraint is reported over the 174 s a single train pays with the railway
+entirely to itself - every platform signal here is controlled, so it stands at
+danger until the interlocking sets a route over it, and a train alone is checked
+on each approach exactly as a train in traffic is. That toll is the layout, not
+the traffic.
+
+**Below the all-green headway the line does not fail, it degrades** - each train
+a little later than the one in front, which is what a real railway does when it
+is booked tighter than it can work. The two figures disagreeing is the useful
+part: signal spacing on the open line would allow 96 s, and never gets the chance
+to, because the binding constraint is a platform being reoccupied rather than a
+block being cleared.
 
 ### The ETCS levels
 
@@ -338,7 +349,6 @@ exactly two axes and nothing else:
 
 | system | danger point from | train learns it |
 |---|---|---|
-| two-block working | fixed-block detection, plus a section of overlap | lineside lamp, at sighting range |
 | conventional 3-aspect | fixed-block detection | lineside lamp, at sighting range |
 | ETCS Level 1 | fixed-block detection | at a balise (lineside overlay) |
 | ETCS Level 2 | fixed-block detection | continuously, by radio |

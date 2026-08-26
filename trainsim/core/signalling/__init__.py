@@ -14,12 +14,11 @@ comparison.
 
 from .base import MovementAuthority, SignallingSystem
 from .etcs import ETCSLevel1, ETCSLevel2, MovingBlock
-from .fixed_block import ThreeAspectFixedBlock, TwoBlockFixedBlock
+from .fixed_block import ThreeAspectFixedBlock
 from .hybrid_l3 import HybridLevel3
 
 #: Name used in scenario files -> implementation.
 REGISTRY = {
-    "fixed_block_2block": TwoBlockFixedBlock,
     "fixed_block_3aspect": ThreeAspectFixedBlock,
     "etcs_l1": ETCSLevel1,
     "etcs_l2": ETCSLevel2,
@@ -27,10 +26,8 @@ REGISTRY = {
     "etcs_moving_block": MovingBlock,
 }
 
-#: The order a comparison report presents them in: most restrictive first,
-#: which on this ladder is also oldest first.
+#: The order a comparison report presents them in: oldest technology first.
 LADDER = (
-    "fixed_block_2block",
     "fixed_block_3aspect",
     "etcs_l1",
     "etcs_l2",
@@ -55,7 +52,6 @@ __all__ = [
     "MovementAuthority",
     "SignallingSystem",
     "ThreeAspectFixedBlock",
-    "TwoBlockFixedBlock",
     "ETCSLevel1",
     "ETCSLevel2",
     "HybridLevel3",

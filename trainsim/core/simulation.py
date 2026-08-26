@@ -164,7 +164,6 @@ class Simulation(object):
         """Recompute every signal from occupancy and the interlocking."""
         self.aspects = compute_aspects(
             self.blocks, self.signals, self.occupancy, self.interlocking,
-            overlap_blocks=getattr(self.signalling, "overlap_blocks", 0),
         )
         return self.aspects
 
