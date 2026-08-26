@@ -1,5 +1,5 @@
 # TrainSim
-
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^INCREASE PLATFORM LENGTH^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 A schematic-level, microscopic railway simulator in Python — a testbed for
 railway systems questions rather than a game. It exists to answer things like
 *how many trains per hour will this line carry*, *what would ERTMS/ETCS change*,
