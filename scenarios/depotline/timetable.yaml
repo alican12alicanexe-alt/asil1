@@ -2,114 +2,121 @@
 #
 #   python scenarios/depotline/_generate_timetable.py
 #
-# Four stopping services and two fast ones, all running west depot to east
-# depot over the single line. Every booked time is what an unimpeded train of
-# that type actually achieves on this railway, so the plan is workable on its
-# own; what it is not is conflict-free, and that is the point.
+# A homogeneous flight: 8 trains of one type, all calling at every station on
+# the main road, booked 240 seconds apart. Every booked time is what a single
+# unimpeded train actually achieves on this railway, so the plan is workable on
+# its own and any delay a run reports is the signalling failing to deliver it.
 #
-# A fast is booked three minutes behind a stopper. On a single line with no
-# passing places that would simply mean the fast running at the stopper's speed
-# the whole way. Here it means the stopper stands in the loop at Marlowe for
-# three minutes while the fast comes through the main road past it, which is the
-# cheapest capacity a single-track railway can buy and the reason the station
-# has four roads instead of one.
+# 240 seconds is the shortest interval this line will hold. _sweep_headway.py is
+# where that number comes from.
 
 stock:
-  - id: EMU_STOP
-    name: Stopping unit
+  - id: EMU
+    name: Line unit
     length_m: 160
     max_speed_kmh: 100
     max_accel: 1.0
     service_brake: 0.8
     emergency_brake: 1.2
-    # No ETCS fitment anywhere on this line: it is signalled by lineside signals
-    # and worked by drivers reading them, which is what the scenario is about.
+    # No ETCS fitment: lineside signals, read by drivers, which is what fixes
+    # the headway this line can work to.
     etcs_level: none
     tims: false
-
-  - id: EMU_FAST
-    name: Fast unit
-    length_m: 200
-    max_speed_kmh: 120
-    max_accel: 0.9
-    service_brake: 0.7
-    emergency_brake: 1.2
-    etcs_level: none
-    tims: false
-    # Weighed and powered explicitly. Everything else about the dynamics - the
-    # Davis resistance coefficients, adhesion, brake build-up - is derived from
-    # these figures in core/dynamics.py, and can be written here too.
-    mass_t: 360
-    power_kw: 5400
 
 services:
 
-  # ------------------------------------------------- stopping services
-  - id: S1
-    name: 0700 West Depot - East Depot stopping
-    stock: EMU_STOP
+  - id: T01
+    name: 07:00 West Depot - East Depot
+    stock: EMU
     departure: "07:00:00"
     ready_lead_s: 60
     calls:
       - {station: WDEPOT, platform: WDEPOT_1, departure: "07:00:00", dwell_s: 60}
-      - {station: KINGSFORD, platform: KINGSFORD_2, arrival: "07:03:44", departure: "07:04:29", dwell_s: 45}
-      - {station: MARLOWE, platform: MARLOWE_3, arrival: "07:10:22", departure: "07:13:22", dwell_s: 180}
-      - {station: ASHDOWN, platform: ASHDOWN_2, arrival: "07:19:15", departure: "07:20:00", dwell_s: 45}
-      - {station: EDEPOT, platform: EDEPOT_1, arrival: "07:24:49", dwell_s: 60}
+      - {station: KINGSFORD, platform: KINGSFORD_1, arrival: "07:03:25", departure: "07:04:10", dwell_s: 45}
+      - {station: MARLOWE, platform: MARLOWE_1, arrival: "07:09:44", departure: "07:10:29", dwell_s: 45}
+      - {station: ASHDOWN, platform: ASHDOWN_1, arrival: "07:16:03", departure: "07:16:48", dwell_s: 45}
+      - {station: EDEPOT, platform: EDEPOT_1, arrival: "07:21:37", dwell_s: 60}
 
-  - id: S2
-    name: 0710 West Depot - East Depot stopping
-    stock: EMU_STOP
-    departure: "07:10:00"
+  - id: T02
+    name: 07:04 West Depot - East Depot
+    stock: EMU
+    departure: "07:04:00"
     ready_lead_s: 60
     calls:
-      - {station: WDEPOT, platform: WDEPOT_1, departure: "07:10:00", dwell_s: 60}
-      - {station: KINGSFORD, platform: KINGSFORD_2, arrival: "07:13:44", departure: "07:14:29", dwell_s: 45}
-      - {station: MARLOWE, platform: MARLOWE_3, arrival: "07:20:22", departure: "07:23:22", dwell_s: 180}
-      - {station: ASHDOWN, platform: ASHDOWN_2, arrival: "07:29:15", departure: "07:30:00", dwell_s: 45}
-      - {station: EDEPOT, platform: EDEPOT_1, arrival: "07:34:49", dwell_s: 60}
+      - {station: WDEPOT, platform: WDEPOT_1, departure: "07:04:00", dwell_s: 60}
+      - {station: KINGSFORD, platform: KINGSFORD_1, arrival: "07:07:25", departure: "07:08:10", dwell_s: 45}
+      - {station: MARLOWE, platform: MARLOWE_1, arrival: "07:13:44", departure: "07:14:29", dwell_s: 45}
+      - {station: ASHDOWN, platform: ASHDOWN_1, arrival: "07:20:03", departure: "07:20:48", dwell_s: 45}
+      - {station: EDEPOT, platform: EDEPOT_1, arrival: "07:25:37", dwell_s: 60}
 
-  - id: S3
-    name: 0720 West Depot - East Depot stopping
-    stock: EMU_STOP
+  - id: T03
+    name: 07:08 West Depot - East Depot
+    stock: EMU
+    departure: "07:08:00"
+    ready_lead_s: 60
+    calls:
+      - {station: WDEPOT, platform: WDEPOT_1, departure: "07:08:00", dwell_s: 60}
+      - {station: KINGSFORD, platform: KINGSFORD_1, arrival: "07:11:25", departure: "07:12:10", dwell_s: 45}
+      - {station: MARLOWE, platform: MARLOWE_1, arrival: "07:17:44", departure: "07:18:29", dwell_s: 45}
+      - {station: ASHDOWN, platform: ASHDOWN_1, arrival: "07:24:03", departure: "07:24:48", dwell_s: 45}
+      - {station: EDEPOT, platform: EDEPOT_1, arrival: "07:29:37", dwell_s: 60}
+
+  - id: T04
+    name: 07:12 West Depot - East Depot
+    stock: EMU
+    departure: "07:12:00"
+    ready_lead_s: 60
+    calls:
+      - {station: WDEPOT, platform: WDEPOT_1, departure: "07:12:00", dwell_s: 60}
+      - {station: KINGSFORD, platform: KINGSFORD_1, arrival: "07:15:25", departure: "07:16:10", dwell_s: 45}
+      - {station: MARLOWE, platform: MARLOWE_1, arrival: "07:21:44", departure: "07:22:29", dwell_s: 45}
+      - {station: ASHDOWN, platform: ASHDOWN_1, arrival: "07:28:03", departure: "07:28:48", dwell_s: 45}
+      - {station: EDEPOT, platform: EDEPOT_1, arrival: "07:33:37", dwell_s: 60}
+
+  - id: T05
+    name: 07:16 West Depot - East Depot
+    stock: EMU
+    departure: "07:16:00"
+    ready_lead_s: 60
+    calls:
+      - {station: WDEPOT, platform: WDEPOT_1, departure: "07:16:00", dwell_s: 60}
+      - {station: KINGSFORD, platform: KINGSFORD_1, arrival: "07:19:25", departure: "07:20:10", dwell_s: 45}
+      - {station: MARLOWE, platform: MARLOWE_1, arrival: "07:25:44", departure: "07:26:29", dwell_s: 45}
+      - {station: ASHDOWN, platform: ASHDOWN_1, arrival: "07:32:03", departure: "07:32:48", dwell_s: 45}
+      - {station: EDEPOT, platform: EDEPOT_1, arrival: "07:37:37", dwell_s: 60}
+
+  - id: T06
+    name: 07:20 West Depot - East Depot
+    stock: EMU
     departure: "07:20:00"
     ready_lead_s: 60
     calls:
       - {station: WDEPOT, platform: WDEPOT_1, departure: "07:20:00", dwell_s: 60}
-      - {station: KINGSFORD, platform: KINGSFORD_2, arrival: "07:23:44", departure: "07:24:29", dwell_s: 45}
-      - {station: MARLOWE, platform: MARLOWE_3, arrival: "07:30:22", departure: "07:33:22", dwell_s: 180}
-      - {station: ASHDOWN, platform: ASHDOWN_2, arrival: "07:39:15", departure: "07:40:00", dwell_s: 45}
-      - {station: EDEPOT, platform: EDEPOT_1, arrival: "07:44:49", dwell_s: 60}
+      - {station: KINGSFORD, platform: KINGSFORD_1, arrival: "07:23:25", departure: "07:24:10", dwell_s: 45}
+      - {station: MARLOWE, platform: MARLOWE_1, arrival: "07:29:44", departure: "07:30:29", dwell_s: 45}
+      - {station: ASHDOWN, platform: ASHDOWN_1, arrival: "07:36:03", departure: "07:36:48", dwell_s: 45}
+      - {station: EDEPOT, platform: EDEPOT_1, arrival: "07:41:37", dwell_s: 60}
 
-  - id: S4
-    name: 0730 West Depot - East Depot stopping
-    stock: EMU_STOP
-    departure: "07:30:00"
+  - id: T07
+    name: 07:24 West Depot - East Depot
+    stock: EMU
+    departure: "07:24:00"
     ready_lead_s: 60
     calls:
-      - {station: WDEPOT, platform: WDEPOT_1, departure: "07:30:00", dwell_s: 60}
-      - {station: KINGSFORD, platform: KINGSFORD_2, arrival: "07:33:44", departure: "07:34:29", dwell_s: 45}
-      - {station: MARLOWE, platform: MARLOWE_3, arrival: "07:40:22", departure: "07:43:22", dwell_s: 180}
-      - {station: ASHDOWN, platform: ASHDOWN_2, arrival: "07:49:15", departure: "07:50:00", dwell_s: 45}
-      - {station: EDEPOT, platform: EDEPOT_1, arrival: "07:54:49", dwell_s: 60}
+      - {station: WDEPOT, platform: WDEPOT_1, departure: "07:24:00", dwell_s: 60}
+      - {station: KINGSFORD, platform: KINGSFORD_1, arrival: "07:27:25", departure: "07:28:10", dwell_s: 45}
+      - {station: MARLOWE, platform: MARLOWE_1, arrival: "07:33:44", departure: "07:34:29", dwell_s: 45}
+      - {station: ASHDOWN, platform: ASHDOWN_1, arrival: "07:40:03", departure: "07:40:48", dwell_s: 45}
+      - {station: EDEPOT, platform: EDEPOT_1, arrival: "07:45:37", dwell_s: 60}
 
-  # ----------------------------------------------------- fast services
-  - id: F1
-    name: 0703 West Depot - East Depot fast
-    stock: EMU_FAST
-    departure: "07:03:00"
+  - id: T08
+    name: 07:28 West Depot - East Depot
+    stock: EMU
+    departure: "07:28:00"
     ready_lead_s: 60
     calls:
-      - {station: WDEPOT, platform: WDEPOT_1, departure: "07:03:00", dwell_s: 60}
-      - {station: MARLOWE, platform: MARLOWE_1, arrival: "07:10:47", departure: "07:11:32", dwell_s: 45}
-      - {station: EDEPOT, platform: EDEPOT_1, arrival: "07:20:36", dwell_s: 60}
-
-  - id: F2
-    name: 0723 West Depot - East Depot fast
-    stock: EMU_FAST
-    departure: "07:23:00"
-    ready_lead_s: 60
-    calls:
-      - {station: WDEPOT, platform: WDEPOT_1, departure: "07:23:00", dwell_s: 60}
-      - {station: MARLOWE, platform: MARLOWE_1, arrival: "07:30:47", departure: "07:31:32", dwell_s: 45}
-      - {station: EDEPOT, platform: EDEPOT_1, arrival: "07:40:36", dwell_s: 60}
+      - {station: WDEPOT, platform: WDEPOT_1, departure: "07:28:00", dwell_s: 60}
+      - {station: KINGSFORD, platform: KINGSFORD_1, arrival: "07:31:25", departure: "07:32:10", dwell_s: 45}
+      - {station: MARLOWE, platform: MARLOWE_1, arrival: "07:37:44", departure: "07:38:29", dwell_s: 45}
+      - {station: ASHDOWN, platform: ASHDOWN_1, arrival: "07:44:03", departure: "07:44:48", dwell_s: 45}
+      - {station: EDEPOT, platform: EDEPOT_1, arrival: "07:49:37", dwell_s: 60}

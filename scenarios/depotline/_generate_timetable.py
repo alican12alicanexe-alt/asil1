@@ -1,13 +1,19 @@
-"""Regenerate scenarios/depotline/timetable.yaml.
+"""Regenerate scenarios/depotline/timetable.yaml - a homogeneous flight.
 
-Derived data, not hand-written. Every service is booked on the run times a
-*single unimpeded train* achieves on this railway - measured by running one,
-below - so the plan is workable in isolation and any delay a run reports is the
-signalling or the conflict between services rather than a plan that was never
-possible. Change a dwell, a chainage or the rolling stock and the booked times
-are stale.
+Every service on this line is now the same train doing the same thing: the same
+unit, the same calls, the same roads, the same dwells. That is what makes the
+headway a property of the *railway* rather than of the traffic mix. With a fast
+unit mixed in among stoppers, the binding constraint is the speed difference and
+the answer depends on where the loops happen to be; with one train type it is
+the signalling and the station dwell, and nothing else.
+
+Booked times come from running a single unimpeded train and offsetting it by one
+headway per service, so the plan is workable by construction. Re-run after
+changing a dwell, a chainage, the stock or HEADWAY_S:
 
     python scenarios/depotline/_generate_timetable.py
+
+``_sweep_headway.py`` is what HEADWAY_S below was chosen from.
 
 Stdlib only, like everything else here.
 """
@@ -28,52 +34,55 @@ from trainsim.scenario.loader import build_timetable, read_data_file
 
 BASE = 7 * 3600
 DWELL = 45          # a station call
-OVERTAKEN = 180     # the stopper's wait in the loop at Marlowe
 DEPOT = 60          # preparing to leave the depot / stabling at the far end
+COUNT = 8           # trains in the flight
 
-STOCK = [
-    {"id": "EMU_STOP", "name": "Stopping unit", "length_m": 160,
-     "max_speed_kmh": 100, "max_accel": 1.0, "service_brake": 0.8,
-     "emergency_brake": 1.2, "etcs_level": "none", "tims": False},
-    {"id": "EMU_FAST", "name": "Fast unit", "length_m": 200,
-     "max_speed_kmh": 120, "max_accel": 0.9, "service_brake": 0.7,
-     "emergency_brake": 1.2, "etcs_level": "none", "tims": False,
-     # Weighed and powered explicitly rather than left to be derived, so the
-     # traction curve here is this unit's rather than a plausible one: 360 t on
-     # 5.4 MW at the wheel puts base speed at 56 km/h, above which the effort
-     # falls away as power over speed like any real train's.
-     "mass_t": 360, "power_kw": 5400},
-]
+#: The interval the flight is booked at. Measured, not chosen: see the table in
+#: scenario.yaml and _sweep_headway.py, which runs the flight at every interval
+#: from four minutes down to one and reports what it costs.
+HEADWAY_S = 240
 
-#: (station, platform, dwell) - the two calling patterns this line runs.
-STOPPER = [("WDEPOT", "WDEPOT_1", DEPOT), ("KINGSFORD", "KINGSFORD_2", DWELL),
-           ("MARLOWE", "MARLOWE_3", OVERTAKEN), ("ASHDOWN", "ASHDOWN_2", DWELL),
+STOCK = {"id": "EMU", "name": "Line unit", "length_m": 160,
+         "max_speed_kmh": 100, "max_accel": 1.0, "service_brake": 0.8,
+         "emergency_brake": 1.2, "etcs_level": "none", "tims": False}
+
+#: (station, platform, dwell). One pattern, one road at each station - a
+#: homogeneous flight does not use the loops, which is the point of measuring it.
+PATTERN = [("WDEPOT", "WDEPOT_1", DEPOT), ("KINGSFORD", "KINGSFORD_1", DWELL),
+           ("MARLOWE", "MARLOWE_1", DWELL), ("ASHDOWN", "ASHDOWN_1", DWELL),
            ("EDEPOT", "EDEPOT_1", DEPOT)]
-FAST = [("WDEPOT", "WDEPOT_1", DEPOT), ("MARLOWE", "MARLOWE_1", DWELL),
-        ("EDEPOT", "EDEPOT_1", DEPOT)]
 
-infra = build_infrastructure(
+INFRA = build_infrastructure(
     read_data_file(os.path.join(HERE, "infrastructure.yaml")))
 
 
-def probe(pattern, stock_id):
-    """Run one train over ``pattern`` with the road to itself, and time it."""
-    calls = [{"station": s, "platform": p, "dwell_s": d} for s, p, d in pattern]
-    calls[0]["departure"] = "07:00:00"
-    timetable = build_timetable(
-        {"stock": STOCK,
-         "services": [{"id": "P", "stock": stock_id, "departure": "07:00:00",
-                       "ready_lead_s": 60, "calls": calls}]}, infra)
-    sim = Simulation(
-        network=infra.network, blocks=infra.blocks, signals=infra.signals,
-        block_of_segment=infra.block_of_segment,
+def calls(shift=0):
+    """The calling pattern as timetable entries, shifted by ``shift`` seconds."""
+    entries = [{"station": s, "platform": p, "dwell_s": d} for s, p, d in PATTERN]
+    entries[0]["departure"] = format_clock(BASE + shift)
+    return entries
+
+
+def simulation(timetable, duration_s=7200):
+    return Simulation(
+        network=INFRA.network, blocks=INFRA.blocks, signals=INFRA.signals,
+        block_of_segment=INFRA.block_of_segment,
         signalling=reg.create("fixed_block_3aspect", sighting_distance_m=250),
         dispatcher=TimetableDispatcher(timetable),
         driver=Driver(DriverConfig(reaction_time_s=2.0, safety_margin_m=25.0)),
-        config=SimConfig(dt=1.0, start_time_s=BASE - 180, duration_s=3600),
-        interlocking=Interlocking(network=infra.network, blocks=infra.blocks,
-                                  signals=infra.signals, points=infra.points,
-                                  routes=infra.routes))
+        config=SimConfig(dt=1.0, start_time_s=BASE - 180, duration_s=duration_s),
+        interlocking=Interlocking(network=INFRA.network, blocks=INFRA.blocks,
+                                  signals=INFRA.signals, points=INFRA.points,
+                                  routes=INFRA.routes))
+
+
+def probe():
+    """Run one train with the road to itself, and time it at every call."""
+    timetable = build_timetable(
+        {"stock": [STOCK],
+         "services": [{"id": "P", "stock": "EMU", "departure": format_clock(BASE),
+                       "ready_lead_s": 60, "calls": calls()}]}, INFRA)
+    sim = simulation(timetable, duration_s=3600)
     while not sim.finished:
         sim.step()
         if sim.trains.get("P") is not None and sim.trains["P"].state == "finished":
@@ -81,104 +90,92 @@ def probe(pattern, stock_id):
     train = sim.trains["P"]
     return {station: (train.actual_arrivals.get(station),
                       train.actual_departures.get(station))
-            for station, _, _ in pattern}
+            for station, _, _ in PATTERN}
 
 
-TIMES = {"stopper": probe(STOPPER, "EMU_STOP"), "fast": probe(FAST, "EMU_FAST")}
-for name, times in TIMES.items():
-    print("%-8s %s" % (name, {s: (a and round(a - BASE), d and round(d - BASE))
-                              for s, (a, d) in times.items()}))
-
-
-def service(sid, name, pattern, kind, stock_id, shift):
-    lines = ["  - id: %s" % sid,
-             "    name: %s" % name,
-             "    stock: %s" % stock_id,
-             '    departure: "%s"' % format_clock(BASE + shift),
-             "    ready_lead_s: 60",
-             "    calls:"]
-    for station, platform, dwell in pattern:
-        arrival, departure = TIMES[kind][station]
-        bits = ["station: %s" % station, "platform: %s" % platform]
-        if arrival is not None:
-            bits.append('arrival: "%s"' % format_clock(round(arrival) + shift))
-        if departure is not None:
-            bits.append('departure: "%s"' % format_clock(round(departure) + shift))
-        bits.append("dwell_s: %d" % dwell)
-        lines.append("      - {%s}" % ", ".join(bits))
-    return "\n".join(lines)
+def flight_spec(times, headway_s, count=COUNT):
+    """The whole flight as a timetable spec: ``count`` trains, one every headway."""
+    services = []
+    for n in range(count):
+        shift = n * headway_s
+        entries = []
+        for station, platform, dwell in PATTERN:
+            arrival, departure = times[station]
+            entry = {"station": station, "platform": platform, "dwell_s": dwell}
+            if arrival is not None:
+                entry["arrival"] = format_clock(round(arrival) + shift)
+            if departure is not None:
+                entry["departure"] = format_clock(round(departure) + shift)
+            entries.append(entry)
+        services.append({"id": "T%02d" % (n + 1),
+                         "name": "%s West Depot - East Depot"
+                                 % format_clock(BASE + shift)[:5],
+                         "stock": "EMU", "departure": format_clock(BASE + shift),
+                         "ready_lead_s": 60, "calls": entries})
+    return {"stock": [STOCK], "services": services}
 
 
 HEADER = '''# depotline timetable - generated, do not edit by hand.
 #
 #   python scenarios/depotline/_generate_timetable.py
 #
-# Four stopping services and two fast ones, all running west depot to east
-# depot over the single line. Every booked time is what an unimpeded train of
-# that type actually achieves on this railway, so the plan is workable on its
-# own; what it is not is conflict-free, and that is the point.
+# A homogeneous flight: %d trains of one type, all calling at every station on
+# the main road, booked %d seconds apart. Every booked time is what a single
+# unimpeded train actually achieves on this railway, so the plan is workable on
+# its own and any delay a run reports is the signalling failing to deliver it.
 #
-# A fast is booked three minutes behind a stopper. On a single line with no
-# passing places that would simply mean the fast running at the stopper's speed
-# the whole way. Here it means the stopper stands in the loop at Marlowe for
-# three minutes while the fast comes through the main road past it, which is the
-# cheapest capacity a single-track railway can buy and the reason the station
-# has four roads instead of one.
+# %d seconds is the shortest interval this line will hold. _sweep_headway.py is
+# where that number comes from.
 
 '''
 
-STOCK_YAML = '''stock:
-  - id: EMU_STOP
-    name: Stopping unit
+
+def stock_yaml():
+    return '''stock:
+  - id: EMU
+    name: Line unit
     length_m: 160
     max_speed_kmh: 100
     max_accel: 1.0
     service_brake: 0.8
     emergency_brake: 1.2
-    # No ETCS fitment anywhere on this line: it is signalled by lineside signals
-    # and worked by drivers reading them, which is what the scenario is about.
+    # No ETCS fitment: lineside signals, read by drivers, which is what fixes
+    # the headway this line can work to.
     etcs_level: none
     tims: false
-
-  - id: EMU_FAST
-    name: Fast unit
-    length_m: 200
-    max_speed_kmh: 120
-    max_accel: 0.9
-    service_brake: 0.7
-    emergency_brake: 1.2
-    etcs_level: none
-    tims: false
-    # Weighed and powered explicitly. Everything else about the dynamics - the
-    # Davis resistance coefficients, adhesion, brake build-up - is derived from
-    # these figures in core/dynamics.py, and can be written here too.
-    mass_t: 360
-    power_kw: 5400
 
 services:
 '''
 
 
-def build() -> str:
-    out = [HEADER + STOCK_YAML]
-    out.append("  # ------------------------------------------------- stopping services")
-    for n in range(4):
-        out.append(service("S%d" % (n + 1),
-                           "%s West Depot - East Depot stopping"
-                           % format_clock(BASE + n * 600)[:5].replace(":", ""),
-                           STOPPER, "stopper", "EMU_STOP", n * 600))
-        out.append("")
-    out.append("  # ----------------------------------------------------- fast services")
-    for n, shift in enumerate((180, 1380)):
-        out.append(service("F%d" % (n + 1),
-                           "%s West Depot - East Depot fast"
-                           % format_clock(BASE + shift)[:5].replace(":", ""),
-                           FAST, "fast", "EMU_FAST", shift))
+def render(times, headway_s, count=COUNT):
+    out = [HEADER % (count, headway_s, headway_s) + stock_yaml()]
+    for service in flight_spec(times, headway_s, count)["services"]:
+        lines = ["  - id: %s" % service["id"],
+                 "    name: %s" % service["name"],
+                 "    stock: %s" % service["stock"],
+                 '    departure: "%s"' % service["departure"],
+                 "    ready_lead_s: 60",
+                 "    calls:"]
+        for entry in service["calls"]:
+            bits = ["station: %s" % entry["station"],
+                    "platform: %s" % entry["platform"]]
+            if "arrival" in entry:
+                bits.append('arrival: "%s"' % entry["arrival"])
+            if "departure" in entry:
+                bits.append('departure: "%s"' % entry["departure"])
+            bits.append("dwell_s: %d" % entry["dwell_s"])
+            lines.append("      - {%s}" % ", ".join(bits))
+        out.append("\n".join(lines))
         out.append("")
     return "\n".join(out)
 
 
-path = os.path.join(HERE, "timetable.yaml")
-with open(path, "w") as handle:
-    handle.write(build())
-print("wrote", path)
+if __name__ == "__main__":
+    times = probe()
+    print("unimpeded run:", {s: (a and round(a - BASE), d and round(d - BASE))
+                             for s, (a, d) in times.items()})
+    path = os.path.join(HERE, "timetable.yaml")
+    with open(path, "w") as handle:
+        handle.write(render(times, HEADWAY_S))
+    print("wrote %s - %d trains at %d s" % (path, COUNT, HEADWAY_S))

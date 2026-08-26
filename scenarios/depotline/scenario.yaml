@@ -9,25 +9,47 @@
 #     km 0            km 5          km 13        km 21        km 27
 #     1 road         2 plat        4 plat       3 plat        1 road
 #
-# One running line and no way past except through a station. Six services run it
-# in the morning: four stoppers calling everywhere, and two fast units booked
-# three minutes behind a stopper which have to get past it somewhere. They get
-# past at Marlowe, where the stopper stands in a loop road for three minutes and
-# the fast runs through the main road beside it. That is the whole subject of the
-# scenario - on a single line the loops *are* the capacity, and the timetable is
-# written around where they happen to be rather than the other way round.
+# One running line and no way past except through a station. The flight is
+# homogeneous - eight trains of one type, all calling everywhere on the main
+# road, all dwelling the same - because that is what makes a headway a property
+# of the railway rather than of the traffic mix. Mix a fast unit in among
+# stoppers and the binding constraint becomes the speed difference and where the
+# loops happen to be; run one train type and what is left is the signalling and
+# the station dwell.
 #
-# Three-aspect fixed block throughout, no ETCS fitment: a driver learns the state
-# of the railway when a signal comes into sight and not before, so braking for an
-# occupied section starts at the yellow one block back rather than where braking
-# would actually need to start. The platform roads are separate block sections,
-# which is what makes the overtake possible at all - a train standing in the loop
-# does not occupy the road its overtaker is using.
+# HEADWAY, MEASURED
 #
-# The interlocking is on. Each station's roads diverge over facing points and
-# converge over trailing ones, so the road into a platform has to be requested
-# and set before its signal may clear, and two trains cannot be given the same
-# road. Watch the routes being taken and given back as trains pass.
+# `python scenarios/depotline/_sweep_headway.py` books the same flight at every
+# interval from four minutes down to one, rebuilding the plan from the unimpeded
+# run times each time so it is always workable in isolation:
+#
+#     headway   restrained   mean delay   worst arrival
+#       240 s          0 s        0.0 s           0 s     <- the line holds this
+#       225 s          0 s        2.6 s           3 s
+#       180 s          0 s       13.1 s          25 s
+#       150 s          0 s      119.0 s         238 s
+#       120 s          0 s      224.0 s         448 s
+#        60 s          0 s      434.0 s         868 s
+#
+#     240 s = 15 trains an hour.
+#
+# What is interesting is the restraint column: zero everywhere. No train on this
+# line is ever checked by a signal, however tightly the flight is booked. The
+# queue does not form on the road, it forms at the platform - a train cannot be
+# let out of the depot until the road it is standing on has been cleared by the
+# one in front, and it is that, not signal spacing, that sets the interval.
+#
+# The depot necks are what bind it. A depot road is 1200 m of block worked at
+# 40 km/h, so a train occupies one for 2 x 1200 m + its own 160 m at 11 m/s -
+# 230 seconds - and `--check` says exactly that before anything is run. The
+# running line is signalled far more finely than that: block spacing out on the
+# open line implies 74-100 s, and the same flight booked from Kingsford to
+# Ashdown, without the depot legs at either end, holds a 150-second interval.
+#
+# So this railway can work 15 trains an hour, and the way to work more of them
+# is not more signals - it is a second road in each depot, or a depot neck taken
+# at more than 40 km/h. That is the sort of answer signal spacing alone never
+# gives, and it is why the headway is measured here rather than calculated.
 
 name: depotline
 description: "A 27 km single-track line between two depots, three stations with 2, 4 and 3 platform roads, three-aspect fixed block, and fast units overtaking stoppers in the loops at Marlowe."
