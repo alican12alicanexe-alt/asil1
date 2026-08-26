@@ -76,11 +76,11 @@ def calls(shift=0, index=0):
     return entries
 
 
-def simulation(timetable, duration_s=7200):
+def simulation(timetable, duration_s=7200, system="fixed_block_3aspect"):
     return Simulation(
         network=INFRA.network, blocks=INFRA.blocks, signals=INFRA.signals,
         block_of_segment=INFRA.block_of_segment,
-        signalling=reg.create("fixed_block_3aspect", sighting_distance_m=250),
+        signalling=reg.create(system, sighting_distance_m=250),
         dispatcher=TimetableDispatcher(timetable),
         driver=Driver(DriverConfig(reaction_time_s=2.0, safety_margin_m=25.0)),
         config=SimConfig(dt=1.0, start_time_s=BASE - 180, duration_s=duration_s),

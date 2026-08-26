@@ -14,8 +14,9 @@ built. Rather than let that pass silently, it is reported.
 
 The opposite constraint is capacity, and it is not a safety rule so it is not
 enforced here: minimum headway is roughly the time to clear two blocks plus the
-train's own length, so shorter blocks mean more trains per hour at the cost of
-more signals. That trade-off is why real block lengths are not uniform - they are
+train's own length - three blocks under two-block working, where the section
+behind a train is held as an overlap - so shorter blocks mean more trains per
+hour at the cost of more signals. That trade-off is why real block lengths are not uniform - they are
 short on station approaches, where speeds are low and capacity is wanted, and
 long on fast open line. Scenario files can set ``block_length_m`` per stretch to
 reflect that; this module reports the headway each stretch implies so the
@@ -58,14 +59,22 @@ class BlockCheck:
 
 
 def check_block_lengths(infrastructure, timetable, driver_config,
-                        aspects: int = 3) -> List[BlockCheck]:
+                        aspects: int = 3,
+                        overlap_blocks: int = 0) -> List[BlockCheck]:
     """Check every running block against the braking distance rule.
 
     ``aspects`` is how many indications the signalling shows: three gives one
     block of warning, four gives two, so a four-aspect layout may use blocks
     roughly half as long.
+
+    ``overlap_blocks`` is how many whole sections are held at danger beyond a
+    signal's own - zero conventionally, one under two-block working. It does not
+    change what a block must be *long* enough for, because a driver still gets
+    one block of warning either way; it changes only the headway the spacing
+    implies, by putting the follower one more section back.
     """
     warning_blocks = max(1, aspects - 2)
+    separation_blocks = 2.0 + max(0, overlap_blocks)
     results = []
 
     for block in infrastructure.blocks.values():
@@ -101,7 +110,7 @@ def check_block_lengths(infrastructure, timetable, driver_config,
             default=line_speed,
         )
         longest_train = max((s.stock.length_m for s in timetable.services), default=0.0)
-        headway = ((2.0 * block.length_m + longest_train) / top_speed
+        headway = ((separation_blocks * block.length_m + longest_train) / top_speed
                    if top_speed > 0 else float("inf"))
 
         results.append(BlockCheck(
@@ -121,15 +130,20 @@ def failures(results: List[BlockCheck]) -> List[BlockCheck]:
     return [r for r in results if not r.ok]
 
 
-def summarise(results: List[BlockCheck], aspects: int = 3) -> str:
+def summarise(results: List[BlockCheck], aspects: int = 3,
+              overlap_blocks: int = 0) -> str:
     """A short report, grouped by track."""
     if not results:
         return "no running blocks to check"
 
-    lines = [
-        "signal spacing (%d-aspect, %d block%s of warning)"
-        % (aspects, max(1, aspects - 2), "" if aspects == 3 else "s"),
-    ]
+    warning = max(1, aspects - 2)
+    heading = ("signal spacing (%d-aspect, %d block%s of warning"
+               % (aspects, warning, "" if warning == 1 else "s"))
+    if overlap_blocks:
+        heading += (", %d-block working: %d section%s held behind each train"
+                    % (overlap_blocks + 1, overlap_blocks + 1,
+                       "" if overlap_blocks + 1 == 1 else "s"))
+    lines = [heading + ")"]
     tracks = sorted({r.track for r in results})
     for track in tracks:
         rows = [r for r in results if r.track == track]

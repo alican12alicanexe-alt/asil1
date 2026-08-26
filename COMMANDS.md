@@ -36,14 +36,24 @@ specific **scenario file**, so `scenarios/metro` and
 
 ## Signalling systems
 
-Names for `--system` and `--compare`, oldest technology first:
+Names for `--system` and `--compare`, most restrictive first:
 
 ```
+fixed_block_2block      two-block working: one train holds two signals at red
 fixed_block_3aspect     conventional lineside signalling, red/yellow/green
 etcs_l1                 balise at each signal, lineside overlay
 etcs_l2                 continuous radio authority, fixed-block detection
 etcs_hybrid_l3          virtual sub-sections over trackside detection
 etcs_moving_block       full Level 3, authority to the rear of the train ahead
+```
+
+`fixed_block_2block` takes a `blocks_held` setting - 2 for two-block working,
+3 for three-block:
+
+```yaml
+signalling:
+  system: fixed_block_2block
+  blocks_held: 3
 ```
 
 ## Tests

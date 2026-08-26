@@ -287,6 +287,49 @@ Set `interlocking: {enabled: false}` to run without it, as idealised automatic
 block. On corridor3 that gets the fast train to Gamma 33 s earlier - the
 measurable cost of route-based control.
 
+### Two-block working
+
+`--system fixed_block_2block` is the same three aspects with the reds spread
+wider. A signal answers not only for its own section but for the section beyond
+it, so one train puts danger on two signals instead of one:
+
+```
+conventional   ... GREEN --- YELLOW --- RED  [train] ...
+two-block      ... GREEN --- YELLOW --- RED --- RED  [train] ...
+```
+
+**It is not an optimisation, and it is not four-aspect.** Four-aspect spends an
+extra indication to make blocks *shorter*; two-block working spends a whole
+extra section to buy stopping room. The section behind the train is a full-block
+overlap, there so that a train which runs past the red - a brake below its book
+rate, a yellow read late, a trip-stop applied at the last moment - still comes to
+a stand with a clear section in front of it. Metros with close signal spacing, no
+preliminary caution aspect to give and an automatic train stop as the backstop
+are where the trade is worth making; New York's two- and three-block spacing is
+the canonical example, and `blocks_held: 3` covers the second case.
+
+The block-length rule does not change - a driver still gets one block of warning
+either way - so nothing about the layout has to move. What changes is that a
+follower may run unchecked only from behind a green, which is now one section
+further back, so the separation it has to keep goes from two block lengths to
+three. On depotline that is close to half the line's capacity:
+
+```
+                      holds cleanly    trains/hour   journey   restrained
+fixed_block_3aspect          150 s            24.0     22:40         0 s
+fixed_block_2block           285 s            12.6     28:34      3003 s
+```
+
+*(`python scenarios/depotline/_sweep_headway.py fixed_block_2block`. The
+restrained column is the flight booked at 150 s under each system, over the
+174 s a single train alone already pays at the controlled station signals.)*
+
+Almost none of that comes from the open line, where blocks are 1200-1800 m and
+would allow 128-338 s even with the overlap. It comes from the station roads. A
+train dwelling at Kingsford already holds 1200 m of platform block; under
+two-block working it holds the approach section as well, and on a single-track
+railway with no way past, that is the whole railway.
+
 ### The ETCS levels
 
 Milestone 3. Five train control systems, all reading the same interlocking, all
@@ -295,6 +338,7 @@ exactly two axes and nothing else:
 
 | system | danger point from | train learns it |
 |---|---|---|
+| two-block working | fixed-block detection, plus a section of overlap | lineside lamp, at sighting range |
 | conventional 3-aspect | fixed-block detection | lineside lamp, at sighting range |
 | ETCS Level 1 | fixed-block detection | at a balise (lineside overlay) |
 | ETCS Level 2 | fixed-block detection | continuously, by radio |

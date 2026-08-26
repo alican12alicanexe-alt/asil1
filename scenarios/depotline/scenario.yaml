@@ -20,24 +20,49 @@
 # HEADWAY, MEASURED
 #
 # `python scenarios/depotline/_sweep_headway.py` books the same flight at every
-# interval from four minutes down to one, rebuilding the plan from the unimpeded
+# interval from six minutes down to one, rebuilding the plan from the unimpeded
 # run times each time so it is always workable in isolation:
 #
 #     headway   restrained   mean delay   worst arrival
 #       150 s          0 s        0.0 s           0 s     <- the line holds this
-#       135 s          0 s       37.8 s          81 s
-#       120 s          0 s       95.4 s         193 s
-#        90 s          0 s      203.0 s         406 s
-#        60 s          0 s      308.0 s         616 s
+#       135 s        323 s       37.8 s          81 s
+#       120 s        759 s       95.4 s         193 s
+#        90 s       1606 s      203.0 s         406 s
+#        60 s       2075 s      308.0 s         616 s
 #
 #     150 s = 24 trains an hour.
 #
-# The restraint column is the finding, and it is zero all the way down. No train
-# on this line is ever checked by a signal, however tightly the flight is booked.
-# The queue does not form on the road, it forms at the platform: a train cannot
-# be let into a station road until the train in front has cleared it, and it is
-# that - reoccupation, not signal spacing - that sets the interval. Block spacing
-# out on the open line would allow 74-100 s, and never gets the chance to.
+# Restraint is reported over the 174 seconds a single train pays with the railway
+# entirely to itself. That toll is not congestion: every platform signal here is
+# controlled, so it stands at danger until the interlocking sets a route over it,
+# and a train alone is checked on each approach exactly as a train in traffic is.
+# Counting it would put the same floor under every row and hide the thing being
+# looked for.
+#
+# Over that baseline the column is zero down to 150 s and rises from 135 s: down
+# to the interval the line holds, no train on this railway is ever checked by
+# another. What binds first is not signal spacing - the open-line blocks would
+# allow 74-100 s and never get the chance - but the platform. A train cannot be
+# let into a station road until the train in front has cleared it, and on a
+# single track with no way past, reoccupation sets the interval.
+#
+# UNDER TWO-BLOCK WORKING
+#
+#     python run.py scenarios/depotline --compare fixed_block_3aspect fixed_block_2block
+#     python scenarios/depotline/_sweep_headway.py fixed_block_2block
+#
+# `fixed_block_2block` holds the section behind each train as a full-block
+# overlap, so one train puts danger on two signals rather than one. It costs this
+# line close to half its capacity:
+#
+#                           holds cleanly   trains/hour   journey   restrained
+#     fixed_block_3aspect          150 s           24.0     22:40          0 s
+#     fixed_block_2block           285 s           12.6     28:34       3003 s
+#
+# and for the same reason the platform binds in the first place. The open line
+# can afford the overlap - 1200-1800 m blocks still imply 128-338 s with it. The
+# station roads cannot: a train dwelling at Kingsford already holds 1200 m of
+# platform block, and under two-block working it holds the approach section too.
 #
 # WHAT THE DEPOTS COST
 #
@@ -60,7 +85,7 @@
 # one a real timetable is written around.
 
 name: depotline
-description: "A 27 km single-track line between two depots, three stations with 2, 4 and 3 platform roads, three-aspect fixed block, and fast units overtaking stoppers in the loops at Marlowe."
+description: "A 27 km single-track line between two depots, three stations with 2, 4 and 3 platform roads, and a homogeneous flight of eight units worked by three-aspect fixed block."
 
 infrastructure: infrastructure.yaml
 timetable: timetable.yaml
