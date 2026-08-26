@@ -1,0 +1,60 @@
+# fourtrack - trains changing lines.
+#
+#   python run.py scenarios/fourtrack                          watch it
+#   python run.py scenarios/fourtrack --check                  the crossovers
+#   python run.py scenarios/fourtrack --headless --events | grep XO_UP
+#   python run.py scenarios/fourtrack --compare
+#
+# The layout every other scenario here has been missing. Four running lines - up
+# fast, up slow, down slow, down fast - and a crossover between each pair, so a
+# train can leave the line it started on and continue on another:
+#
+#            ___________________________________________ UP FAST
+#           /
+#   _______/___________________________________________ UP SLOW
+#                          XO_UP, km 17
+#
+# The crossover is not a decoration. Beta has platforms on the slow lines only,
+# which is how four-track stations are normally built - the fasts run through
+# non-stop with no platform at all. So a semi-fast that calls at Beta *has* to be
+# on the slow line there, and it has to get back onto the fast line afterwards
+# to be worth running. That move, four times an hour each way, is the scenario.
+#
+# What it produces is a flat junction in the middle of a fast line, in everything
+# but name. A crossover is a facing point on one line and a trailing point on the
+# other, and a train sitting across both while it goes over. The interlocking has
+# to sequence the semi-fast against the express coming up behind, and once again
+# nothing decides which of them should have it - the one that asks first does.
+#
+# That is why heavily-used four-track railways put semi-fast connections in a
+# burrowing junction rather than a crossover, and it is the same argument as
+# scenarios/junction, one layer down.
+
+name: fourtrack
+description: "A four-track main line with crossovers, where a semi-fast calls on the slow line and then has to get across to the fast one."
+
+infrastructure: infrastructure.yaml
+timetable: timetable.yaml
+
+simulation:
+  dt: 1.0
+  start_time: "06:58:00"
+  duration_s: 5400
+  strict: false
+
+signalling:
+  system: fixed_block_3aspect
+  sighting_distance_m: 250
+
+interlocking:
+  route_request_distance_m: 3000
+  route_request_lead_s: 60
+
+driver:
+  reaction_time_s: 2.0
+  safety_margin_m: 25.0
+  stop_tolerance_m: 1.0
+
+view:
+  title: "fourtrack - crossing from the slow line to the fast"
+  speed: 30

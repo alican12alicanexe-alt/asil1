@@ -1,0 +1,328 @@
+# metro at 75 seconds with two units that cannot confirm their integrity.
+#
+# The flight is the one in timetable.yaml. Two services - U06 up and D06 down -
+# run METRO_LEGACY: an older unit that reports its position but has no train
+# integrity monitoring, which is the ordinary state of a fleet part-way through
+# a migration.
+#
+# Moving block cannot follow such a train closely. If the rear of a train is not
+# confirmed, part of it may have been left behind, and the only safe assumption
+# is that it still occupies the whole detection section it entered. It therefore
+# imposes Level 2 separation on everything behind it.
+#
+# What that costs is worth reading per train rather than as a mean. Under moving
+# block, restrained seconds and delay at Airport:
+#
+#   U01 - U05    0 s, on time      the legacy unit is not yet in front of them
+#   U06          0 s, on time      this *is* the legacy unit, and it runs fine
+#   U07         66 s, +13 s        the train immediately behind it
+#   U08 - U12   62, 58, 34, 16, 16 s      +10, +7, +4, +4, +4 s
+#
+# Two things follow, and neither is a signalling conclusion. The unfitted unit
+# pays nothing: the whole cost of not fitting it falls on the services behind.
+# And the delay does not wash out - it settles at four seconds rather than
+# returning to zero, because a plan booked at the achievable headway has no
+# slack anywhere to absorb it.
+#
+# Hybrid Level 3 is not a free rescue here. With its default four sub-sections
+# per section - 150 m on this line - it is coarser than a moving-block authority
+# on a platform approach and comes out slightly worse, not better. What fixes
+# that is sizing the sub-sections against braking distance rather than counting
+# them per block; scenario.yaml has the measured figures.
+#
+#   python run.py scenarios/metro/scenario-mixed.yaml --compare
+
+stock:
+  - id: METRO
+    name: Metro unit
+    length_m: 120
+    max_speed_kmh: 90
+    max_accel: 1.1
+    service_brake: 1.1
+    emergency_brake: 1.4
+    # Full Level 3 fitment. The unit reports its own position and confirms its
+    # own integrity, and it is the integrity report that matters: without it the
+    # rear of the train is not trustworthy, so nothing may follow it closely.
+    etcs_level: l3
+    tims: true
+
+  - id: METRO_LEGACY
+    name: Metro unit (no integrity monitoring)
+    length_m: 120
+    max_speed_kmh: 90
+    max_accel: 1.1
+    service_brake: 1.1
+    emergency_brake: 1.4
+    # Reports where its front is, cannot confirm the rest of the train is still
+    # attached. Identical in every physical respect to METRO - the only
+    # difference is what the trackside is allowed to believe about it.
+    etcs_level: l2
+    tims: false
+
+services:
+# Up: Harbour -> Airport, 12 trains at a 75-second headway.
+  - id: U01
+    stock: METRO
+    departure: "07:00:00"
+    ready_lead_s: 30
+    calls:
+      - {station: HARBOUR, platform: HARBOUR_1, departure: "07:00:00", dwell_s: 20}
+      - {station: MARKET, platform: MARKET_1, arrival: "07:01:40", departure: "07:02:10", dwell_s: 30}
+      - {station: CENTRAL, platform: CENTRAL_1, arrival: "07:04:08", departure: "07:04:38", dwell_s: 30}
+      - {station: UNIVERSITY, platform: UNIVERSITY_1, arrival: "07:06:36", departure: "07:07:06", dwell_s: 30}
+      - {station: PARKSIDE, platform: PARKSIDE_1, arrival: "07:09:04", departure: "07:09:34", dwell_s: 30}
+      - {station: AIRPORT, platform: AIRPORT_1, arrival: "07:11:32", dwell_s: 20}
+  - id: U02
+    stock: METRO
+    departure: "07:01:15"
+    ready_lead_s: 30
+    calls:
+      - {station: HARBOUR, platform: HARBOUR_1, departure: "07:01:15", dwell_s: 20}
+      - {station: MARKET, platform: MARKET_1, arrival: "07:02:55", departure: "07:03:25", dwell_s: 30}
+      - {station: CENTRAL, platform: CENTRAL_1, arrival: "07:05:23", departure: "07:05:53", dwell_s: 30}
+      - {station: UNIVERSITY, platform: UNIVERSITY_1, arrival: "07:07:51", departure: "07:08:21", dwell_s: 30}
+      - {station: PARKSIDE, platform: PARKSIDE_1, arrival: "07:10:19", departure: "07:10:49", dwell_s: 30}
+      - {station: AIRPORT, platform: AIRPORT_1, arrival: "07:12:47", dwell_s: 20}
+  - id: U03
+    stock: METRO
+    departure: "07:02:30"
+    ready_lead_s: 30
+    calls:
+      - {station: HARBOUR, platform: HARBOUR_1, departure: "07:02:30", dwell_s: 20}
+      - {station: MARKET, platform: MARKET_1, arrival: "07:04:10", departure: "07:04:40", dwell_s: 30}
+      - {station: CENTRAL, platform: CENTRAL_1, arrival: "07:06:38", departure: "07:07:08", dwell_s: 30}
+      - {station: UNIVERSITY, platform: UNIVERSITY_1, arrival: "07:09:06", departure: "07:09:36", dwell_s: 30}
+      - {station: PARKSIDE, platform: PARKSIDE_1, arrival: "07:11:34", departure: "07:12:04", dwell_s: 30}
+      - {station: AIRPORT, platform: AIRPORT_1, arrival: "07:14:02", dwell_s: 20}
+  - id: U04
+    stock: METRO
+    departure: "07:03:45"
+    ready_lead_s: 30
+    calls:
+      - {station: HARBOUR, platform: HARBOUR_1, departure: "07:03:45", dwell_s: 20}
+      - {station: MARKET, platform: MARKET_1, arrival: "07:05:25", departure: "07:05:55", dwell_s: 30}
+      - {station: CENTRAL, platform: CENTRAL_1, arrival: "07:07:53", departure: "07:08:23", dwell_s: 30}
+      - {station: UNIVERSITY, platform: UNIVERSITY_1, arrival: "07:10:21", departure: "07:10:51", dwell_s: 30}
+      - {station: PARKSIDE, platform: PARKSIDE_1, arrival: "07:12:49", departure: "07:13:19", dwell_s: 30}
+      - {station: AIRPORT, platform: AIRPORT_1, arrival: "07:15:17", dwell_s: 20}
+  - id: U05
+    stock: METRO
+    departure: "07:05:00"
+    ready_lead_s: 30
+    calls:
+      - {station: HARBOUR, platform: HARBOUR_1, departure: "07:05:00", dwell_s: 20}
+      - {station: MARKET, platform: MARKET_1, arrival: "07:06:40", departure: "07:07:10", dwell_s: 30}
+      - {station: CENTRAL, platform: CENTRAL_1, arrival: "07:09:08", departure: "07:09:38", dwell_s: 30}
+      - {station: UNIVERSITY, platform: UNIVERSITY_1, arrival: "07:11:36", departure: "07:12:06", dwell_s: 30}
+      - {station: PARKSIDE, platform: PARKSIDE_1, arrival: "07:14:04", departure: "07:14:34", dwell_s: 30}
+      - {station: AIRPORT, platform: AIRPORT_1, arrival: "07:16:32", dwell_s: 20}
+  - id: U06
+    stock: METRO_LEGACY
+    departure: "07:06:15"
+    ready_lead_s: 30
+    calls:
+      - {station: HARBOUR, platform: HARBOUR_1, departure: "07:06:15", dwell_s: 20}
+      - {station: MARKET, platform: MARKET_1, arrival: "07:07:55", departure: "07:08:25", dwell_s: 30}
+      - {station: CENTRAL, platform: CENTRAL_1, arrival: "07:10:23", departure: "07:10:53", dwell_s: 30}
+      - {station: UNIVERSITY, platform: UNIVERSITY_1, arrival: "07:12:51", departure: "07:13:21", dwell_s: 30}
+      - {station: PARKSIDE, platform: PARKSIDE_1, arrival: "07:15:19", departure: "07:15:49", dwell_s: 30}
+      - {station: AIRPORT, platform: AIRPORT_1, arrival: "07:17:47", dwell_s: 20}
+  - id: U07
+    stock: METRO
+    departure: "07:07:30"
+    ready_lead_s: 30
+    calls:
+      - {station: HARBOUR, platform: HARBOUR_1, departure: "07:07:30", dwell_s: 20}
+      - {station: MARKET, platform: MARKET_1, arrival: "07:09:10", departure: "07:09:40", dwell_s: 30}
+      - {station: CENTRAL, platform: CENTRAL_1, arrival: "07:11:38", departure: "07:12:08", dwell_s: 30}
+      - {station: UNIVERSITY, platform: UNIVERSITY_1, arrival: "07:14:06", departure: "07:14:36", dwell_s: 30}
+      - {station: PARKSIDE, platform: PARKSIDE_1, arrival: "07:16:34", departure: "07:17:04", dwell_s: 30}
+      - {station: AIRPORT, platform: AIRPORT_1, arrival: "07:19:02", dwell_s: 20}
+  - id: U08
+    stock: METRO
+    departure: "07:08:45"
+    ready_lead_s: 30
+    calls:
+      - {station: HARBOUR, platform: HARBOUR_1, departure: "07:08:45", dwell_s: 20}
+      - {station: MARKET, platform: MARKET_1, arrival: "07:10:25", departure: "07:10:55", dwell_s: 30}
+      - {station: CENTRAL, platform: CENTRAL_1, arrival: "07:12:53", departure: "07:13:23", dwell_s: 30}
+      - {station: UNIVERSITY, platform: UNIVERSITY_1, arrival: "07:15:21", departure: "07:15:51", dwell_s: 30}
+      - {station: PARKSIDE, platform: PARKSIDE_1, arrival: "07:17:49", departure: "07:18:19", dwell_s: 30}
+      - {station: AIRPORT, platform: AIRPORT_1, arrival: "07:20:17", dwell_s: 20}
+  - id: U09
+    stock: METRO
+    departure: "07:10:00"
+    ready_lead_s: 30
+    calls:
+      - {station: HARBOUR, platform: HARBOUR_1, departure: "07:10:00", dwell_s: 20}
+      - {station: MARKET, platform: MARKET_1, arrival: "07:11:40", departure: "07:12:10", dwell_s: 30}
+      - {station: CENTRAL, platform: CENTRAL_1, arrival: "07:14:08", departure: "07:14:38", dwell_s: 30}
+      - {station: UNIVERSITY, platform: UNIVERSITY_1, arrival: "07:16:36", departure: "07:17:06", dwell_s: 30}
+      - {station: PARKSIDE, platform: PARKSIDE_1, arrival: "07:19:04", departure: "07:19:34", dwell_s: 30}
+      - {station: AIRPORT, platform: AIRPORT_1, arrival: "07:21:32", dwell_s: 20}
+  - id: U10
+    stock: METRO
+    departure: "07:11:15"
+    ready_lead_s: 30
+    calls:
+      - {station: HARBOUR, platform: HARBOUR_1, departure: "07:11:15", dwell_s: 20}
+      - {station: MARKET, platform: MARKET_1, arrival: "07:12:55", departure: "07:13:25", dwell_s: 30}
+      - {station: CENTRAL, platform: CENTRAL_1, arrival: "07:15:23", departure: "07:15:53", dwell_s: 30}
+      - {station: UNIVERSITY, platform: UNIVERSITY_1, arrival: "07:17:51", departure: "07:18:21", dwell_s: 30}
+      - {station: PARKSIDE, platform: PARKSIDE_1, arrival: "07:20:19", departure: "07:20:49", dwell_s: 30}
+      - {station: AIRPORT, platform: AIRPORT_1, arrival: "07:22:47", dwell_s: 20}
+  - id: U11
+    stock: METRO
+    departure: "07:12:30"
+    ready_lead_s: 30
+    calls:
+      - {station: HARBOUR, platform: HARBOUR_1, departure: "07:12:30", dwell_s: 20}
+      - {station: MARKET, platform: MARKET_1, arrival: "07:14:10", departure: "07:14:40", dwell_s: 30}
+      - {station: CENTRAL, platform: CENTRAL_1, arrival: "07:16:38", departure: "07:17:08", dwell_s: 30}
+      - {station: UNIVERSITY, platform: UNIVERSITY_1, arrival: "07:19:06", departure: "07:19:36", dwell_s: 30}
+      - {station: PARKSIDE, platform: PARKSIDE_1, arrival: "07:21:34", departure: "07:22:04", dwell_s: 30}
+      - {station: AIRPORT, platform: AIRPORT_1, arrival: "07:24:02", dwell_s: 20}
+  - id: U12
+    stock: METRO
+    departure: "07:13:45"
+    ready_lead_s: 30
+    calls:
+      - {station: HARBOUR, platform: HARBOUR_1, departure: "07:13:45", dwell_s: 20}
+      - {station: MARKET, platform: MARKET_1, arrival: "07:15:25", departure: "07:15:55", dwell_s: 30}
+      - {station: CENTRAL, platform: CENTRAL_1, arrival: "07:17:53", departure: "07:18:23", dwell_s: 30}
+      - {station: UNIVERSITY, platform: UNIVERSITY_1, arrival: "07:20:21", departure: "07:20:51", dwell_s: 30}
+      - {station: PARKSIDE, platform: PARKSIDE_1, arrival: "07:22:49", departure: "07:23:19", dwell_s: 30}
+      - {station: AIRPORT, platform: AIRPORT_1, arrival: "07:25:17", dwell_s: 20}
+# Down: Airport -> Harbour, the same flight offset by half a headway.
+  - id: D01
+    stock: METRO
+    departure: "07:00:37"
+    ready_lead_s: 30
+    calls:
+      - {station: AIRPORT, platform: AIRPORT_2, departure: "07:00:37", dwell_s: 20}
+      - {station: PARKSIDE, platform: PARKSIDE_2, arrival: "07:02:33", departure: "07:03:03", dwell_s: 30}
+      - {station: UNIVERSITY, platform: UNIVERSITY_2, arrival: "07:05:01", departure: "07:05:31", dwell_s: 30}
+      - {station: CENTRAL, platform: CENTRAL_2, arrival: "07:07:29", departure: "07:07:59", dwell_s: 30}
+      - {station: MARKET, platform: MARKET_2, arrival: "07:09:57", departure: "07:10:27", dwell_s: 30}
+      - {station: HARBOUR, platform: HARBOUR_2, arrival: "07:12:09", dwell_s: 20}
+  - id: D02
+    stock: METRO
+    departure: "07:01:52"
+    ready_lead_s: 30
+    calls:
+      - {station: AIRPORT, platform: AIRPORT_2, departure: "07:01:52", dwell_s: 20}
+      - {station: PARKSIDE, platform: PARKSIDE_2, arrival: "07:03:48", departure: "07:04:18", dwell_s: 30}
+      - {station: UNIVERSITY, platform: UNIVERSITY_2, arrival: "07:06:16", departure: "07:06:46", dwell_s: 30}
+      - {station: CENTRAL, platform: CENTRAL_2, arrival: "07:08:44", departure: "07:09:14", dwell_s: 30}
+      - {station: MARKET, platform: MARKET_2, arrival: "07:11:12", departure: "07:11:42", dwell_s: 30}
+      - {station: HARBOUR, platform: HARBOUR_2, arrival: "07:13:24", dwell_s: 20}
+  - id: D03
+    stock: METRO
+    departure: "07:03:07"
+    ready_lead_s: 30
+    calls:
+      - {station: AIRPORT, platform: AIRPORT_2, departure: "07:03:07", dwell_s: 20}
+      - {station: PARKSIDE, platform: PARKSIDE_2, arrival: "07:05:03", departure: "07:05:33", dwell_s: 30}
+      - {station: UNIVERSITY, platform: UNIVERSITY_2, arrival: "07:07:31", departure: "07:08:01", dwell_s: 30}
+      - {station: CENTRAL, platform: CENTRAL_2, arrival: "07:09:59", departure: "07:10:29", dwell_s: 30}
+      - {station: MARKET, platform: MARKET_2, arrival: "07:12:27", departure: "07:12:57", dwell_s: 30}
+      - {station: HARBOUR, platform: HARBOUR_2, arrival: "07:14:39", dwell_s: 20}
+  - id: D04
+    stock: METRO
+    departure: "07:04:22"
+    ready_lead_s: 30
+    calls:
+      - {station: AIRPORT, platform: AIRPORT_2, departure: "07:04:22", dwell_s: 20}
+      - {station: PARKSIDE, platform: PARKSIDE_2, arrival: "07:06:18", departure: "07:06:48", dwell_s: 30}
+      - {station: UNIVERSITY, platform: UNIVERSITY_2, arrival: "07:08:46", departure: "07:09:16", dwell_s: 30}
+      - {station: CENTRAL, platform: CENTRAL_2, arrival: "07:11:14", departure: "07:11:44", dwell_s: 30}
+      - {station: MARKET, platform: MARKET_2, arrival: "07:13:42", departure: "07:14:12", dwell_s: 30}
+      - {station: HARBOUR, platform: HARBOUR_2, arrival: "07:15:54", dwell_s: 20}
+  - id: D05
+    stock: METRO
+    departure: "07:05:37"
+    ready_lead_s: 30
+    calls:
+      - {station: AIRPORT, platform: AIRPORT_2, departure: "07:05:37", dwell_s: 20}
+      - {station: PARKSIDE, platform: PARKSIDE_2, arrival: "07:07:33", departure: "07:08:03", dwell_s: 30}
+      - {station: UNIVERSITY, platform: UNIVERSITY_2, arrival: "07:10:01", departure: "07:10:31", dwell_s: 30}
+      - {station: CENTRAL, platform: CENTRAL_2, arrival: "07:12:29", departure: "07:12:59", dwell_s: 30}
+      - {station: MARKET, platform: MARKET_2, arrival: "07:14:57", departure: "07:15:27", dwell_s: 30}
+      - {station: HARBOUR, platform: HARBOUR_2, arrival: "07:17:09", dwell_s: 20}
+  - id: D06
+    stock: METRO_LEGACY
+    departure: "07:06:52"
+    ready_lead_s: 30
+    calls:
+      - {station: AIRPORT, platform: AIRPORT_2, departure: "07:06:52", dwell_s: 20}
+      - {station: PARKSIDE, platform: PARKSIDE_2, arrival: "07:08:48", departure: "07:09:18", dwell_s: 30}
+      - {station: UNIVERSITY, platform: UNIVERSITY_2, arrival: "07:11:16", departure: "07:11:46", dwell_s: 30}
+      - {station: CENTRAL, platform: CENTRAL_2, arrival: "07:13:44", departure: "07:14:14", dwell_s: 30}
+      - {station: MARKET, platform: MARKET_2, arrival: "07:16:12", departure: "07:16:42", dwell_s: 30}
+      - {station: HARBOUR, platform: HARBOUR_2, arrival: "07:18:24", dwell_s: 20}
+  - id: D07
+    stock: METRO
+    departure: "07:08:07"
+    ready_lead_s: 30
+    calls:
+      - {station: AIRPORT, platform: AIRPORT_2, departure: "07:08:07", dwell_s: 20}
+      - {station: PARKSIDE, platform: PARKSIDE_2, arrival: "07:10:03", departure: "07:10:33", dwell_s: 30}
+      - {station: UNIVERSITY, platform: UNIVERSITY_2, arrival: "07:12:31", departure: "07:13:01", dwell_s: 30}
+      - {station: CENTRAL, platform: CENTRAL_2, arrival: "07:14:59", departure: "07:15:29", dwell_s: 30}
+      - {station: MARKET, platform: MARKET_2, arrival: "07:17:27", departure: "07:17:57", dwell_s: 30}
+      - {station: HARBOUR, platform: HARBOUR_2, arrival: "07:19:39", dwell_s: 20}
+  - id: D08
+    stock: METRO
+    departure: "07:09:22"
+    ready_lead_s: 30
+    calls:
+      - {station: AIRPORT, platform: AIRPORT_2, departure: "07:09:22", dwell_s: 20}
+      - {station: PARKSIDE, platform: PARKSIDE_2, arrival: "07:11:18", departure: "07:11:48", dwell_s: 30}
+      - {station: UNIVERSITY, platform: UNIVERSITY_2, arrival: "07:13:46", departure: "07:14:16", dwell_s: 30}
+      - {station: CENTRAL, platform: CENTRAL_2, arrival: "07:16:14", departure: "07:16:44", dwell_s: 30}
+      - {station: MARKET, platform: MARKET_2, arrival: "07:18:42", departure: "07:19:12", dwell_s: 30}
+      - {station: HARBOUR, platform: HARBOUR_2, arrival: "07:20:54", dwell_s: 20}
+  - id: D09
+    stock: METRO
+    departure: "07:10:37"
+    ready_lead_s: 30
+    calls:
+      - {station: AIRPORT, platform: AIRPORT_2, departure: "07:10:37", dwell_s: 20}
+      - {station: PARKSIDE, platform: PARKSIDE_2, arrival: "07:12:33", departure: "07:13:03", dwell_s: 30}
+      - {station: UNIVERSITY, platform: UNIVERSITY_2, arrival: "07:15:01", departure: "07:15:31", dwell_s: 30}
+      - {station: CENTRAL, platform: CENTRAL_2, arrival: "07:17:29", departure: "07:17:59", dwell_s: 30}
+      - {station: MARKET, platform: MARKET_2, arrival: "07:19:57", departure: "07:20:27", dwell_s: 30}
+      - {station: HARBOUR, platform: HARBOUR_2, arrival: "07:22:09", dwell_s: 20}
+  - id: D10
+    stock: METRO
+    departure: "07:11:52"
+    ready_lead_s: 30
+    calls:
+      - {station: AIRPORT, platform: AIRPORT_2, departure: "07:11:52", dwell_s: 20}
+      - {station: PARKSIDE, platform: PARKSIDE_2, arrival: "07:13:48", departure: "07:14:18", dwell_s: 30}
+      - {station: UNIVERSITY, platform: UNIVERSITY_2, arrival: "07:16:16", departure: "07:16:46", dwell_s: 30}
+      - {station: CENTRAL, platform: CENTRAL_2, arrival: "07:18:44", departure: "07:19:14", dwell_s: 30}
+      - {station: MARKET, platform: MARKET_2, arrival: "07:21:12", departure: "07:21:42", dwell_s: 30}
+      - {station: HARBOUR, platform: HARBOUR_2, arrival: "07:23:24", dwell_s: 20}
+  - id: D11
+    stock: METRO
+    departure: "07:13:07"
+    ready_lead_s: 30
+    calls:
+      - {station: AIRPORT, platform: AIRPORT_2, departure: "07:13:07", dwell_s: 20}
+      - {station: PARKSIDE, platform: PARKSIDE_2, arrival: "07:15:03", departure: "07:15:33", dwell_s: 30}
+      - {station: UNIVERSITY, platform: UNIVERSITY_2, arrival: "07:17:31", departure: "07:18:01", dwell_s: 30}
+      - {station: CENTRAL, platform: CENTRAL_2, arrival: "07:19:59", departure: "07:20:29", dwell_s: 30}
+      - {station: MARKET, platform: MARKET_2, arrival: "07:22:27", departure: "07:22:57", dwell_s: 30}
+      - {station: HARBOUR, platform: HARBOUR_2, arrival: "07:24:39", dwell_s: 20}
+  - id: D12
+    stock: METRO
+    departure: "07:14:22"
+    ready_lead_s: 30
+    calls:
+      - {station: AIRPORT, platform: AIRPORT_2, departure: "07:14:22", dwell_s: 20}
+      - {station: PARKSIDE, platform: PARKSIDE_2, arrival: "07:16:18", departure: "07:16:48", dwell_s: 30}
+      - {station: UNIVERSITY, platform: UNIVERSITY_2, arrival: "07:18:46", departure: "07:19:16", dwell_s: 30}
+      - {station: CENTRAL, platform: CENTRAL_2, arrival: "07:21:14", departure: "07:21:44", dwell_s: 30}
+      - {station: MARKET, platform: MARKET_2, arrival: "07:23:42", departure: "07:24:12", dwell_s: 30}
+      - {station: HARBOUR, platform: HARBOUR_2, arrival: "07:25:54", dwell_s: 20}

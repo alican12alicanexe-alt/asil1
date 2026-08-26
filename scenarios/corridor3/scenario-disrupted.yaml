@@ -1,0 +1,68 @@
+# corridor3 with something going wrong.
+#
+#   python run.py scenarios/corridor3/scenario-disrupted.yaml --propagation
+#   python run.py scenarios/corridor3/scenario-disrupted.yaml --propagation --compare
+#   python run.py scenarios/corridor3/scenario-disrupted.yaml            (watch it)
+#
+# Every measurement in this project so far has been of a railway working exactly
+# to plan. That is the right baseline, but it leaves out what operators actually
+# spend the day on, which is what happens after something slips - and it leaves
+# a traffic management system with nothing to manage.
+#
+# One incident is declared here: the 07:00 stopper stands four minutes over its
+# booked dwell at Beta. A held door, a passenger taken ill, a ramp deployed. It
+# is deliberately a *small* incident at the *worst place*: Beta is where the loop
+# road is, so a stopper standing over its time is standing in the way of the
+# overtake the whole timetable is built around.
+#
+# What it costs is measured as a difference. --propagation runs this scenario
+# twice, once with the incident and once without, and subtracts service by
+# service. The split that comes out is the useful one:
+#
+#   primary delay    time lost by the train the incident happened to. Four
+#                    minutes, and no signalling system can prevent it.
+#   knock-on delay   time lost by trains it merely got in the way of. This is a
+#                    property of the railway, not the incident, and it is what
+#                    better train control, more slack or a cleverer dispatcher
+#                    can actually reduce.
+#
+# Add --compare and the same incident is run through every ETCS level, which
+# asks the question capacity tables cannot: does better signalling make a line
+# more *resilient*, or only more crowded?
+
+name: corridor3-disrupted
+description: "corridor3 with the 07:00 stopper standing four minutes over its dwell at Beta - the incident the loop road exists to survive."
+
+infrastructure: infrastructure.yaml
+timetable: timetable.yaml
+
+simulation:
+  dt: 1.0
+  start_time: "06:55:00"
+  duration_s: 4500
+  strict: false
+
+# Declared, not random. A random disturbance model would need calibration nobody
+# here can supply and would make runs irreproducible, which would wreck the one
+# property that makes every comparison in this project trustworthy. A named
+# incident at a named place answers "what does *this* do", which is the question
+# a study actually asks.
+disruptions:
+  - kind: dwell_overrun
+    service: S1
+    station: BETA
+    minutes: 4
+    reason: passenger taken ill
+
+signalling:
+  system: fixed_block_3aspect
+  sighting_distance_m: 250
+
+driver:
+  reaction_time_s: 2.0
+  safety_margin_m: 25.0
+  stop_tolerance_m: 1.0
+
+view:
+  title: "corridor3 - S1 held four minutes at Beta"
+  speed: 30

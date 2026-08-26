@@ -1,0 +1,245 @@
+# junction - main line and branch services competing for Beta.
+#
+# Four patterns, all booked on the run times a single unimpeded train achieves,
+# so each is workable on its own. What is not workable on its own is the
+# combination: the branch up service is booked to arrive at Beta ninety seconds
+# behind a main line service, and both want platform BETA_1.
+#
+# There is only one road each way at Beta, deliberately. Give the branch its own
+# bay platform and the conflict vanishes - which is exactly why bay platforms at
+# junction stations are expensive and worth it.
+#
+# What happens is not a crash and not a violation. The interlocking simply
+# refuses the second route request:
+#
+#     route_refused  BU2  R_BETA_1_from_BR_UP_JN: PT_UP_13400_T locked to
+#                         UP_007 by R_BETA_1_from_UP_007, set for MU2
+#
+# and the branch train stands at its signal on the junction link until the main
+# line train has gone. That is correct, safe, and the whole problem: nothing in
+# this simulator decided that the main line train should go first. It went first
+# because it asked first.
+#
+#   python run.py scenarios/junction --events | grep route_refused
+#   python run.py scenarios/junction --compare
+
+stock:
+  - id: EMU_MAIN
+    name: Main line EMU
+    length_m: 200
+    max_speed_kmh: 140
+    max_accel: 0.9
+    service_brake: 0.7
+    emergency_brake: 1.2
+    etcs_level: l2
+    tims: true
+
+  # Shorter, slower, and it has to cross the junction at 60 km/h - so it occupies
+  # the conflicting point for longer than the train it is delaying.
+  - id: DMU_BRANCH
+    name: Branch DMU
+    length_m: 90
+    max_speed_kmh: 100
+    max_accel: 0.8
+    service_brake: 0.7
+    emergency_brake: 1.1
+    etcs_level: l2
+    tims: true
+
+services:
+# Main line up: Alpha - Beta - Gamma, every 6 minutes.
+  - id: MU1
+    stock: EMU_MAIN
+    departure: "07:00:00"
+    ready_lead_s: 60
+    calls:
+      - {station: ALPHA, platform: ALPHA_1, departure: "07:00:00", dwell_s: 30}
+      - {station: BETA, platform: BETA_1, arrival: "07:06:31", departure: "07:07:16", dwell_s: 45}
+      - {station: GAMMA, platform: GAMMA_1, arrival: "07:14:41", dwell_s: 30}
+  - id: MU2
+    stock: EMU_MAIN
+    departure: "07:06:00"
+    ready_lead_s: 60
+    calls:
+      - {station: ALPHA, platform: ALPHA_1, departure: "07:06:00", dwell_s: 30}
+      - {station: BETA, platform: BETA_1, arrival: "07:12:31", departure: "07:13:16", dwell_s: 45}
+      - {station: GAMMA, platform: GAMMA_1, arrival: "07:20:41", dwell_s: 30}
+  - id: MU3
+    stock: EMU_MAIN
+    departure: "07:12:00"
+    ready_lead_s: 60
+    calls:
+      - {station: ALPHA, platform: ALPHA_1, departure: "07:12:00", dwell_s: 30}
+      - {station: BETA, platform: BETA_1, arrival: "07:18:31", departure: "07:19:16", dwell_s: 45}
+      - {station: GAMMA, platform: GAMMA_1, arrival: "07:26:41", dwell_s: 30}
+  - id: MU4
+    stock: EMU_MAIN
+    departure: "07:18:00"
+    ready_lead_s: 60
+    calls:
+      - {station: ALPHA, platform: ALPHA_1, departure: "07:18:00", dwell_s: 30}
+      - {station: BETA, platform: BETA_1, arrival: "07:24:31", departure: "07:25:16", dwell_s: 45}
+      - {station: GAMMA, platform: GAMMA_1, arrival: "07:32:41", dwell_s: 30}
+  - id: MU5
+    stock: EMU_MAIN
+    departure: "07:24:00"
+    ready_lead_s: 60
+    calls:
+      - {station: ALPHA, platform: ALPHA_1, departure: "07:24:00", dwell_s: 30}
+      - {station: BETA, platform: BETA_1, arrival: "07:30:31", departure: "07:31:16", dwell_s: 45}
+      - {station: GAMMA, platform: GAMMA_1, arrival: "07:38:41", dwell_s: 30}
+  - id: MU6
+    stock: EMU_MAIN
+    departure: "07:30:00"
+    ready_lead_s: 60
+    calls:
+      - {station: ALPHA, platform: ALPHA_1, departure: "07:30:00", dwell_s: 30}
+      - {station: BETA, platform: BETA_1, arrival: "07:36:31", departure: "07:37:16", dwell_s: 45}
+      - {station: GAMMA, platform: GAMMA_1, arrival: "07:44:41", dwell_s: 30}
+# Branch up: Halt - Beta - Gamma, joining the up main at Beta.
+  - id: BU1
+    stock: DMU_BRANCH
+    departure: "07:01:30"
+    ready_lead_s: 60
+    calls:
+      - {station: HALT, platform: HALT_1, departure: "07:01:30", dwell_s: 30}
+      - {station: BETA, platform: BETA_1, arrival: "07:06:54", departure: "07:07:39", dwell_s: 45}
+      - {station: GAMMA, platform: GAMMA_1, arrival: "07:17:30", dwell_s: 30}
+  - id: BU2
+    stock: DMU_BRANCH
+    departure: "07:07:30"
+    ready_lead_s: 60
+    calls:
+      - {station: HALT, platform: HALT_1, departure: "07:07:30", dwell_s: 30}
+      - {station: BETA, platform: BETA_1, arrival: "07:12:54", departure: "07:13:39", dwell_s: 45}
+      - {station: GAMMA, platform: GAMMA_1, arrival: "07:23:30", dwell_s: 30}
+  - id: BU3
+    stock: DMU_BRANCH
+    departure: "07:13:30"
+    ready_lead_s: 60
+    calls:
+      - {station: HALT, platform: HALT_1, departure: "07:13:30", dwell_s: 30}
+      - {station: BETA, platform: BETA_1, arrival: "07:18:54", departure: "07:19:39", dwell_s: 45}
+      - {station: GAMMA, platform: GAMMA_1, arrival: "07:29:30", dwell_s: 30}
+  - id: BU4
+    stock: DMU_BRANCH
+    departure: "07:19:30"
+    ready_lead_s: 60
+    calls:
+      - {station: HALT, platform: HALT_1, departure: "07:19:30", dwell_s: 30}
+      - {station: BETA, platform: BETA_1, arrival: "07:24:54", departure: "07:25:39", dwell_s: 45}
+      - {station: GAMMA, platform: GAMMA_1, arrival: "07:35:30", dwell_s: 30}
+  - id: BU5
+    stock: DMU_BRANCH
+    departure: "07:25:30"
+    ready_lead_s: 60
+    calls:
+      - {station: HALT, platform: HALT_1, departure: "07:25:30", dwell_s: 30}
+      - {station: BETA, platform: BETA_1, arrival: "07:30:54", departure: "07:31:39", dwell_s: 45}
+      - {station: GAMMA, platform: GAMMA_1, arrival: "07:41:30", dwell_s: 30}
+  - id: BU6
+    stock: DMU_BRANCH
+    departure: "07:31:30"
+    ready_lead_s: 60
+    calls:
+      - {station: HALT, platform: HALT_1, departure: "07:31:30", dwell_s: 30}
+      - {station: BETA, platform: BETA_1, arrival: "07:36:54", departure: "07:37:39", dwell_s: 45}
+      - {station: GAMMA, platform: GAMMA_1, arrival: "07:47:30", dwell_s: 30}
+# Main line down: Gamma - Beta - Alpha.
+  - id: MD1
+    stock: EMU_MAIN
+    departure: "07:03:00"
+    ready_lead_s: 60
+    calls:
+      - {station: GAMMA, platform: GAMMA_2, departure: "07:03:00", dwell_s: 30}
+      - {station: BETA, platform: BETA_2, arrival: "07:10:25", departure: "07:11:10", dwell_s: 45}
+      - {station: ALPHA, platform: ALPHA_2, arrival: "07:17:43", dwell_s: 30}
+  - id: MD2
+    stock: EMU_MAIN
+    departure: "07:09:00"
+    ready_lead_s: 60
+    calls:
+      - {station: GAMMA, platform: GAMMA_2, departure: "07:09:00", dwell_s: 30}
+      - {station: BETA, platform: BETA_2, arrival: "07:16:25", departure: "07:17:10", dwell_s: 45}
+      - {station: ALPHA, platform: ALPHA_2, arrival: "07:23:43", dwell_s: 30}
+  - id: MD3
+    stock: EMU_MAIN
+    departure: "07:15:00"
+    ready_lead_s: 60
+    calls:
+      - {station: GAMMA, platform: GAMMA_2, departure: "07:15:00", dwell_s: 30}
+      - {station: BETA, platform: BETA_2, arrival: "07:22:25", departure: "07:23:10", dwell_s: 45}
+      - {station: ALPHA, platform: ALPHA_2, arrival: "07:29:43", dwell_s: 30}
+  - id: MD4
+    stock: EMU_MAIN
+    departure: "07:21:00"
+    ready_lead_s: 60
+    calls:
+      - {station: GAMMA, platform: GAMMA_2, departure: "07:21:00", dwell_s: 30}
+      - {station: BETA, platform: BETA_2, arrival: "07:28:25", departure: "07:29:10", dwell_s: 45}
+      - {station: ALPHA, platform: ALPHA_2, arrival: "07:35:43", dwell_s: 30}
+  - id: MD5
+    stock: EMU_MAIN
+    departure: "07:27:00"
+    ready_lead_s: 60
+    calls:
+      - {station: GAMMA, platform: GAMMA_2, departure: "07:27:00", dwell_s: 30}
+      - {station: BETA, platform: BETA_2, arrival: "07:34:25", departure: "07:35:10", dwell_s: 45}
+      - {station: ALPHA, platform: ALPHA_2, arrival: "07:41:43", dwell_s: 30}
+  - id: MD6
+    stock: EMU_MAIN
+    departure: "07:33:00"
+    ready_lead_s: 60
+    calls:
+      - {station: GAMMA, platform: GAMMA_2, departure: "07:33:00", dwell_s: 30}
+      - {station: BETA, platform: BETA_2, arrival: "07:40:25", departure: "07:41:10", dwell_s: 45}
+      - {station: ALPHA, platform: ALPHA_2, arrival: "07:47:43", dwell_s: 30}
+# Branch down: Gamma - Beta - Halt, leaving the down main at Beta.
+  - id: BD1
+    stock: DMU_BRANCH
+    departure: "07:04:30"
+    ready_lead_s: 60
+    calls:
+      - {station: GAMMA, platform: GAMMA_2, departure: "07:04:30", dwell_s: 30}
+      - {station: BETA, platform: BETA_2, arrival: "07:14:21", departure: "07:15:06", dwell_s: 45}
+      - {station: HALT, platform: HALT_2, arrival: "07:20:23", dwell_s: 30}
+  - id: BD2
+    stock: DMU_BRANCH
+    departure: "07:10:30"
+    ready_lead_s: 60
+    calls:
+      - {station: GAMMA, platform: GAMMA_2, departure: "07:10:30", dwell_s: 30}
+      - {station: BETA, platform: BETA_2, arrival: "07:20:21", departure: "07:21:06", dwell_s: 45}
+      - {station: HALT, platform: HALT_2, arrival: "07:26:23", dwell_s: 30}
+  - id: BD3
+    stock: DMU_BRANCH
+    departure: "07:16:30"
+    ready_lead_s: 60
+    calls:
+      - {station: GAMMA, platform: GAMMA_2, departure: "07:16:30", dwell_s: 30}
+      - {station: BETA, platform: BETA_2, arrival: "07:26:21", departure: "07:27:06", dwell_s: 45}
+      - {station: HALT, platform: HALT_2, arrival: "07:32:23", dwell_s: 30}
+  - id: BD4
+    stock: DMU_BRANCH
+    departure: "07:22:30"
+    ready_lead_s: 60
+    calls:
+      - {station: GAMMA, platform: GAMMA_2, departure: "07:22:30", dwell_s: 30}
+      - {station: BETA, platform: BETA_2, arrival: "07:32:21", departure: "07:33:06", dwell_s: 45}
+      - {station: HALT, platform: HALT_2, arrival: "07:38:23", dwell_s: 30}
+  - id: BD5
+    stock: DMU_BRANCH
+    departure: "07:28:30"
+    ready_lead_s: 60
+    calls:
+      - {station: GAMMA, platform: GAMMA_2, departure: "07:28:30", dwell_s: 30}
+      - {station: BETA, platform: BETA_2, arrival: "07:38:21", departure: "07:39:06", dwell_s: 45}
+      - {station: HALT, platform: HALT_2, arrival: "07:44:23", dwell_s: 30}
+  - id: BD6
+    stock: DMU_BRANCH
+    departure: "07:34:30"
+    ready_lead_s: 60
+    calls:
+      - {station: GAMMA, platform: GAMMA_2, departure: "07:34:30", dwell_s: 30}
+      - {station: BETA, platform: BETA_2, arrival: "07:44:21", departure: "07:45:06", dwell_s: 45}
+      - {station: HALT, platform: HALT_2, arrival: "07:50:23", dwell_s: 30}

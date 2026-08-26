@@ -1,0 +1,1047 @@
+# TrainSim
+
+A schematic-level, microscopic railway simulator in Python — a testbed for
+railway systems questions rather than a game. It exists to answer things like
+*how many trains per hour will this line carry*, *what would ERTMS/ETCS change*,
+and *can a smarter dispatcher recover this timetable*.
+
+Deliberately **dependency-free**: the simulator and its schematic view run on a
+bare Python install with nothing to `pip install`, so it works on a locked-down
+machine.
+
+```
+python run.py scenarios/corridor3              # live schematic
+python run.py scenarios/corridor3 --headless   # no window, prints a summary
+python run.py scenarios/corridor3 --check      # validate and report on the layout
+python run.py scenarios/corridor3 --compare    # every ETCS level, side by side
+python run.py scenarios/corridor3 --system etcs_moving_block   # watch one
+python run.py scenarios/metro --compare        # the other line, opposite answer
+python run.py scenarios/metro/scenario-disrupted.yaml --propagation
+python run.py scenarios/junction --check       # a real junction's route table
+python run_tests.py                            # 182 tests, stdlib unittest
+```
+
+Requires Python 3.7+. `requirements-optional.txt` lists things that make it
+nicer, none of which are needed. **[COMMANDS.md](COMMANDS.md)** is the full
+command reference: every mode, every option, every scenario, and how to read the
+output.
+
+---
+
+## What Milestone 1 does
+
+A 30 km double-track corridor — **Alpha** (km 0), **Beta** (km 12), **Gamma**
+(km 30) — under conventional three-aspect fixed-block signalling, with nine
+services over 75 simulated minutes.
+
+The scenario is built around one operational idea: a 140 km/h fast follows a
+120 km/h stopper two minutes behind. Under fixed block it gets repeatedly
+**checked down by yellow signals** — braking to about 60 km/h and
+re-accelerating each time the signal clears — until the stopper takes the **loop
+road at Beta**, at which point the fast gets a green and **overtakes** it.
+That concertina is the characteristic capacity cost of mixed-speed traffic, and
+it is exactly what the later ERTMS levels are meant to reduce.
+
+Watch it: run the view, press `z` a few times over Beta around 07:07.
+
+### Controls
+
+| key | action |
+|---|---|
+| `space` | pause / resume |
+| `b` | braking envelopes and authority markers on / off |
+| `.` | single step while paused |
+| `+` / `-` | faster / slower |
+| `←` / `→` | pan |
+| `z` / `x` | zoom in / out |
+| `0` | reset the view |
+| `q`, `Esc` | quit |
+
+In the view: signal lamps show the live aspect, occupied blocks tint red, trains
+are blue on the up line and orange on the down, purple while dwelling. The table
+underneath says what is governing each train — `line speed`, `obeying caution`,
+`signal at danger`, `station stop BETA`.
+
+**The view follows the signalling system.** Run `--system etcs_moving_block` and
+the lamps disappear — Level 2 and above put the authority in the cab and leave
+only unlit marker boards on the ground, so drawing green lamps would be a picture
+of a railway that does not exist. Blocks stop tinting too: under distance
+separation a block is not the unit of safety. What you get instead is the moving
+block itself — a hatched **braking envelope** travelling with each train, the
+distance it needs to stop, shrinking as it slows, with a cyan tick where its
+authority runs out.
+
+Those envelopes are drawn under *every* system, and that is the clearest single
+picture in the project: under fixed block each train's envelope sits inside a lit
+block several times longer than it. The difference is the space fixed block
+throws away.
+
+---
+
+## How it is put together
+
+```
+run.py                       launcher (no install needed)
+run_tests.py                 test runner (no pytest needed)
+scenarios/corridor3/         a main line: 30 km, three stations, a loop at Beta
+scenarios/metro/             an urban line: 12 km, six stations, no overtaking
+scenarios/junction/          a branch converging on a main line at Beta,
+                             flat and grade separated
+scenarios/fourtrack/         four running lines, and crossovers between them
+trainsim/
+  core/
+    units.py                 SI conversions and the braking-curve formulae
+    network.py               nodes, segments, platforms, stations, path finding
+    signals.py               block sections, occupancy, three-aspect logic
+    train.py                 rolling stock, paths, train state, kinematics
+    driver.py                braking curve -> acceleration
+    timetable.py             services (the plan) vs trains (the execution)
+    points.py                switches, derived from the topology
+    routes.py                the route table: what movements exist
+    interlocking.py          may this movement be made?  <- the safety layer
+    vss.py                   virtual sub-sections, for Hybrid Level 3
+    dispatcher.py            train lifecycle + route requests; the seat for a TMS
+    disruption.py            declared perturbation, and the speed-limit seam
+    simulation.py            the fixed-timestep kernel
+    signalling/
+      base.py                SignallingSystem + MovementAuthority  <- the seam
+      common.py              where is the first point this train may not pass?
+      fixed_block.py         conventional three-aspect
+      etcs.py                ETCS L1, L2 and full moving block
+      hybrid_l3.py           Hybrid Level 3 over virtual sub-sections
+  analysis/
+    kpi.py                   run metrics and the side-by-side comparison
+    propagation.py           primary vs knock-on delay, by difference
+  scenario/
+    builder.py               expands a compact line description into a railway
+    loader.py                reads YAML/JSON, assembles a Simulation
+    checks.py                signal spacing, and whether the plan is workable
+    schema.py                what keys a scenario file may contain
+    minyaml.py               YAML-subset parser, so no PyYAML is needed
+  viz/
+    layout.py                schematic coordinates -> pixels
+    schematic_tk.py          the live view (tkinter)
+```
+
+### The kernel
+
+Fixed timestep, 1 simulated second per tick, deterministic. Each tick:
+
+1. **dispatch** — introduce services, run dwells, terminate arrivals
+2. **sense** — each running train observes the signalling and gets a movement
+   authority, all against the *same* occupancy snapshot, so the result never
+   depends on dictionary ordering
+3. **decide and move** — the driver turns the authority into an acceleration
+4. **update** — rebuild occupancy and aspects, then assert that no block holds
+   two trains
+
+### The seam that matters
+
+Every train control system is an implementation of one interface:
+
+```python
+class SignallingSystem:
+    def observe(self, train, sim): ...           # what the driver learns, and when
+    def movement_authority(self, train, sim) -> MovementAuthority: ...
+```
+
+`MovementAuthority` is just *how far may this train go, and how fast*. The
+kernel, the driver and the trains know nothing else about signalling. ETCS L1/L2,
+Hybrid Level 3 and moving block are therefore additions here rather than
+rewrites — and the headway differences between them fall out of the braking
+physics instead of being tuned constants.
+
+Conventional signalling models the discreteness explicitly: a driver only learns
+the state of the railway when a signal is sighted or passed, so braking for an
+occupied block begins at the yellow signal one block back rather than where
+braking would actually need to start. That is precisely the time ETCS L2 gets
+back.
+
+### The interlocking
+
+Milestone 2. Everything that wants a train to move asks the same question - *may
+this movement be made?* - and one component answers it:
+
+```
+dispatcher/TMS  ->  route request  ->  INTERLOCKING  ->  route locked
+                                              |
+                          signal or RBC  <----+  ->  MovementAuthority  ->  driver
+```
+
+It grants a route only when the route exists in the table, no other route holds
+its block, the block is clear, and every point it needs is free or already lying
+the right way. Then it throws and locks the points, locks the route, and lets the
+signal clear. Refusals come back with the reason a signaller would be given:
+`PT_UP_11250_F locked to BETA_3 by R_BETA_3, set for S1`.
+
+**It is a separate component from the signalling system, on purpose.** The
+interlocking logic is identical under conventional signals, ETCS L1, L2 and L3;
+what differs is only how the resulting authority reaches the driver. Putting it
+inside `SignallingSystem` would mean reimplementing it four times.
+
+**Points and routes are derived, not declared.** Nothing in the scenario file
+mentions either. Two segments leaving a node is a facing point; two arriving is a
+trailing point; the route table is generated from there. A route is *controlled*
+if it needs points - otherwise it is plain automatic block and its signal simply
+follows occupancy. corridor3 has 2 points and 34 routes, 4 of them controlled.
+
+**Sectional release is what makes the railway work.** Each point is given back the
+moment the train's rear is past it, not when the whole movement finishes:
+
+```
+07:04:22  points          S1   PT_UP_11250_F to BETA_3
+07:04:22  route_set       S1   R_BETA_3 (into BETA_3, PT_UP_11250_F to BETA_3)
+07:05:26  points_released S1   PT_UP_11250_F      <- S1 is still standing in the loop
+07:06:07  points          F1   PT_UP_11250_F to BETA_1
+07:06:07  route_set       F1   R_BETA_1
+07:07:05  route_set       F1   R_UP_007_from_BETA_1 (PT_UP_12750_T to BETA_1)
+07:10:00  route_set       S1   R_UP_007_from_BETA_3 (60 s before its booked departure)
+```
+
+Hold the points until the whole route clears and a train dwelling in the loop
+blocks the road behind it - the overtake the loop exists for becomes impossible.
+A test asserts the release happens *while* S1 is still in the loop, for exactly
+that reason.
+
+Two design details that turned out to matter, both found by the simulation
+failing:
+
+- **A route must not reach past its exit signal.** The route into the loop holds
+  only the points at the near end; the route *out* is a separate request made
+  when the train departs. Fold them together and the standing train keeps the far
+  points for its whole dwell.
+- **A signal reads the signal ahead, not the block ahead.** A controlled signal
+  protecting a clear block still stands at danger when no route is set, and the
+  signal behind has to warn about that exactly as it would about an occupied
+  block. Computing aspects from occupancy alone put a green immediately before a
+  red, with no braking distance in between.
+
+Set `interlocking: {enabled: false}` to run without it, as idealised automatic
+block. On corridor3 that gets the fast train to Gamma 33 s earlier - the
+measurable cost of route-based control.
+
+### The ETCS levels
+
+Milestone 3. Five train control systems, all reading the same interlocking, all
+using the same braking physics, driver model and timetable. They differ along
+exactly two axes and nothing else:
+
+| system | danger point from | train learns it |
+|---|---|---|
+| conventional 3-aspect | fixed-block detection | lineside lamp, at sighting range |
+| ETCS Level 1 | fixed-block detection | at a balise (lineside overlay) |
+| ETCS Level 2 | fixed-block detection | continuously, by radio |
+| Hybrid Level 3 | virtual sub-sections | continuously, by radio |
+| moving block (L3) | rear of the train ahead | continuously, by radio |
+
+`--compare` runs one timetable through all of them:
+
+```
+signalling               journey   vs base restrained  min hdwy   auth m   done
+-------------------------------------------------------------------------------
+fixed_block_3aspect        17:32         -      5156s       90s     1363  12/12
+etcs_l1                    16:38     -0:53      4297s       90s     1814  12/12
+etcs_l2                    15:20     -2:12      2105s       90s     2174  12/12
+etcs_hybrid_l3             13:32     -4:00        76s       90s     3122  12/12
+etcs_moving_block          13:32     -4:00        54s       90s     3283  12/12
+```
+
+*(`scenarios/corridor3/scenario-intensive.yaml` - twelve services at a 90-second
+interval, deliberately closer than fixed block can deliver.)*
+
+Moving block saves **4 minutes on a 30 km run, 23%**. Nothing in the code was
+tuned to produce that: the numbers fall out of braking curves and the information
+each system gives the train. `restrained` - seconds trains spent held down by
+signalling rather than by line speed or a booked stop - falls from 5156 s to
+54 s, and `auth m` - how far ahead a train was actually allowed to run - more than
+doubles. Those two columns are the mechanism; journey time is only the result.
+
+**Hybrid Level 3 captures essentially all of moving block's benefit** (13:32
+against 13:32) without needing every train to report its position and confirm its
+integrity. That is exactly its selling point, and it is the reason it is a
+Shift2Rail flagship rather than an academic curiosity.
+
+#### Below capacity, the levels converge
+
+The same comparison on the *default* corridor3 timetable, which is well under
+capacity:
+
+```
+fixed_block_3aspect        18:18         -       429s
+etcs_l2                    18:01   on time        66s
+etcs_moving_block          18:01   on time        66s
+```
+
+Seventeen seconds, and moving block adds nothing over Level 2. This is the right
+answer and the model has to produce it: on a railway that is not busy there is
+nothing for better separation to win. A capacity claim is meaningless without the
+traffic level stated alongside it, and a test asserts this convergence precisely
+so the model cannot drift into flattering the technology.
+
+#### Virtual sub-sections and mixed fitment
+
+Hybrid Level 3 keeps the physical train detection sections and subdivides each
+into virtual sub-sections, each holding one of four states after the ABZ 2018
+formulation - **free**, **occupied**, **ambiguous**, **unknown**. Only *free* may
+be given away in an authority, and that one rule is what makes mixed fitment safe:
+
+- a train that reports position **and** confirms integrity (TIMS) resolves to the
+  sub-sections it really covers - fine granularity, near-moving-block headway
+- a train that reports position but **cannot** confirm integrity marks what is
+  behind its reported front **ambiguous**, because the rest of it may still be
+  there
+- a train that reports nothing marks its whole block **unknown**, which is Level 2
+  behaviour - safe, just coarse
+
+So a partly-fitted fleet degrades gracefully instead of failing, which is the
+whole point during migration. Tests drive a fitted train behind each kind of
+leader and assert the following distance changes the right way.
+
+Set fitment per rolling stock type:
+
+```yaml
+stock:
+  - id: EMU_FAST
+    etcs_level: l2      # none | l1 | l2 | l3
+    tims: true          # can it confirm its own integrity?
+```
+
+#### Seeing it: fixed block against moving block
+
+The same twelve trains, the same second, on the intensive timetable:
+
+| | fixed block | moving block |
+|---|---|---|
+| lineside | red / yellow / green lamps throughout | nothing lit, marker boards only |
+| track | whole blocks lit red | untinted; a braking envelope per train |
+| speeds | 140, 109, 105, 76, **63**, 140, 77 km/h | every train 140 km/h |
+| governed by | three trains `obeying caution` | every train `line speed` |
+| spacing | 22.7, 17.4, 14.3, 11.1, 7.7, 5.2, 2.8 km | 24.0, 20.5, 17.0, 13.5, 10.0, 6.5, 3.0 km |
+
+The spacing column is the whole story. Under moving block the trains sit exactly
+3.5 km apart — 90 seconds at line speed, which is what the timetable asked for.
+Under fixed block the gaps are ragged, because each train is being checked down
+behind the one in front and then released: the concertina, visible as a shape
+rather than a number.
+
+#### Two things the model insisted on
+
+- **Block exclusivity is not a universal safety property.** Under moving block two
+  trains sharing a block section is the entire point. Each system now declares
+  `separates_by = "block"` or `"distance"`, and the kernel picks its invariant
+  accordingly - but *physical separation*, no train's front passing another's
+  rear, is asserted for all five.
+- **A train must not be blocked by its own footprint.** An unfitted train marks
+  every sub-section of its block unknown, including the ones ahead of its own
+  nose, so sub-sections record who claimed them - the same reason
+  `Occupancy.is_free` takes an `ignoring` argument.
+
+### The metro line: where moving block actually pays
+
+corridor3 is a main line, and on a main line most of what ETCS buys is the
+removal of the driver's *sighting and reaction* penalty — which is why Level 2
+captures nearly all of the benefit there. `scenarios/metro` is the other kind of
+railway, and it gives the opposite answer.
+
+Twelve km, six stations 2.2–2.6 km apart, 90 km/h, 120 m units, every train
+calling everywhere, no loops and nothing to overtake. Twelve trains an hour each
+way, booked at a **75-second headway** on the run times a single unimpeded train
+achieves — so the plan is conflict-free by construction, and any delay that
+appears is the signalling refusing to deliver it.
+
+```
+signalling               journey   vs base restrained  min hdwy   auth m   done
+-------------------------------------------------------------------------------
+fixed_block_3aspect        13:07         -      2755s       75s      734  24/24
+etcs_l1                    13:07   on time      2755s       75s     1147  24/24
+etcs_l2                    13:06   on time      2622s       75s     1159  24/24
+etcs_hybrid_l3             11:56     -1:11       591s       75s     1335  24/24
+etcs_moving_block          11:52     -1:14         0s       75s     1370  24/24
+```
+
+**Level 2 saves one second.** Not because anything is broken — because what is
+holding the following train back here is not what it can see. It is that the
+train in front occupies a whole 500 m detection section while it stands at the
+platform with its doors open, and Level 2 still separates by section. The cost
+being removed on a main line is *sighting*; the cost here is *granularity*, and
+only making the granularity finer (Hybrid L3) or abolishing it (moving block)
+touches it.
+
+Moving block's restraint column reads **`0s`** — not one second, across
+twenty-four services, in which any train was held back by another. Run it
+headless and every service arrives to the second. Under fixed block:
+
+```
+U04 +0:40   U05 +0:53   U06 +1:07   U07 +1:21   U08 +1:35
+U09 +1:49   U10 +2:03   U11 +2:17   U12 +2:31
+```
+
+Fourteen seconds more per train, never recovering. Fixed block settles at an
+**89-second station headway** on this line: 40 trains an hour where the timetable
+asked for 48.
+
+The constraint really is the station and not the signal spacing, which is what
+makes the comparison mean anything — `--check` reports the open line implying a
+45–63 s fixed-block headway, comfortably inside 75. A test asserts that, because
+if the blocks were simply too long for the headway then fixed block failing would
+prove nothing except that the layout had been badly signalled.
+
+#### The two limits on the other side
+
+It would be easy to read the above as *distance separation removes the limit*. It
+does not; it moves it. Two variants say where it lands.
+
+**`scenario-60.yaml` — the same flight at 60 s.** Nothing delivers it: fixed
+block +163 s, Level 2 +162 s, moving block +51 s. What is left is not signalling
+at all:
+
+```
+station headway  =  dwell
+                 +  the time the follower needs to close up and berth
+                 +  the time the leader needs to pull clear of the platform
+```
+
+With a 30-second dwell and 1.1 m/s² those come to a little under 60 s here, so
+the flight loses time station by station. The way out is shorter dwells —
+platform-edge doors, wider doors, passenger flow — or more acceleration. That is
+why metro capacity programmes spend as much on doors as on train control.
+
+**`scenario-mixed.yaml` — two units without integrity monitoring.** U06 and D06
+report their position but cannot confirm their rear, so moving block will not
+follow them by distance and falls back to section separation. Per train:
+
+| | U01–U05 | **U06** | U07 | U08 | U09 | U10 | U11 | U12 |
+|---|---|---|---|---|---|---|---|---|
+| restrained | 0 s | **0 s** | 66 s | 62 s | 58 s | 34 s | 16 s | 16 s |
+| delay | on time | **on time** | +13 s | +10 s | +7 s | +4 s | +4 s | +4 s |
+
+The unfitted unit runs its booked path perfectly and pays nothing. The entire
+cost of not fitting it falls on the services behind, and it never washes out —
+the delay settles at four seconds rather than returning to zero, because a plan
+booked at the achievable headway has no slack anywhere to absorb it. Whether to
+fit a unit is therefore not a decision about that unit.
+
+Note also that every one of those delays is inside the 30-second tolerance the
+summary reports as `on time`, so `--headless` shows nothing wrong at all. The
+damage this does is not lateness; it is capacity, and it is only visible in the
+restrained-seconds column. That is worth remembering before reading a punctuality
+figure as evidence that a railway has headroom.
+
+Hybrid Level 3 is not a free rescue here either, which is worth knowing before
+quoting it as one. Its default four sub-sections per section is 150 m on this
+line, against the ~145 m a moving-block authority leaves on a platform approach,
+so out of the box it comes out slightly *worse* rather than better. Sweeping the
+granularity on the 75-second timetable:
+
+| `vss_per_block` | 4 (150 m) | 6 (100 m) | 8 (75 m) | 12 (50 m) |
+|---|---|---|---|---|
+| mean delay | +4 s | +3 s | on time | on time |
+| restrained | 591 s | 232 s | 108 s | **0 s** |
+
+So sub-sections want sizing against braking distance at the local speed rather
+than counting per block — a conclusion the scenario produced rather than one
+built into it, and exactly the sort of thing an HL3 deployment has to decide.
+
+### When something goes wrong
+
+Everything above is a railway working to plan. That is the right baseline, but it
+leaves out what operators spend the day on — and it leaves a traffic management
+system with nothing to manage.
+
+Three kinds of disturbance can be **declared** in a scenario file: a service
+starting late, a train standing over its dwell, and a temporary speed restriction
+over a stretch of line for a window of time.
+
+```yaml
+disruptions:
+  - kind: dwell_overrun
+    service: S1
+    station: BETA
+    minutes: 4                    # or seconds:
+    reason: passenger taken ill
+  - {kind: late_start, service: F2, minutes: 3}
+  - kind: speed_restriction
+    track: UP                     # omit for every line
+    from_km: 18
+    to_km: 22                     # written in either order
+    max_speed_kmh: 40
+    from_time: "07:00"            # omit for the whole run
+    to_time: "07:40"
+```
+
+Declared, not random. A random disturbance model would need calibration nobody
+here can supply and would make runs irreproducible — which would destroy the one
+property every comparison in this project rests on. A named incident answers
+*what does this do*, which is the question a study actually asks.
+
+`--propagation` runs the scenario **twice**, with the incident and without it, and
+subtracts service by service. That difference splits in two, and the split is the
+point:
+
+- **primary delay** — time lost by the service the incident happened to. No
+  signalling system can prevent it.
+- **knock-on delay** — time lost by services it merely got in the way of. This is
+  a property of the *railway*, not the incident, and it is the part better
+  signalling, more slack or a cleverer dispatcher can reduce.
+
+#### The same incident on two railways
+
+corridor3, where the 07:00 stopper stands four minutes over at Beta — a line with
+a loop road, mixed speeds and running-time supplement in the timetable:
+
+```
+  primary delay       240 s
+  knock-on delay       49 s
+  propagation        0.20 s of knock-on per second of primary
+```
+
+One other train, F2, loses 49 seconds. Everything else runs untouched: the loop
+absorbs it, which is what the loop is for.
+
+The metro, where U05 stands ninety seconds over at Central — no loops, nothing to
+overtake, and a plan booked at the achievable headway with no slack anywhere:
+
+```
+  primary delay        88 s
+  knock-on delay      630 s
+  propagation        7.16 s of knock-on per second of primary
+```
+
+**Thirty-five times the amplification, from a smaller incident.** And the shape
+of it is the thing to look at. Under fixed block every following train loses
+*exactly* the same ninety seconds:
+
+```
+U06 +1:30   U07 +1:30   U08 +1:30   U09 +1:30   U10 +1:30   U11 +1:30   U12 +1:30
+```
+
+The delay does not decay. It transfers whole, and would run to the end of the
+service day. Under moving block, the same incident:
+
+```
+U06 +1:26   U07 +1:20   U08 +1:13   U09 +1:05   U10 +0:57   U11 +0:49   U12 +0:41
+```
+
+About eight seconds recovered per train, because a following train can close
+right up behind the one in front and go the moment it goes. **That is the
+clearest thing distance separation buys under disruption, and it is not a journey
+time claim at all** — it is the difference between a delay that decays and one
+that does not.
+
+#### A trap the metric sets
+
+Run the same incident through every level on corridor3 and the propagation column
+ranks fixed block *best*:
+
+```
+signalling               primary  knock-on  per s primary     clean  on the day
+-------------------------------------------------------------------------------
+fixed_block_3aspect         240s       49s           0.20     18:18       18:50
+etcs_l1                     240s       82s           0.34     18:07       18:42
+etcs_l2                     240s      101s           0.42     18:01       18:39
+etcs_hybrid_l3              240s       59s           0.25     18:01       18:34
+etcs_moving_block           240s       52s           0.22     18:01       18:33
+```
+
+It is not resilience. Knock-on is measured against each system's *own* clean run,
+and fixed block's clean run was already 17 seconds slower — so F2 arrives at
+almost the same minute in every case (18:50 / 18:42 / 18:39 / 18:34 / 18:33) and
+the system with the worse plan simply had less left to lose.
+
+The last column is the one that decides it, and it moves the right way. A
+relative resilience figure quoted without the absolute outcome will rank the
+better railway lower, every time — which is why the report prints both and says
+so underneath.
+
+### Junctions: where the order stops being obvious
+
+corridor3 and metro are both *linear*. Every train is behind or in front of every
+other on its road, the interlocking only ever asks whether the road ahead is
+clear, and better signalling means trains can run closer together.
+`scenarios/junction` is not linear, and it is where capacity is actually lost on
+a network.
+
+```
+  ALPHA ------------------ BETA ------------------ GAMMA      up main
+  ALPHA ------------------ BETA ------------------ GAMMA      down main
+                          /    \
+                 BR_UP __/      \__ BR_DN
+                       |          |
+                     HALT      HALT                           the branch
+```
+
+A single-track branch converges on the up main at Beta through a **trailing
+point**, and the down main throws off to it through a **facing point**. Beta has
+one platform road each way — deliberately, because a bay platform for the branch
+would make the conflict disappear, which is exactly why bay platforms at junction
+stations are expensive and worth it.
+
+Both points fall out of the topology; nothing in the scenario file declares them.
+All the file says is where the branch attaches:
+
+```yaml
+  - id: BR_UP
+    direction: up
+    serves: [HALT, BETA]
+    junction: {track: UP, at: BETA, length_m: 700, max_speed_kmh: 60}
+```
+
+Beta being this track's *last* call is what makes it a joining move and so a
+trailing point; a branch whose *first* call is Beta diverges instead, and gets a
+facing one. `--check` then prints the route table with the conflicts spelled out:
+
+```
+  PT_UP_13400_T      trailing km 13.400  legs UP_007/BR_UP_JN  normal UP_007
+    R_BETA_1_from_BR_UP_JN (into BETA_1, PT_UP_13400_T to BR_UP_JN)
+      cannot be set with: R_BETA_1_from_UP_007
+```
+
+#### What happens
+
+Nothing breaks. The interlocking simply refuses:
+
+```
+07:05:10  route_refused BU1   R_BETA_1_from_BR_UP_JN: BETA_1 is held by a
+                              route set for MU1
+```
+
+and the branch DMU stands on the junction link — 0 km/h, `signal at danger` —
+with the entire main line green and empty in front of it. Over six cycles it is
+refused six times, and the cost is stable rather than growing:
+
+```
+  branch up (BU1-BU6)   +2:21 each
+  main line up (MU2-MU6) +1:03 each
+  everything else        on time
+```
+
+The main line loses time too, and the way it loses it is worth following. The
+branch train, pushed 2:21 late, ends up running *ahead* of a main line train it
+would otherwise have been clear of — and it is a 100 km/h DMU on a 140 km/h
+railway. Instrumenting where each train is restrained shows MU2 held twice: once
+at km 12–13 approaching the junction, and again at km 24–29, most of the way to
+Gamma. **The junction delay does not stay at the junction.**
+
+#### Why this needed building before the traffic management work
+
+Run the ladder over it:
+
+```
+fixed_block_3aspect        16:43         -      2375s restrained
+etcs_l2                    16:30   on time      1703s
+etcs_moving_block          16:21   on time      1337s
+```
+
+**Moving block saves 2.2%.** On the intensive corridor it saves 23%, on the metro
+9.5%. Distance separation shortens the gap between trains going the *same way*,
+and that is not this problem. Two trains wanting the same points is a question of
+*order*, and no train control system answers it.
+
+Nor does anything here. The main line wins because it asked first — the branch
+train is shorter, slower, has further to go over the junction, and is the one
+with no alternative route, and none of that is considered by anything. That is
+not a bug to fix in the interlocking, which is behaving exactly as an
+interlocking should. It is a missing layer, and it is the specification for
+Phase 5. A test asserts the gap deliberately: if a later dispatcher starts making
+a real decision here, `test_nothing_decided_that_the_main_line_should_win` should
+fail and be rewritten to say what the decision is.
+
+#### Flat or grade separated: what the diamond costs
+
+The junction above is arranged so that nothing crosses anything — the branch sits
+beside the up main and joins it directly. Real junctions are usually not so
+convenient. Where the branch is on the far side, a train reaching the up main has
+to get across the **down** main to do it, and where that happens on the level it
+is a **diamond**: two lines crossing, no connection between them, no points, and
+one rule — not two trains at once.
+
+`infrastructure-flat.yaml` puts the branch there:
+
+```
+  infrastructure.yaml              infrastructure-flat.yaml
+
+  BR_UP  ‾‾\                       UP    ────────────●───────
+  UP     ───●──────                DN    ──────────╳─────────
+  DN     ──────────\               BR_UP ─────────╱──────────
+  BR_DN            ‾‾              BR_DN ──────\─────────────
+
+  nothing crosses anything         the up branch crosses the down main,
+                                   and the down branch crosses the up branch
+```
+
+Nothing declares the crossings. They are read off the drawing: a link ramping
+from one alignment to another crosses exactly the tracks whose alignment lies
+between its two ends. `--check` lists them, and the route table picks them up:
+
+```
+level crossings of one line by another (diamonds)
+  BR_DN_JN     x BR_UP_JN      no connection, but only one train at a time
+  BR_UP_JN     x DN_009        no connection, but only one train at a time
+
+    R_BR_UP_JN (into BR_UP_JN, crosses BR_DN_JN, DN_009)
+      cannot be set with: R_BR_DN_JN, R_DN_009
+```
+
+`R_BR_UP_JN` has **no points on it at all** and is still a controlled route,
+because granting it takes a crossing away from somebody else. In the log that
+reads exactly as a signaller would see it — a down main express refused its own
+plain line:
+
+```
+07:10:25  route_refused MD1  R_DN_009: DN_009 is held by a route set for BU2
+```
+
+`scenario-flyover.yaml` is the identical railway with one line changed in the
+infrastructure file — `grade_separated: true` on the up branch connection, a
+flyover instead of a crossing. Same alignments, same blocks, same trains, same
+timetable, so the difference between the runs is the diamond and nothing else:
+
+```
+                 flyover      flat      cost
+mean journey       1003s     1062s      +59s
+total restrained   2441s     4011s    +1570s
+```
+
+**And the trains that pay are not the ones doing the crossing.**
+
+```
+MU  +0 s      BU  +0 s      BD  +76 s      MD  +160 s
+```
+
+The branch train asks first, gets the road, and loses nothing. What loses two and
+a half minutes is the down main express, which has no business at the junction at
+all. That is the argument for grade separation in one line, and it is the
+opposite of the intuition that the train taking the awkward move should be the
+one to suffer.
+
+#### One run is not a result
+
+Move the branch service ninety seconds and the conflict misses entirely.
+`python scenarios/junction/_sweep_phase.py` runs both layouts across a whole
+six-minute service interval:
+
+```
+branch phase   flyover      flat     cost
+        0 s      1003s     1062s     +59s
+       30 s       995s     1043s     +48s
+       60 s       988s      988s      +0s
+       90 s       980s      980s      +0s
+      120 s       971s      971s      +0s
+       ...
+  best +0 s      mean +9 s      worst +59 s
+```
+
+Eight of the twelve phasings cost **nothing**. A flat junction is not a fixed
+tax; it is free when the conflicting moves miss each other and expensive when
+they coincide. That is why flat junctions survive all over real networks, and why
+the case for rebuilding one is argued against a whole timetable rather than
+against a layout.
+
+It also hides a cost that appears in none of these numbers: to get one of the
+free phasings, the timetable has to be *designed around* the junction. The trains
+cannot go where they would otherwise go. Quoting +59 s as "the cost of a flat
+junction" would have been picking the number that suited the argument, so a test
+asserts the free case too.
+
+### Crossovers: a train changing lines
+
+Every layout so far kept each train on the road it started on. It could take a
+loop, a branch or a platform, but never leave its own line for another one.
+`scenarios/fourtrack` can:
+
+```
+         ___________________________________________ UP FAST
+        /
+_______/___________________________________________ UP SLOW
+                     XO_UP, km 17
+```
+
+A **crossover** is a connection between two running lines out on the plain line:
+a facing point on the line it leaves, a trailing point on the line it joins, and
+a train lying across both while it goes over. It is what a real signalling
+schematic is full of, and it is declared as the two ends and a length:
+
+```yaml
+crossovers:
+  - id: XO_UP
+    from: US            # up slow
+    to: UF              # up fast
+    km: 17.0            # where it leaves the first line
+    length_m: 400       # it reaches the second this much further on
+    max_speed_kmh: 70
+```
+
+Both points fall out of the topology as usual. What is new is that **the block
+plan has to be drawn around the connection**: a signal must be able to stand at
+each end and a route must be able to finish there, so the builder splits each
+stretch at any crossover before dividing it into blocks. That is the order it is
+done in on the ground too.
+
+#### Only between lines that run the same way
+
+```
+crossover 'BAD' connects UF (up) to DN (down), which run in opposite
+directions. A train taking it would be running against the way DN is
+signalled - that is wrong-line working, and it needs bidirectional
+signalling, which is not modelled.
+```
+
+Up-to-down connections are a different thing. The train would be running against
+the direction the down line is signalled for, which needs bidirectional working
+to be safe. Refusing it is better than building something that draws correctly
+and is not a railway. Slow-to-fast, fast-to-slow, and any other same-direction
+pair all work.
+
+#### What it is for
+
+Four running lines, and **Beta has platforms on the slow lines only** — which is
+how a four-track station is normally built, the fasts running through non-stop
+with no platform at all. So a semi-fast that calls at Beta has to be on the slow
+line there, and has to get back onto the fast line afterwards to be worth
+running. Four times an hour each way, that move is the scenario.
+
+Nothing in the timetable mentions the crossover. The route finder uses it because
+it is the only way from a slow-line platform to a fast-line one:
+
+```
+BETA_US -> US_009 -> US_010 -> XO_UP -> UF_009 -> ... -> GAMMA_UF
+```
+
+And what it produces is **a flat junction in the middle of a fast line, in
+everything but name**:
+
+```
+07:15:09  route_refused X1  R_UF_009_from_XO_UP: UF_009 is held by a route
+                            set for F2
+```
+
+The semi-fast waits on the slow line while the express runs past; `worst arrival`
+is X1 at +1:42, and every express is on time. Same argument as the junction
+scenario, one layer down — and once again the express wins because it asked
+first, not because anything decided it should. It is why heavily used four-track
+railways put semi-fast connections in a burrowing junction rather than a
+crossover.
+
+Better signalling barely touches it, for the same reason as before:
+
+```
+fixed_block_3aspect        15:37         -      1473s restrained
+etcs_moving_block          15:08   on time       198s
+```
+
+Twenty-nine seconds, 3.1%. Distance separation shortens the gap between trains
+going the same way; a train wanting to *become* one of them is a question of
+order.
+
+---
+
+## Scenario files
+
+Written the way an engineer would describe a line — stations at chainages,
+tracks that serve them, platforms, block lengths — and expanded by
+`scenario/builder.py` into ~40 segments, blocks and signals.
+
+```yaml
+stations:
+  - {id: BETA, name: Beta, km: 12.0}
+
+tracks:
+  - id: UP
+    direction: up
+    serves: [ALPHA, BETA, GAMMA]
+    block_length_m: 2000
+    block_lengths:                                        # per-stretch override
+      - {from: ALPHA, to: BETA,  block_length_m: 1500}
+      - {from: BETA,  to: GAMMA, block_length_m: 2400}
+
+platforms:
+  - {id: BETA_3, station: BETA, track: UP, length_m: 220,
+     max_speed_kmh: 80, y_offset: -0.34}                  # the loop road
+```
+
+Parallel platform roads are simply several segments sharing a pair of nodes. No
+switch model is needed for them to be safe: each road is its own block, and the
+single approach block ahead of the divergence can only ever hold one train.
+
+**On block lengths.** They are not uniform, because in practice they are not.
+The floor is braking distance — under three aspects a driver passing a yellow
+must stop at the next signal, so `block ≥ braking distance + reaction + margin`
+(about 1180 m at 140 km/h here). The ceiling is capacity — minimum headway is
+roughly the time to clear two blocks plus the train's length, so shorter blocks
+mean more trains per hour, paid for with more signals. So the busy Alpha–Beta
+section is signalled at 1425 m and the fast open line at 2486 m. `--check`
+reports both the margin against the floor and the headway each stretch implies.
+
+Shortening the inner blocks from ~1900 m to 1425 m cut the fast train's
+restrained running from ~300 s to ~99 s and its journey by 34 seconds, on the
+same timetable — the capacity trade-off, measured.
+
+**Generated timetables.** The metro timetables are derived data, not written by
+hand: `scenarios/metro/_generate_timetables.py` runs a single unimpeded train to
+measure the section times, then books every service on those times offset by one
+headway. That is what makes the plan conflict-free by construction, so a delay in
+the comparison is always the signalling and never the plan. Re-run it after
+changing a dwell, a chainage or the stock.
+
+**No PyYAML?** `minyaml.py` parses the subset the scenarios use (block mappings
+and sequences, flow `{}`/`[]`, comments, scalars). A test asserts it agrees with
+PyYAML on every shipped file. `.json` scenario files work too.
+
+---
+
+## Verification
+
+`python run_tests.py` — 182 tests covering:
+
+- **braking** — a train stops within the computed service braking distance and
+  berths on its stopping point to within a metre
+- **block exclusivity** — asserted every tick of the full corridor3 run
+- **red signals** — a train driven at an occupied block stops *before* the
+  protecting signal, never past it, and gets going again when it clears
+- **aspects** — red over an occupied block, yellow before a red, and a
+  divergence taking its least restrictive successor
+- **the overtake** — S1 is proved to be inside the loop for a window containing
+  F1's passage of the through platform
+- **restraint** — the run fails if signalling never checks anybody down, so the
+  timetable cannot silently drift to something that demonstrates nothing
+- **determinism** — two runs of the same scenario agree exactly
+- **the YAML fallback** — agrees with PyYAML on every shipped file
+- **the interlocking** — points derived correctly, controlled signals held at
+  danger without a route, conflicting requests refused with a reason, approach
+  locking refusing to take a route from a braking train, and nothing left locked
+  at the end of the day
+- **sectional release** — asserted from the event log: the points behind S1 are
+  released *while* it stands in the loop, and F1 throws them the other way before
+  S1 has moved
+- **the route request lead is load-bearing** — set it so a train asks for its
+  departure route the instant it berths, and the test asserts the fast is then
+  refused the road past the loop
+- **the ETCS ladder is monotonic** — restraint, journey time and authority length
+  must each improve, or at worst hold, at every step up the ladder
+- **below capacity the levels converge** — the model must *not* show moving block
+  winning on a quiet railway
+- **mixed fitment degrades** — a fitted train follows a fitted leader closely, backs
+  off from one that cannot confirm its integrity, and backs off further still from
+  one that reports nothing at all
+- **the interlocking bounds every level** — no ETCS level may be authorised past a
+  signal with no route set
+- **the braking envelope** — matches the braking curve, grows with reaction time,
+  shrinks faster than linearly as the train slows, and is always shorter than a
+  block (or the layout would be unsignalable)
+- **lineside signals are declared per system** — the view draws lamps or marker
+  boards from that, so it is asserted rather than assumed
+- **the metro line's constraint is the station, not the block length** — asserted
+  from `--check`, so that fixed block failing there cannot be dismissed as a
+  badly signalled layout
+- **Level 2 must *not* help on the metro** — the scenario's whole claim, pinned so
+  a later change cannot quietly erase it
+- **moving block has a floor too** — at a 60-second headway it is late as well,
+  and the test says so
+- **an unfitted unit costs the trains behind it, not itself** — U06 unrestrained
+  and on time while U07 is not
+- **a declared disturbance actually reaches the train** — a late start must leave
+  late, not merely appear late, or the ready lead would silently absorb it
+- **the undisturbed baseline really is undisturbed** — checked against the
+  undisrupted scenario file, not just against the override, so a leak could not
+  hide behind both runs being equally wrong
+- **a temporary speed restriction is obeyed in the stretch** — not merely
+  reflected in a slower journey — and does not touch the other line, or a run
+  outside its window
+- **delay decays under moving block and does not under fixed block** — the shape
+  of the propagation, asserted train by train
+- **the main line is the normal position at a junction** — which road through a
+  point is the straight one has to be judged at the far end of each leg, since at
+  the point itself both roads are on the same alignment
+- **a branch train stops short of a trailing point set against it** — running
+  through one is a derailment
+- **the junction delay leaves the junction** — a main line train is checked down
+  again 10 km further on, behind the branch unit it was delayed by
+- **moving block barely helps at a junction** — under 5%, against 23% on the
+  intensive corridor, because order is not a separation problem
+- **nothing decides who goes first** — asserted, so that the day something does,
+  the test fails and has to be rewritten to say what it decided
+- **a route with no points on it can still need asking for** — if it crosses
+  another line on the level, granting it takes something from someone
+- **the cost of a flat junction falls on the line being crossed** — not on the
+  train doing the crossing, which is the counterintuitive half
+- **and it depends entirely on the phasing** — a second test moves the branch
+  service two minutes and asserts the diamond then costs nothing at all, so the
+  single-run figure cannot be quoted as *the* cost
+- **a misspelled key is refused, with the nearest legal spelling offered** —
+  ``max_speed_kph`` used to leave the track at 140 km/h and say nothing
+- **every shipped scenario still loads** — the guard that stops the key lists and
+  the code that reads them drifting apart
+- **the run-time bound really is a bound** — no shipped timetable may be called
+  impossible, or the check becomes a false alarm nobody reads
+- **a booked platform clash is a conflict, not a fault** — the junction scenario
+  is built around one, so it is reported separately and does not warn
+- **a crossover forces a block boundary at each end** — or the connection would
+  land mid-block with nowhere for its signal to stand
+- **the running line stays the normal position** through both of its points
+- **a crossover between opposite-running lines is refused** — with the reason,
+  because it is wrong-line working and not a crossover at all
+- **the route finder uses a crossover without being told to** — no timetable
+  names one; a slow-line platform to a fast-line platform simply routes that way
+- **and the trains that do not need it never touch it**
+- **physical separation** — asserted under all five systems, including the two
+  where block exclusivity correctly does not apply
+
+A note on the numbers: the fast services arrive about 41 s early against their
+booked times. That is not an error — it is the running-time supplement real
+timetables carry (about 5% here, which is normal practice).
+
+---
+
+## Roadmap
+
+Milestone 1 is done. What follows, and why in this order — the themes come from
+Shift2Rail / Europe's Rail research.
+
+**Phase 2 — make capacity measurable.** Blocking-time theory (setup, sighting,
+approach, running, clearing, release per block), the blocking-time stairway and
+time–distance (Marey) diagram, UIC 406 compression for consumed capacity, and
+KPI export.
+
+**Phase 4 — topology and disturbance.** *Done.* Perturbation injection — late
+starts, dwell overruns and temporary speed restrictions, with primary and
+knock-on delay measured by difference. And junctions — a branch converging on a
+main line through a trailing point and diverging through a facing one, with two
+services competing for the same road at Beta.
+
+Diamonds — two lines crossing on the level — are modelled too, derived from the
+schematic rather than declared, so a flat junction can be measured against a
+grade-separated one.
+
+Crossovers between running lines are in as well, so a train can change lines out
+on the plain line rather than only at a station.
+
+What is left over from it is smaller: flank protection, and overlaps switched on
+(the mechanism is already in the route table, off by default so its cost can be
+measured rather than assumed). Bidirectional working - which is what an
+up-to-down crossover would need, and what reversible and single-line working need
+too - is the one structural gap left in the topology. Four-aspect signalling, which gives two blocks of
+warning and so permits blocks shorter than braking distance. And blocking-time
+theory with UIC 406 compression, which is the capacity method these KPIs are a
+down payment on.
+
+**Phase 5 — ATO and traffic management.** Both preconditions are now in place:
+something to recover from, and somewhere a decision changes the outcome. Nothing in the simulator can currently *decide*
+anything: the dispatcher runs the plan as written and the interlocking answers
+yes or no. Recovering the metro incident needs a decision — hold a train, skip a
+stop, turn one short — and that is what there is now a testbed for.
+
+ ATO over ETCS at GoA2 following a
+journey profile, and a TMS doing conflict detection and resolution. That is the
+honest home for the "AI scheduling" idea: start with a greedy heuristic
+dispatcher as the baseline, add a proper optimiser, and only then consider a
+learning agent — with the heuristic as the thing to beat.
+
+### References
+
+- [X2Rail-3 — IP2 advanced signalling and moving block demonstrator](https://cordis.europa.eu/project/id/826141)
+- [Capacity evaluation of ERTMS/ETCS Hybrid Level 3 using simulation methods](https://www.sciencedirect.com/science/article/pii/S2210970624000143)
+- [ABZ 2018 case study: Hybrid ERTMS/ETCS Level 3](https://link.springer.com/article/10.1007/s10009-020-00562-3)
+- [Exploring the ERTMS/ETCS full moving block specification](https://link.springer.com/article/10.1007/s10009-022-00653-3)
+- [Conflict detection and resolution for distance-to-go signalling](https://www.tandfonline.com/doi/full/10.1080/23249935.2025.2592225)
+- [Evaluation of ATO benefits under real-time rail traffic control](https://ethz.ch/content/dam/ethz/special-interest/baug/ivt/ivt-dam/publications/students/701-800/sa704short.pdf)
+- [Europe's Rail — Flagship Areas](https://rail-research.europa.eu/innovation-pillar/flagship-area-6/)
