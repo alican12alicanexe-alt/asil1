@@ -32,6 +32,7 @@ class ThreeAspectFixedBlock(SignallingSystem):
     name = "fixed_block_3aspect"
 
     def __init__(self, sighting_distance_m: float = 250.0):
+        super().__init__()
         self.sighting_distance_m = float(sighting_distance_m)
 
     # ------------------------------------------------------------------ observe

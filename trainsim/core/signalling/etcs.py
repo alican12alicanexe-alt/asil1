@@ -23,7 +23,7 @@ scenario that alone is worth most of the difference.
 """
 
 from ..units import braking_distance
-from .base import MovementAuthority, SignallingSystem
+from .base import SEPARATION_BY_DISTANCE, MovementAuthority, SignallingSystem
 from .common import block_danger_point, limit_by_route, train_ahead
 
 
@@ -46,6 +46,7 @@ class ETCSLevel1(SignallingSystem):
     MINIMUM_READ_DISTANCE_M = 30.0
 
     def __init__(self, read_distance_m: float = 250.0):
+        super().__init__()
         #: Distance at which the authority ahead becomes known again.
         #:
         #: Level 1 is an *overlay*: the lineside signals stay, and the driver can
@@ -123,6 +124,7 @@ class ETCSLevel2(SignallingSystem):
     has_lineside_signals = False
 
     def __init__(self, report_interval_s: float = 0.0):
+        super().__init__()
         #: Position report interval; 0 means every cycle.
         self.report_interval_s = report_interval_s
 
@@ -157,9 +159,10 @@ class MovingBlock(SignallingSystem):
     has_lineside_signals = False
     # Trains are kept apart by measured distance, not by block sections, so
     # two trains sharing a block is correct behaviour rather than a fault.
-    separates_by = "distance"
+    separates_by = SEPARATION_BY_DISTANCE
 
     def __init__(self, safety_margin_m: float = 100.0):
+        super().__init__()
         self.safety_margin_m = float(safety_margin_m)
 
     def movement_authority(self, train, sim) -> MovementAuthority:

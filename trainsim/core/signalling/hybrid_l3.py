@@ -17,7 +17,7 @@ running with a fleet of mixed fitment to see it.
 """
 
 from .. import vss as vss_module
-from .base import MovementAuthority, SignallingSystem
+from .base import SEPARATION_BY_DISTANCE, MovementAuthority, SignallingSystem
 from .common import limit_by_route
 
 
@@ -28,9 +28,10 @@ class HybridLevel3(SignallingSystem):
     has_lineside_signals = False
     # Sub-sections are finer than block sections, so two trains may share
     # one block legitimately; the kernel checks separation, not exclusivity.
-    separates_by = "distance"
+    separates_by = SEPARATION_BY_DISTANCE
 
     def __init__(self, vss_per_block: int = 4, safety_margin_m: float = 50.0):
+        super().__init__()
         self.vss_per_block = int(vss_per_block)
         self.safety_margin_m = float(safety_margin_m)
         self._state = None
