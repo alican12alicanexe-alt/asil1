@@ -40,25 +40,38 @@ COUNT = 8           # trains in the flight
 #: The interval the flight is booked at. Measured, not chosen: see the table in
 #: scenario.yaml and _sweep_headway.py, which runs the flight at every interval
 #: from four minutes down to one and reports what it costs.
-HEADWAY_S = 240
+HEADWAY_S = 150
 
 STOCK = {"id": "EMU", "name": "Line unit", "length_m": 160,
          "max_speed_kmh": 100, "max_accel": 1.0, "service_brake": 0.8,
          "emergency_brake": 1.2, "etcs_level": "none", "tims": False}
 
-#: (station, platform, dwell). One pattern, one road at each station - a
-#: homogeneous flight does not use the loops, which is the point of measuring it.
-PATTERN = [("WDEPOT", "WDEPOT_1", DEPOT), ("KINGSFORD", "KINGSFORD_1", DWELL),
+#: (station, platform, dwell). One pattern and one road at each station on the
+#: running line - a homogeneous flight does not use the loops, which is the point
+#: of measuring it. The depots are the exception: their two roads are used
+#: alternately, because a depot road is held for the best part of four minutes
+#: and nothing else on this railway comes close to that.
+PATTERN = [("WDEPOT", "WDEPOT_%d", DEPOT), ("KINGSFORD", "KINGSFORD_1", DWELL),
            ("MARLOWE", "MARLOWE_1", DWELL), ("ASHDOWN", "ASHDOWN_1", DWELL),
-           ("EDEPOT", "EDEPOT_1", DEPOT)]
+           ("EDEPOT", "EDEPOT_%d", DEPOT)]
+
+#: How many roads each depot has, and so how many trains deep the queue for one
+#: can be before it matters.
+DEPOT_ROADS = 2
+
+
+def road(platform, index):
+    """The road service ``index`` uses at a station - depots alternate."""
+    return platform % (index % DEPOT_ROADS + 1) if "%d" in platform else platform
 
 INFRA = build_infrastructure(
     read_data_file(os.path.join(HERE, "infrastructure.yaml")))
 
 
-def calls(shift=0):
+def calls(shift=0, index=0):
     """The calling pattern as timetable entries, shifted by ``shift`` seconds."""
-    entries = [{"station": s, "platform": p, "dwell_s": d} for s, p, d in PATTERN]
+    entries = [{"station": s, "platform": road(p, index), "dwell_s": d}
+               for s, p, d in PATTERN]
     entries[0]["departure"] = format_clock(BASE + shift)
     return entries
 
@@ -101,7 +114,8 @@ def flight_spec(times, headway_s, count=COUNT):
         entries = []
         for station, platform, dwell in PATTERN:
             arrival, departure = times[station]
-            entry = {"station": station, "platform": platform, "dwell_s": dwell}
+            entry = {"station": station, "platform": road(platform, n),
+                     "dwell_s": dwell}
             if arrival is not None:
                 entry["arrival"] = format_clock(round(arrival) + shift)
             if departure is not None:

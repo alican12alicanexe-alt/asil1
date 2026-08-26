@@ -24,32 +24,40 @@
 # run times each time so it is always workable in isolation:
 #
 #     headway   restrained   mean delay   worst arrival
-#       240 s          0 s        0.0 s           0 s     <- the line holds this
-#       225 s          0 s        2.6 s           3 s
-#       180 s          0 s       13.1 s          25 s
-#       150 s          0 s      119.0 s         238 s
-#       120 s          0 s      224.0 s         448 s
-#        60 s          0 s      434.0 s         868 s
+#       150 s          0 s        0.0 s           0 s     <- the line holds this
+#       135 s          0 s       37.8 s          81 s
+#       120 s          0 s       95.4 s         193 s
+#        90 s          0 s      203.0 s         406 s
+#        60 s          0 s      308.0 s         616 s
 #
-#     240 s = 15 trains an hour.
+#     150 s = 24 trains an hour.
 #
-# What is interesting is the restraint column: zero everywhere. No train on this
-# line is ever checked by a signal, however tightly the flight is booked. The
-# queue does not form on the road, it forms at the platform - a train cannot be
-# let out of the depot until the road it is standing on has been cleared by the
-# one in front, and it is that, not signal spacing, that sets the interval.
+# The restraint column is the finding, and it is zero all the way down. No train
+# on this line is ever checked by a signal, however tightly the flight is booked.
+# The queue does not form on the road, it forms at the platform: a train cannot
+# be let into a station road until the train in front has cleared it, and it is
+# that - reoccupation, not signal spacing - that sets the interval. Block spacing
+# out on the open line would allow 74-100 s, and never gets the chance to.
 #
-# The depot necks are what bind it. A depot road is 1200 m of block worked at
-# 40 km/h, so a train occupies one for 2 x 1200 m + its own 160 m at 11 m/s -
-# 230 seconds - and `--check` says exactly that before anything is run. The
-# running line is signalled far more finely than that: block spacing out on the
-# open line implies 74-100 s, and the same flight booked from Kingsford to
-# Ashdown, without the depot legs at either end, holds a 150-second interval.
+# WHAT THE DEPOTS COST
 #
-# So this railway can work 15 trains an hour, and the way to work more of them
-# is not more signals - it is a second road in each depot, or a depot neck taken
-# at more than 40 km/h. That is the sort of answer signal spacing alone never
-# gives, and it is why the headway is measured here rather than calculated.
+# The depots had one road each to begin with, and this line worked 15 trains an
+# hour. A depot road is 1200 m of block taken at 40 km/h, so a train held one for
+# 2 x 1200 m plus its own 160 m at 11 m/s - 230 seconds - before its dwell was
+# even counted, and `--check` reported exactly that before anything was run.
+# Nothing out on the line could get past it.
+#
+# A second road in each depot, used by alternate trains, took the headway from
+# 240 s to 150 s: fifteen trains an hour to twenty-four, for two turnouts and no
+# signalling at all. The binding constraint moved to the station roads, where a
+# train stands for 45 seconds and holds 1200 m of block while it does.
+#
+# The same lever is still there and unpulled: Marlowe has four roads, Ashdown
+# three and Kingsford two, and a flight that used them alternately rather than
+# queueing for the main road would go further again. It would not be free - the
+# loops are worked at 60 km/h, so a train routed through one is slower and has to
+# be booked as such - and that trade, road capacity against road speed, is the
+# one a real timetable is written around.
 
 name: depotline
 description: "A 27 km single-track line between two depots, three stations with 2, 4 and 3 platform roads, three-aspect fixed block, and fast units overtaking stoppers in the loops at Marlowe."

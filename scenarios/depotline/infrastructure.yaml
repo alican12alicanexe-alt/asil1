@@ -2,7 +2,7 @@
 #
 #   WEST DEPOT ---- KINGSFORD ---- MARLOWE ---- ASHDOWN ---- EAST DEPOT
 #     km 0            km 5          km 13        km 21        km 27
-#     1 road         2 plat        4 plat       3 plat        1 road
+#    2 roads         2 plat        4 plat       3 plat       2 roads
 #
 # One running line, so every train is behind or in front of every other one and
 # the only way past is through a station. That is what the platform roads are
@@ -11,10 +11,10 @@
 # running through another. Marlowe has four of them and is where the overtaking
 # is meant to happen; Ashdown has three and Kingsford two.
 #
-# The depots at each end are modelled as single-road termini, because that is
-# what they are from the running line's point of view: somewhere trains come from
-# in the morning and go back to at night, and which has room for exactly one
-# train at a time on the neck.
+# The depots at each end are termini with two roads apiece, because from the
+# running line's point of view a depot is somewhere trains come from in the
+# morning and go back to at night - and how many of them can be got in and out
+# per hour is a question about the neck, not about the shed behind it.
 #
 # Parallel roads need no switch model to be safe. Each is its own block, and the
 # single approach block ahead of the divergence can only ever hold one train, so
@@ -57,9 +57,15 @@ tracks:
       - {from: MARLOWE,   to: ASHDOWN, block_length_m: 1800}
 
 platforms:
-  # The depot necks. One road each, drawn on the running line's own alignment.
-  - {id: WDEPOT_1, station: WDEPOT, track: ML, length_m: 220, max_speed_kmh: 40}
-  - {id: EDEPOT_1, station: EDEPOT, track: ML, length_m: 220, max_speed_kmh: 40}
+  # The depot necks. Two roads each, worked slowly as depot roads are. One road
+  # was what set this line's headway: a train held 1200 m of block at 40 km/h,
+  # which is 230 seconds of block occupation before the dwell is even counted,
+  # and no amount of signalling out on the line could get past it. Two roads,
+  # used alternately, halve it.
+  - {id: WDEPOT_1, station: WDEPOT, track: ML, length_m: 220, max_speed_kmh: 40, y_offset: 0.0}
+  - {id: WDEPOT_2, station: WDEPOT, track: ML, length_m: 220, max_speed_kmh: 40, y_offset: 0.5}
+  - {id: EDEPOT_1, station: EDEPOT, track: ML, length_m: 220, max_speed_kmh: 40, y_offset: 0.0}
+  - {id: EDEPOT_2, station: EDEPOT, track: ML, length_m: 220, max_speed_kmh: 40, y_offset: 0.5}
 
   # Kingsford: a through road and one loop.
   - {id: KINGSFORD_1, station: KINGSFORD, track: ML, length_m: 220, y_offset: 0.0}
