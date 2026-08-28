@@ -247,16 +247,14 @@ class TkSchematicView(SchematicView):
         self._static_drawn = True
         self._draw_dynamic()
 
-    #: Line weights, in pixels. The platform road is drawn heavier than plain
-    #: line because a station is where the eye goes first on a signalling
-    #: schematic, and on a 60 km railway a 1200 m road is only twenty pixels
-    #: long - weight is the only dimension left to make it read as a place.
-    #: Its LENGTH is not adjustable here: it is the block section's true extent,
-    #: and drawing it longer would overlap the block next door. The only honest
-    #: way to lengthen it is platform_zone_m, which is real railway and prices
-    #: straight into the headway.
+    #: Line weights, in pixels. A platform road is drawn one weight heavier than
+    #: plain line - enough to pick out, not enough to shout. Its LENGTH is not a
+    #: drawing constant: it is the block section's true extent in km, and the way
+    #: stations are made to read is SchematicLayout.STATION_STRETCH, which gives
+    #: station chainage more of the screen than open line rather than drawing
+    #: anything at the wrong size.
     TRACK_WIDTH = 3
-    PLATFORM_ROAD_WIDTH = 11
+    PLATFORM_ROAD_WIDTH = 5
     #: Depth of the platform slab drawn against the road, and its drop below it.
     PLATFORM_FACE_DEPTH = 7
     PLATFORM_FACE_DROP = 9
