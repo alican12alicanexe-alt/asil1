@@ -38,11 +38,14 @@ PALETTE = {
     "platform": "#7d8b9e",
     "platform_occupied": "#a8574a",
     #: The concrete a train stands alongside, as opposed to the road it stands
-    #: on. Drawn as a band ON the platform road, one pixel heavier, so the two
-    #: lengths - the block section and the platform itself - can be told apart
-    #: by eye. Purple because at that weight the colour is the whole signal, and
-    #: it has to be a hue nothing else on the track uses: aspects own red,
-    #: yellow and green, occupation and route own the reds and teals.
+    #: on. Drawn as a band centred in the platform road and BEHIND it, a little
+    #: wider, so the road's own colour still runs over the top and only a fringe
+    #: of platform shows either side - enough to tell the two lengths apart, the
+    #: block section and the platform itself, without hiding the occupation and
+    #: route the road line carries. Purple because at that width the colour is
+    #: the whole signal, and it has to be a hue nothing else on the track uses:
+    #: aspects own red, yellow and green, occupation and route own the reds and
+    #: teals.
     "platform_face": "#c9b6f0",
     "station": "#cfd8e3",
     "station_tick": "#38424f",
