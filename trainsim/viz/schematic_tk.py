@@ -225,13 +225,12 @@ class TkSchematicView(SchematicView):
             if block_id:
                 self._block_items[block_id] = item
             if segment.is_platform:
-                self._draw_platform_face(segment, track_y)
+                self._draw_platform_face(segment, track_y, item)
                 mid_km = (segment.km_start + segment.km_end) / 2.0
                 # Below the line: train labels sit above it, so they never collide.
                 canvas.create_text(
                     layout.x(mid_km),
-                    layout.y(segment.y) + (self.PLATFORM_FACE_DROP
-                                           + self.PLATFORM_FACE_DEPTH
+                    layout.y(segment.y) + (self.PLATFORM_FACE_WIDTH / 2.0
                                            + self.PLATFORM_LABEL_GAP)
                     * self._vscale,
                     text=segment.platform, fill=PALETTE["label"],
@@ -262,9 +261,12 @@ class TkSchematicView(SchematicView):
     #: road rather than to the junction (its platform, its entry signal) has to
     #: be kept inside that middle or it floats off the rail it belongs to.
     ROAD_TAPER_FRAC = 0.18
-    #: Depth of the platform slab drawn against the road, and its drop below it.
-    PLATFORM_FACE_DEPTH = 7
-    PLATFORM_FACE_DROP = 9
+    #: Width of the platform band. Drawn ON the road and centred on it, wider
+    #: than the road so the concrete shows as a fringe either side, and lowered
+    #: beneath the road line so the block's own tint still runs down the middle.
+    #: Hung below the road instead, a slab crowds the next road up - Marlowe's
+    #: four are only half a schematic y apart.
+    PLATFORM_FACE_WIDTH = 11
     #: Gap between the slab and the road's name label.
     PLATFORM_LABEL_GAP = 9
 
@@ -283,14 +285,21 @@ class TkSchematicView(SchematicView):
         full = float(SchematicLayout.PX_PER_Y)
         return max(0.5, min(1.0, self.layout.y_scale / full))
 
-    def _draw_platform_face(self, segment, track_y) -> None:
-        """The platform itself - the concrete, not the road it runs beside.
+    def _draw_platform_face(self, segment, track_y, road_item) -> None:
+        """The platform itself - the concrete, not the road it runs along.
 
         Worth drawing separately because the two are wildly different lengths and
         the difference is the thing people get wrong. The road is a block section
         sized for braking through at line speed - 1200 m on depotline - while the
         platform is sized for the train that stands at it, 220 m. Drawing only the
         road makes every station look like a kilometre of concrete.
+
+        Drawn on the road rather than hung below it. A slab below has to clear
+        the road it belongs to, and at a station like Marlowe the next road up is
+        only half a schematic y away - so the concrete of one platform ends up in
+        the space belonging to the platform above it. Widening the road instead
+        keeps every platform inside its own lane, and the band still reads as
+        concrete because it is paler than the rail and sticks out either side.
 
         It is laid against the stopping point, ending where the train's front
         comes to rest, because that is where a platform actually is relative to
@@ -329,12 +338,17 @@ class TkSchematicView(SchematicView):
                 x0, x1 = hi - span, hi
             if x0 < lo:
                 x0, x1 = lo, lo + span
-        scale = self._vscale
-        y = layout.y(segment.y) + self.PLATFORM_FACE_DROP * scale
-        self.canvas.create_rectangle(
-            x0, y, x1, y + self.PLATFORM_FACE_DEPTH * scale,
-            fill=PALETTE["platform_face"], width=0, tags="static",
+        y = layout.y(segment.y)
+        width = max(self.TRACK_WIDTH + 4,
+                    int(round(self.PLATFORM_FACE_WIDTH * self._vscale)))
+        face = self.canvas.create_line(
+            x0, y, x1, y, fill=PALETTE["platform_face"], width=width,
+            capstyle=tk.BUTT, tags="static",
         )
+        # Under the road, not over it: the road line carries the block's
+        # occupation and route colour, and concrete drawn on top of it would
+        # blank that out for the length of the platform.
+        self.canvas.tag_lower(face, road_item)
 
     def _segment_points(self, segment, track_y):
         """Polyline for a segment; platform roads splay off the running line."""
