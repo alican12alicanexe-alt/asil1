@@ -626,6 +626,42 @@ offers no wrong-line moves, so anything already in the block ahead is running th
 same way. A bidirectional single line would need an opposing-move check before
 the same relaxation could be allowed.
 
+#### Seeing it: two trains in one block
+
+Neither the change above nor the systems it frees show up on the shipped
+scenario, for two reasons that are both the scenario being honest:
+
+- **the fleet is not fitted.** depotline runs lineside signals and unfitted
+  stock. A train that cannot confirm its own integrity cannot be followed by
+  distance — its rear is not a position anything may believe — so moving block
+  falls back to block granularity behind every train and looks exactly like
+  fixed block. Correctly. `--check` now says so on a `fleet` line, and a run
+  under a distance-separated system warns before it starts.
+- **the trains are four minutes apart.** Booked at the 240 s this line can hold,
+  no two of them ever come within a block of each other, so there is nothing for
+  a closer separation to be closer than.
+
+`scenarios/depotline/scenario-l3.yaml` fixes both: the same eight services, the
+same railway, a fleet fitted with Level 3, integrity monitoring and the
+train-to-train link, booked at 90 seconds.
+
+```
+python run.py scenarios/depotline/scenario-l3.yaml
+python run.py scenarios/depotline/scenario-l3.yaml --system fixed_block_3aspect
+```
+
+| system | ticks with two trains in one block | mean delay |
+|---|---|---|
+| fixed block | 0 | 156.2 s |
+| ETCS L2 | 0 | 49.8 s |
+| Hybrid L3 | 916 | 8.1 s |
+| moving block | 1151 | 4.4 s |
+| virtual coupling | 1345 | 2.1 s |
+
+Zero violations in every column. Two trains in one block is not a fault under
+distance separation — the kernel takes its safety invariant from the signalling
+system, and what must hold there is that no train's front passes another's rear.
+
 ### Virtual coupling: borrowing the braking distance in front
 
 Moving block already runs a train up to the rear of the train ahead less a

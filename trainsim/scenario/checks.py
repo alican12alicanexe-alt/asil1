@@ -227,6 +227,59 @@ def warn_if_unsignalable(scenario, driver_config=None) -> Optional[str]:
     )
 
 
+def fitment_note(scenario, signalling) -> Optional[str]:
+    """What this fleet can actually be worked by, under this signalling system.
+
+    A distance-separated system follows the *rear* of the train in front, so a
+    train that cannot confirm its own integrity cannot be followed by one: the
+    system falls back to block granularity behind it and behaves exactly like the
+    fixed-block railway it was meant to replace. Virtual coupling needs the
+    train-to-train link on top of that.
+
+    Both degrades are correct, and both are silent. Silent is the problem - on
+    screen it looks identical to moving block simply not working, which is what
+    this line exists to say out loud.
+    """
+    if getattr(signalling, "separates_by", "block") != "distance":
+        return None
+
+    services = scenario.timetable.services
+    if not services:
+        return None
+    total = len(services)
+    no_tims = sum(1 for s in services if not s.stock.tims)
+    no_v2v = sum(1 for s in services if not getattr(s.stock, "v2v", False))
+    wants_v2v = bool(getattr(signalling, "permits_relative_braking", False))
+
+    if no_tims == 0 and not (wants_v2v and no_v2v):
+        return "fleet          : fitted throughout - separation is by distance"
+
+    bits = []
+    if no_tims:
+        bits.append("%d of %d cannot confirm their own integrity (tims)" % (no_tims, total))
+    if wants_v2v and no_v2v:
+        bits.append("%d of %d have no train-to-train link (v2v)"
+                    % (no_v2v, total))
+    worst = "block granularity" if no_tims else "absolute braking distance"
+    return ("fleet          : %s - a train following one of those falls back to "
+            "%s" % ("; ".join(bits), worst))
+
+
+def warn_about_fitment(scenario, signalling) -> Optional[str]:
+    """The same thing as a warning, for a run that is about to look wrong."""
+    note = fitment_note(scenario, signalling)
+    if note is None or "fitted throughout" in note:
+        return None
+    return ("warning: %s separates trains by distance, but this fleet is not "
+            "fitted for it - %s. Trains will keep a block apart and the run will "
+            "look like fixed block, correctly. Set tims%s on the stock in the "
+            "timetable to see the system work."
+            % (getattr(signalling, "name", "this system"),
+               note.split(" : ", 1)[-1].strip(),
+               " and v2v" if getattr(signalling, "permits_relative_braking", False)
+               else ""))
+
+
 # --------------------------------------------------------------- the timetable
 
 @dataclass

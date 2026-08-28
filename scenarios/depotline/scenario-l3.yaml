@@ -1,0 +1,67 @@
+# depotline, fitted and booked tight - the variant where distance separation has
+# something to do.
+#
+#   python run.py scenarios/depotline/scenario-l3.yaml
+#   python run.py scenarios/depotline/scenario-l3.yaml --system virtual_coupling
+#   python run.py scenarios/depotline/scenario-l3.yaml --headless --compare
+#
+# The default scenario is the honest one: a line of lineside signals, an unfitted
+# fleet, booked at the 240 s it can actually hold. Run moving block against it and
+# nothing happens, for two good reasons and neither of them a fault:
+#
+#   - the fleet cannot confirm its own integrity, so the rear of the train ahead
+#     is not a position anything is allowed to believe, and every follower falls
+#     back to block granularity. --check says so on the `fleet` line.
+#   - eight trains four minutes apart never come within a block of each other
+#     anyway, so there is nothing for a closer separation to be closer than.
+#
+# This variant fixes both: the stock is fitted with ETCS Level 3, integrity
+# monitoring and the train-to-train link, and the same eight services are booked
+# at 90 seconds - well inside what this railway will hold, so the trains close
+# right up and the signalling has to deal with it.
+#
+# What to watch for, against the same run under `--system fixed_block_3aspect`:
+#
+#   - trains standing 125 m apart under moving block and 72 m under virtual
+#     coupling, rather than at a signal a whole block behind
+#   - two trains inside one block section, which is not a violation here: the
+#     kernel takes its safety invariant from the signalling system, and under
+#     distance separation what must hold is that no train's front passes
+#     another's rear
+#   - the block colouring gone, because a block is not the unit of anything
+#   - the braking envelope travelling with each train, which is what is actually
+#     keeping them apart
+#
+# The delay figures are the point of the exercise. Booked at 90 s, this flight is
+# 156 s late under three-aspect fixed block, 50 s under Level 2, 8 s under Hybrid
+# Level 3, 4 s under moving block and 2 s under virtual coupling.
+
+name: depotline (fitted, 90 s)
+description: "depotline with an ETCS Level 3 fleet booked at 90 seconds - the variant where trains close up and distance separation has something to do."
+
+infrastructure: infrastructure.yaml
+timetable: timetable-l3.yaml
+
+simulation:
+  dt: 1.0
+  start_time: "06:57:00"
+  duration_s: 6000
+  strict: false
+
+signalling:
+  system: etcs_moving_block
+
+interlocking:
+  route_request_distance_m: 2000
+  route_request_lead_s: 60
+  automatic_signals: false
+  route_lookahead: 2
+
+driver:
+  reaction_time_s: 2.0
+  safety_margin_m: 25.0
+  stop_tolerance_m: 1.0
+
+view:
+  title: "depotline - ETCS Level 3 fleet, booked at 90 s"
+  speed: 30

@@ -204,7 +204,24 @@ HEADER = '''# depotline timetable - generated, do not edit by hand.
 '''
 
 
-def stock_yaml():
+UNFITTED = """    # No ETCS fitment: lineside signals, read by drivers, which is what fixes
+    # the headway this line can work to.
+    etcs_level: none
+    tims: false
+    v2v: false"""
+
+FITTED = """    # Fitted throughout, which is what a distance-separated system needs to be
+    # worth anything: a train that cannot confirm its own rear cannot be
+    # followed by distance, and one without the link cannot be followed by
+    # relative braking distance. Without these three lines moving block falls
+    # back to block granularity behind every train and looks exactly like the
+    # fixed block it was meant to replace - correctly, and silently.
+    etcs_level: l3
+    tims: true
+    v2v: true"""
+
+
+def stock_yaml(fitted=False):
     return '''stock:
   - id: EMU
     name: Line unit
@@ -213,17 +230,14 @@ def stock_yaml():
     max_accel: 1.0
     service_brake: 0.8
     emergency_brake: 1.2
-    # No ETCS fitment: lineside signals, read by drivers, which is what fixes
-    # the headway this line can work to.
-    etcs_level: none
-    tims: false
+%s
 
 services:
-'''
+''' % (FITTED if fitted else UNFITTED,)
 
 
-def render(times, headway_s, count=COUNT):
-    out = [HEADER % (count, headway_s, headway_s) + stock_yaml()]
+def render(times, headway_s, count=COUNT, fitted=False):
+    out = [HEADER % (count, headway_s, headway_s) + stock_yaml(fitted)]
     for service in flight_spec(times, headway_s, count)["services"]:
         lines = ["  - id: %s" % service["id"],
                  "    name: %s" % service["name"],
@@ -246,13 +260,30 @@ def render(times, headway_s, count=COUNT):
 
 
 if __name__ == "__main__":
+    # An interval and a file may be given, which is how timetable-close.yaml is
+    # made: the same flight booked far tighter than this line can work, so that
+    # trains actually close up on each other and there is something for a
+    # distance-separated system to do. At the booked interval there is not -
+    # eight trains four minutes apart never come within a block of each other,
+    # and moving block and fixed block look identical because they are.
+    #
+    #   python _generate_timetable.py                        -> timetable.yaml
+    #   python _generate_timetable.py 90 timetable-l3 fitted -> the L3 one
+    #
+    # ``fitted`` puts ETCS Level 3, integrity monitoring and the train-to-train
+    # link on the stock. It changes nothing under lineside signals and everything
+    # under a system that separates by distance.
+    headway = int(sys.argv[1]) if len(sys.argv) > 1 else HEADWAY_S
+    name = sys.argv[2] if len(sys.argv) > 2 else "timetable"
+    fitted = len(sys.argv) > 3 and sys.argv[3] == "fitted"
+
     times = probe_all()
     for index in sorted(times):
         print("T%02d over %s" % (
             index + 1, ", ".join(road(station, index) for station, _ in PATTERN)))
         print("   unimpeded:", {s: (a and round(a - BASE), d and round(d - BASE))
                                 for s, (a, d) in times[index].items()})
-    path = os.path.join(HERE, "timetable.yaml")
+    path = os.path.join(HERE, "%s.yaml" % name)
     with open(path, "w") as handle:
-        handle.write(render(times, HEADWAY_S))
-    print("wrote %s - %d trains at %d s" % (path, COUNT, HEADWAY_S))
+        handle.write(render(times, headway, fitted=fitted))
+    print("wrote %s - %d trains at %d s" % (path, COUNT, headway))

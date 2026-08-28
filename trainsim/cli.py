@@ -109,7 +109,8 @@ def main(argv=None) -> int:
                                overrides)
 
     for warning in (checks.warn_if_unsignalable(scenario),
-                    checks.warn_about_timetable(scenario)):
+                    checks.warn_about_timetable(scenario),
+                    checks.warn_about_fitment(scenario, sim.signalling)):
         if warning:
             print(warning, file=sys.stderr)
 
@@ -263,6 +264,10 @@ def _describe(scenario, sim) -> str:
         "interlocking   : %s" % (sim.interlocking.describe()
                                  if sim.interlocking else "none (automatic block)"),
         "dispatch       : %s" % sim.dispatcher.describe(),
+        # Only where it says something: what a fleet is fitted with matters to a
+        # system that separates by distance and to nothing else.
+        *([fitment] if (fitment := checks.fitment_note(scenario, sim.signalling))
+          else []),
         "window         : %s for %.0f min" % (
             format_clock(sim.config.start_time_s), sim.config.duration_s / 60.0,
         ),
