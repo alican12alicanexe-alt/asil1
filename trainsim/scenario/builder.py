@@ -392,8 +392,13 @@ class _Builder(object):
                 else:
                     signal_id = "S_%s_from_%s" % (block_id, leg)
                     leg_for_signal = leg
-                # Draw the signal on the road it applies to.
-                y = (network.segments[leg].y if leg is not None
+                # Draw the signal on the road it distinguishes. Where several
+                # roads converge on one block, that is the approach it applies
+                # to. Where only one approaches - four platform roads off a
+                # single throat - the signals differ by the road they read INTO,
+                # so each goes on its own; taking the approach's alignment there
+                # would draw all four on top of each other.
+                y = (network.segments[leg].y if leg is not None and len(legs) > 1
                      else network.segments[block.first_segment].y)
                 self.signals[signal_id] = Signal(
                     id=signal_id,

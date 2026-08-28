@@ -60,9 +60,12 @@ PALETTE = {
     "marker_board": "#5a6472",
     # Interlocking
     "route_set": "#5ad2c8",       # a route locked but not yet occupied
+    # A point's colour is its lock, and only its lock. Where it is actually set
+    # is carried by the shape of the diamond, because the two facts coincide -
+    # a point is locked exactly when a route is set over it - and a single
+    # colour asked to say both ends up hiding one of them.
     "point_free": "#6b788a",
     "point_locked": "#5ad2c8",
-    "point_reverse": "#ffc233",
 }
 
 ASPECT_COLOURS = {

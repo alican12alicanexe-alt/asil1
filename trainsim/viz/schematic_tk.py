@@ -225,7 +225,7 @@ class TkSchematicView(SchematicView):
             if block_id:
                 self._block_items[block_id] = item
             if segment.is_platform:
-                self._draw_platform_face(segment)
+                self._draw_platform_face(segment, track_y)
                 mid_km = (segment.km_start + segment.km_end) / 2.0
                 # Below the line: train labels sit above it, so they never collide.
                 canvas.create_text(
@@ -255,6 +255,12 @@ class TkSchematicView(SchematicView):
     #: anything at the wrong size.
     TRACK_WIDTH = 3
     PLATFORM_ROAD_WIDTH = 5
+    #: How much of an offset road's length is spent diverging from the running
+    #: line at each end. The road is drawn \____/ , and only the flat middle is
+    #: actually at the road's own alignment - so anything that belongs to the
+    #: road rather than to the junction (its platform, its entry signal) has to
+    #: be kept inside that middle or it floats off the rail it belongs to.
+    ROAD_TAPER_FRAC = 0.18
     #: Depth of the platform slab drawn against the road, and its drop below it.
     PLATFORM_FACE_DEPTH = 7
     PLATFORM_FACE_DROP = 9
@@ -276,7 +282,7 @@ class TkSchematicView(SchematicView):
         full = float(SchematicLayout.PX_PER_Y)
         return max(0.5, min(1.0, self.layout.y_scale / full))
 
-    def _draw_platform_face(self, segment) -> None:
+    def _draw_platform_face(self, segment, track_y) -> None:
         """The platform itself - the concrete, not the road it runs beside.
 
         Worth drawing separately because the two are wildly different lengths and
@@ -308,6 +314,20 @@ class TkSchematicView(SchematicView):
         # floor: the point is to show where it is, not to survive a measurement.
         if x1 - x0 < 3.0:
             x1 = x0 + 3.0
+        # A platform road stops at 1170 m of its 1200 m, which on an offset road
+        # is inside the closing taper - the slab would be drawn at the road's own
+        # height while the rail there has already climbed back to the running
+        # line. Slide it back onto the flat instead of leaving concrete in mid
+        # air. Slid, not squashed: the platform's length is a real 220 m.
+        lo, hi = self._road_span(segment, track_y)
+        span = x1 - x0
+        if span >= hi - lo:
+            x0, x1 = lo, hi
+        else:
+            if x1 > hi:
+                x0, x1 = hi - span, hi
+            if x0 < lo:
+                x0, x1 = lo, lo + span
         scale = self._vscale
         y = layout.y(segment.y) + self.PLATFORM_FACE_DROP * scale
         self.canvas.create_rectangle(
@@ -329,8 +349,40 @@ class TkSchematicView(SchematicView):
             return (x0, y_seg, x1, y_seg)
         # Offset road (a loop or a second platform): draw the divergence.
         y_track = layout.y(track_y)
-        taper = (x1 - x0) * 0.18
+        taper = (x1 - x0) * self.ROAD_TAPER_FRAC
         return (x0, y_track, x0 + taper, y_seg, x1 - taper, y_seg, x1, y_track)
+
+    def _road_span(self, segment, track_y):
+        """The x range over which a road runs at its own alignment.
+
+        End to end for a road on the running line; the flat middle of the
+        \\____/ for one offset from it.
+        """
+        layout = self.layout
+        lo, hi = sorted((layout.x(segment.km_start), layout.x(segment.km_end)))
+        if abs(segment.end_y - segment.y) > 1e-6:
+            return lo, hi          # a junction link: drawn as one straight ramp
+        if abs(segment.y - track_y) < 1e-6:
+            return lo, hi
+        taper = (hi - lo) * self.ROAD_TAPER_FRAC
+        return lo + taper, hi - taper
+
+    def _signal_road(self, signal):
+        """The road a signal is drawn on: the one its own alignment belongs to.
+
+        Either the approach it applies to, where several converge, or the road
+        it reads into, where the signals of one throat differ only by that.
+        """
+        infra = self.scenario.infrastructure
+        block = infra.blocks.get(signal.block_id)
+        candidates = [signal.from_segment]
+        if block is not None:
+            candidates.append(block.first_segment)
+        for segment_id in candidates:
+            segment = infra.network.segments.get(segment_id) if segment_id else None
+            if segment is not None and abs(segment.y - signal.y) < 1e-6:
+                return segment
+        return None
 
     def _draw_signal(self, signal, tracks) -> None:
         """A signal lamp, or an unlit marker board where the level has no signals.
@@ -344,6 +396,18 @@ class TkSchematicView(SchematicView):
         layout = self.layout
         x = layout.x(signal.km)
         y = layout.y(signal.y)
+        # Kept on the road it belongs to. At the throat itself the roads of a
+        # station are one road on the schematic, so a signal placed at its true
+        # chainage there would hang in blank space above the convergence - and
+        # four of them would share the spot. Sliding it to the near end of its
+        # road's own alignment costs a little chainage and buys a lamp that is
+        # visibly on the rail it applies to.
+        road = self._signal_road(signal)
+        if road is not None:
+            road_track_y = tracks.get(road.track, {}).get("y", road.y)
+            lo, hi = self._road_span(road, road_track_y)
+            if lo <= hi:
+                x = max(lo, min(hi, x))
         track = tracks.get(signal.track, {})
         # Down-line signals sit below their track, up-line above, so a signal is
         # visually on the side its trains are approaching from.
@@ -369,8 +433,27 @@ class TkSchematicView(SchematicView):
         )
         self._signal_items[signal.id] = lamp
 
+    #: Half-extents of a point diamond, along and across the running line.
+    POINT_LONG = 7
+    POINT_SHORT = 3
+
+    @classmethod
+    def _point_shape(cls, x: float, y: float, reverse: bool):
+        """Diamond coords for a point, oriented by the road it is set for.
+
+        Lock and position are two independent facts, and one lamp cannot carry
+        both: a point is locked exactly when a route is set over it, so a scheme
+        that let either win would hide the other almost always. Colour carries
+        the lock; the shape carries the position. Normal lies ALONG the running
+        line, reverse stands ACROSS it towards the road it has been swung to,
+        which is legible at four pixels in a way a third colour is not.
+        """
+        dx, dy = ((cls.POINT_SHORT, cls.POINT_LONG) if reverse
+                  else (cls.POINT_LONG, cls.POINT_SHORT))
+        return (x, y - dy, x + dx, y, x, y + dy, x - dx, y)
+
     def _draw_point(self, point) -> None:
-        """A point: a diamond at its node, coloured by lock and position.
+        """A point: a diamond at its node, coloured by lock, shaped by position.
 
         Facing points sit below the line, trailing points above, so which kind is
         which is readable without a label.
@@ -378,12 +461,12 @@ class TkSchematicView(SchematicView):
         layout = self.layout
         x = layout.x(point.km)
         y = layout.y(point.y) + (11 if point.kind == "facing" else -11)
-        size = 4
         item = self.canvas.create_polygon(
-            x, y - size, x + size, y, x, y + size, x - size, y,
+            *self._point_shape(x, y, False),
             fill=PALETTE["point_free"], outline="", tags="static",
         )
-        self._point_items[point.id] = item
+        # The anchor is kept: the shape is rebuilt from it every refresh.
+        self._point_items[point.id] = (item, x, y)
 
     def _draw_ruler(self) -> None:
         layout = self.layout
@@ -434,15 +517,18 @@ class TkSchematicView(SchematicView):
 
         if sim.interlocking is not None:
             state = sim.interlocking.point_state()
-            for point_id, item in self._point_items.items():
+            for point_id, (item, px, py) in self._point_items.items():
                 info = state.get(point_id, {})
-                if info.get("locked_by"):
-                    colour = PALETTE["point_locked"]
-                elif info.get("reverse"):
-                    colour = PALETTE["point_reverse"]
-                else:
-                    colour = PALETTE["point_free"]
-                self.canvas.itemconfig(item, fill=colour)
+                # Two independent facts, two channels. Colour is the lock, shape
+                # is the position - a locked point swung to the loop used to show
+                # its lock and say nothing about where it was actually set.
+                self.canvas.coords(
+                    item, *self._point_shape(px, py, bool(info.get("reverse"))))
+                self.canvas.itemconfig(
+                    item,
+                    fill=(PALETTE["point_locked"] if info.get("locked_by")
+                          else PALETTE["point_free"]),
+                )
 
         for signal_id, item in self._signal_items.items():
             aspect = sim.aspects.get(signal_id, "red")
