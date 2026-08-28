@@ -1,15 +1,21 @@
-"""Regenerate scenarios/depotline/timetable.yaml - a homogeneous flight.
+"""Regenerate scenarios/depotline/timetable.yaml - one flight, every road.
 
-Every service on this line is now the same train doing the same thing: the same
-unit, the same calls, the same roads, the same dwells. That is what makes the
-headway a property of the *railway* rather than of the traffic mix. With a fast
-unit mixed in among stoppers, the binding constraint is the speed difference and
-the answer depends on where the loops happen to be; with one train type it is
-the signalling and the station dwell, and nothing else.
+Every service is the same unit making the same calls with the same dwells, so
+the headway stays a property of the *railway* rather than of the traffic mix:
+with a fast unit mixed in among stoppers the binding constraint is the speed
+difference and the answer depends on where the loops happen to be.
 
-Booked times come from running a single unimpeded train and offsetting it by one
-headway per service, so the plan is workable by construction. Re-run after
-changing a dwell, a chainage, the stock or HEADWAY_S:
+What the services no longer share is the concrete. Each station's roads are used
+in turn, because a station's roads exist to be used - sending every train to
+road 1 held one platform for the dwell plus the approach and left the loops
+empty, which put a floor under the headway that had nothing to do with the
+signalling.
+
+That makes the flight inhomogeneous in one respect: the loops are slower than
+the through road, so a train routed over one takes longer. Each service is
+therefore booked from its own unimpeded run rather than from one shared probe,
+which keeps the plan workable by construction. Re-run after changing a dwell, a
+chainage, the stock or HEADWAY_S:
 
     python scenarios/depotline/_generate_timetable.py
 
@@ -39,44 +45,63 @@ COUNT = 8           # trains in the flight
 
 #: The interval the flight is booked at. Measured, not chosen: see the table in
 #: scenario.yaml and _sweep_headway.py, which runs the flight at every interval
-#: from four minutes down to one and reports what it costs.
+#: from five minutes down to one and reports what it costs.
 #:
 #: 165 s while this line still had automatic signals on the plain line. Working
 #: it entirely by route costs 45 s of headway, because a route reserves its block
 #: from the moment it is set - two signals ahead of the train - while an
 #: automatic signal only holds a section that a train is physically standing in.
-HEADWAY_S = 210
+#:
+#: 210 s while every train took road 1 at every station. Using the roads in turn
+#: costs another 30 s, because the loops are slower than the through road and
+#: this flight has nothing to overtake: half the trains end up in a section worth
+#: 169 s to get out of one worth 149 s. It is the loss --check predicted, and it
+#: is the price of the platforms being used rather than the price of signalling.
+HEADWAY_S = 240
 
 STOCK = {"id": "EMU", "name": "Line unit", "length_m": 160,
          "max_speed_kmh": 100, "max_accel": 1.0, "service_brake": 0.8,
          "emergency_brake": 1.2, "etcs_level": "none", "tims": False}
 
-#: (station, platform, dwell). One pattern and one road at each station on the
-#: running line - a homogeneous flight does not use the loops, which is the point
-#: of measuring it. The depots are the exception: their two roads are used
-#: alternately, because a depot road is held for the best part of four minutes
-#: and nothing else on this railway comes close to that.
-PATTERN = [("WDEPOT", "WDEPOT_%d", DEPOT), ("KINGSFORD", "KINGSFORD_1", DWELL),
-           ("MARLOWE", "MARLOWE_1", DWELL), ("ASHDOWN", "ASHDOWN_1", DWELL),
-           ("EDEPOT", "EDEPOT_%d", DEPOT)]
-
-#: How many roads each depot has, and so how many trains deep the queue for one
-#: can be before it matters.
-DEPOT_ROADS = 2
-
-
-def road(platform, index):
-    """The road service ``index`` uses at a station - depots alternate."""
-    return platform % (index % DEPOT_ROADS + 1) if "%d" in platform else platform
+#: (station, dwell). One calling pattern, every station on the running line.
+#: Which *road* each train takes is not fixed here - see :func:`road`.
+PATTERN = [("WDEPOT", DEPOT), ("KINGSFORD", DWELL), ("MARLOWE", DWELL),
+           ("ASHDOWN", DWELL), ("EDEPOT", DEPOT)]
 
 INFRA = build_infrastructure(
     read_data_file(os.path.join(HERE, "infrastructure.yaml")))
 
+#: Every road at each station, in the order the layout declares them. Read from
+#: the infrastructure rather than listed here, so a loop added to the layout is
+#: used by the flight without anyone having to remember to say so.
+ROADS = {station: [pid for pid, plat in INFRA.network.platforms.items()
+                   if plat.station == station]
+         for station, _ in PATTERN}
+
+
+def road(station, index):
+    """The road service ``index`` takes at ``station`` - they are used in turn.
+
+    A station's roads exist to be used. Sending every train down road 1 held one
+    platform for the dwell plus the approach and left the loops empty, which put
+    a floor under the headway that had nothing to do with the signalling: no
+    interval is workable if every train needs the same piece of concrete. Using
+    them in turn is what a real service pattern does, and it is why the loops
+    were built.
+
+    The cost is that the flight is no longer homogeneous - the loops are slower
+    than the through road, so a train routed over one takes longer - which is
+    why every service is booked from its own unimpeded run rather than from one
+    shared probe.
+    """
+    available = ROADS[station]
+    return available[index % len(available)]
+
 
 def calls(shift=0, index=0):
     """The calling pattern as timetable entries, shifted by ``shift`` seconds."""
-    entries = [{"station": s, "platform": road(p, index), "dwell_s": d}
-               for s, p, d in PATTERN]
+    entries = [{"station": s, "platform": road(s, index), "dwell_s": d}
+               for s, d in PATTERN]
     entries[0]["departure"] = format_clock(BASE + shift)
     return entries
 
@@ -99,12 +124,12 @@ def simulation(timetable, duration_s=7200, system="fixed_block_3aspect"):
                                   automatic_signals=False))
 
 
-def probe():
-    """Run one train with the road to itself, and time it at every call."""
+def probe(index=0):
+    """Run one train over service ``index``'s roads, alone, and time its calls."""
     timetable = build_timetable(
         {"stock": [STOCK],
          "services": [{"id": "P", "stock": "EMU", "departure": format_clock(BASE),
-                       "ready_lead_s": 60, "calls": calls()}]}, INFRA)
+                       "ready_lead_s": 60, "calls": calls(index=index)}]}, INFRA)
     sim = simulation(timetable, duration_s=5400)
     while not sim.finished:
         sim.step()
@@ -113,18 +138,41 @@ def probe():
     train = sim.trains["P"]
     return {station: (train.actual_arrivals.get(station),
                       train.actual_departures.get(station))
-            for station, _, _ in PATTERN}
+            for station, _ in PATTERN}
 
 
-def flight_spec(times, headway_s, count=COUNT):
-    """The whole flight as a timetable spec: ``count`` trains, one every headway."""
+def probe_all(count=COUNT):
+    """An unimpeded run per service: index -> station -> (arrival, departure).
+
+    One probe no longer describes the flight. A train routed over a 60 km/h loop
+    takes longer than one down the through road, so booking every service from a
+    single run would hand half of them times they cannot keep and call the
+    difference congestion. Runs sharing a set of roads are measured once.
+    """
+    by_roads = {}
+    times = {}
+    for index in range(count):
+        key = tuple(road(station, index) for station, _ in PATTERN)
+        if key not in by_roads:
+            by_roads[key] = probe(index)
+        times[index] = by_roads[key]
+    return times
+
+
+def flight_spec(times, headway_s, count=COUNT, indices=None):
+    """The whole flight as a timetable spec: ``count`` trains, one every headway.
+
+    ``times`` is what :func:`probe_all` returns. ``indices`` restricts the spec to
+    particular services while leaving them booked where they would be in the full
+    flight - which is how the sweep prices one train running alone.
+    """
     services = []
-    for n in range(count):
+    for n in range(count) if indices is None else indices:
         shift = n * headway_s
         entries = []
-        for station, platform, dwell in PATTERN:
-            arrival, departure = times[station]
-            entry = {"station": station, "platform": road(platform, n),
+        for station, dwell in PATTERN:
+            arrival, departure = times[n][station]
+            entry = {"station": station, "platform": road(station, n),
                      "dwell_s": dwell}
             if arrival is not None:
                 entry["arrival"] = format_clock(round(arrival) + shift)
@@ -143,10 +191,12 @@ HEADER = '''# depotline timetable - generated, do not edit by hand.
 #
 #   python scenarios/depotline/_generate_timetable.py
 #
-# A homogeneous flight: %d trains of one type, all calling at every station on
-# the main road, booked %d seconds apart. Every booked time is what a single
-# unimpeded train actually achieves on this railway, so the plan is workable on
-# its own and any delay a run reports is the signalling failing to deliver it.
+# A flight of %d trains of one type, all calling at every station, booked %d
+# seconds apart, and taking the roads at each station in turn rather than all
+# queueing for road 1. Every booked time is what that service actually achieves
+# with the railway to itself - over its own roads, since the loops are slower
+# than the through road - so the plan is workable on its own and any delay a run
+# reports is the signalling failing to deliver it.
 #
 # %d seconds is the shortest interval this line will hold. _sweep_headway.py is
 # where that number comes from.
@@ -196,9 +246,12 @@ def render(times, headway_s, count=COUNT):
 
 
 if __name__ == "__main__":
-    times = probe()
-    print("unimpeded run:", {s: (a and round(a - BASE), d and round(d - BASE))
-                             for s, (a, d) in times.items()})
+    times = probe_all()
+    for index in sorted(times):
+        print("T%02d over %s" % (
+            index + 1, ", ".join(road(station, index) for station, _ in PATTERN)))
+        print("   unimpeded:", {s: (a and round(a - BASE), d and round(d - BASE))
+                                for s, (a, d) in times[index].items()})
     path = os.path.join(HERE, "timetable.yaml")
     with open(path, "w") as handle:
         handle.write(render(times, HEADWAY_S))

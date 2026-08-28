@@ -8,12 +8,13 @@ trains never have to slow down, not to the one at which they can just about stop
 in time.
 
 ``--check`` gives the theoretical figure from signal spacing alone. This gives
-the measured one, which is the one to believe: it runs the same homogeneous
-flight at every interval from five minutes down to one and reports what each
-costs. The plan is rebuilt at each interval from the unimpeded run times, so it
-is always workable in isolation - which means any delay that appears belongs to
-trains getting in each other's way and not to a timetable that was never
-possible.
+the measured one, which is the one to believe: it runs the same flight at every
+interval from five minutes down to one and reports what each costs. The plan is
+rebuilt at each interval from the unimpeded run times - one per service, since
+the services take the roads at each station in turn and a loop is slower than the
+through road - so it is always workable in isolation, which means any delay that
+appears belongs to trains getting in each other's way and not to a timetable that
+was never possible.
 
     python scenarios/depotline/_sweep_headway.py
     python scenarios/depotline/_sweep_headway.py etcs_l2
@@ -23,13 +24,13 @@ Three numbers per row:
   restrained   seconds the flight spent with its speed held down by a signal
                rather than by line speed or a booked stop. The direct cost of
                the signalling, and the first thing to move as trains close up.
-               Reported over the baseline a single train pays alone, because a
-               train on an empty railway is still checked on every station
-               approach - the platform signal is controlled, and stands at
-               danger until the interlocking sets a route over it. That toll is
-               a property of the layout, not of the traffic, and counting it as
-               congestion would put a floor under every row and hide the thing
-               being looked for.
+               Reported over the baseline the flight pays with the railway to
+               itself, summed service by service, because a train on an empty
+               railway is still checked on every station approach - the platform
+               signal is controlled, and stands at danger until the interlocking
+               sets a route over it. That toll is a property of the layout, not
+               of the traffic, and counting it as congestion would put a floor
+               under every row and hide the thing being looked for.
   mean delay   how late the average train was at its destination.
   worst        the worst single arrival, which is what a passenger notices.
 
@@ -47,7 +48,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(os.path.dirname(HERE)))
 sys.path.insert(0, HERE)
 
-from _generate_timetable import COUNT, flight_spec, probe, simulation, INFRA
+from _generate_timetable import COUNT, flight_spec, probe_all, simulation, INFRA
 from trainsim.analysis.kpi import measure
 from trainsim.scenario.loader import build_timetable
 
@@ -56,8 +57,9 @@ from trainsim.scenario.loader import build_timetable
 HEADWAYS = (300, 270, 240, 210, 195, 180, 165, 150, 135, 120, 105, 90, 75, 60)
 
 
-def run(times, headway_s, system, count=COUNT):
-    timetable = build_timetable(flight_spec(times, headway_s, count), INFRA)
+def run(times, headway_s, system, count=COUNT, indices=None):
+    timetable = build_timetable(
+        flight_spec(times, headway_s, count, indices), INFRA)
     sim = simulation(timetable, duration_s=headway_s * count + 3600,
                      system=system)
     # measure() drives the run itself, one tick at a time, because the numbers
@@ -69,14 +71,21 @@ def run(times, headway_s, system, count=COUNT):
 
 
 def main(system="fixed_block_3aspect"):
-    times = probe()
-    # What one train pays with the railway to itself. Every row below is
+    times = probe_all()
+    # What the flight pays with the railway to itself. Every row below is
     # reported over this, so the column shows trains obstructing each other and
     # nothing else.
-    alone = run(times, HEADWAYS[0], system, count=1).total_restrained_s
-    print("%d trains, all calling everywhere on the main road, under %s"
-          % (COUNT, system))
-    print("one train alone is restrained %.0f s at the controlled station "
+    #
+    # Summed service by service rather than taken once and multiplied: the
+    # services no longer run over the same roads, and a train routed through a
+    # loop is checked at a different set of signals from one down the through
+    # road. Multiplying one train's toll by eight would charge the flight for a
+    # journey half of it does not make.
+    alone = sum(run(times, HEADWAYS[0], system, indices=[n]).total_restrained_s
+                for n in range(COUNT))
+    print("%d trains, all calling everywhere, taking the roads at each station "
+          "in turn, under %s" % (COUNT, system))
+    print("the flight alone is restrained %.0f s at the controlled station "
           "signals; the column below is over that.\n" % alone)
     print("  headway   restrained   mean delay      worst   completed")
     print("  " + "-" * 55)
@@ -84,7 +93,7 @@ def main(system="fixed_block_3aspect"):
     for headway in HEADWAYS:
         metrics = run(times, headway, system)
         worst = max(metrics.delays.values()) if metrics.delays else 0.0
-        congestion = metrics.total_restrained_s - alone * COUNT
+        congestion = metrics.total_restrained_s - alone
         ok = (congestion <= 0.0 and worst <= 1.0
               and metrics.completed == metrics.services)
         if ok:

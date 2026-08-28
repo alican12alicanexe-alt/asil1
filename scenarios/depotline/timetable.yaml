@@ -2,12 +2,14 @@
 #
 #   python scenarios/depotline/_generate_timetable.py
 #
-# A homogeneous flight: 8 trains of one type, all calling at every station on
-# the main road, booked 210 seconds apart. Every booked time is what a single
-# unimpeded train actually achieves on this railway, so the plan is workable on
-# its own and any delay a run reports is the signalling failing to deliver it.
+# A flight of 8 trains of one type, all calling at every station, booked 240
+# seconds apart, and taking the roads at each station in turn rather than all
+# queueing for road 1. Every booked time is what that service actually achieves
+# with the railway to itself - over its own roads, since the loops are slower
+# than the through road - so the plan is workable on its own and any delay a run
+# reports is the signalling failing to deliver it.
 #
-# 210 seconds is the shortest interval this line will hold. _sweep_headway.py is
+# 240 seconds is the shortest interval this line will hold. _sweep_headway.py is
 # where that number comes from.
 
 stock:
@@ -32,91 +34,91 @@ services:
     ready_lead_s: 60
     calls:
       - {station: WDEPOT, platform: WDEPOT_1, departure: "07:00:00", dwell_s: 60}
-      - {station: KINGSFORD, platform: KINGSFORD_1, arrival: "07:07:29", departure: "07:08:14", dwell_s: 45}
-      - {station: MARLOWE, platform: MARLOWE_1, arrival: "07:19:40", departure: "07:20:25", dwell_s: 45}
-      - {station: ASHDOWN, platform: ASHDOWN_1, arrival: "07:31:51", departure: "07:32:36", dwell_s: 45}
-      - {station: EDEPOT, platform: EDEPOT_1, arrival: "07:41:01", dwell_s: 60}
+      - {station: KINGSFORD, platform: KINGSFORD_1, arrival: "07:07:49", departure: "07:08:34", dwell_s: 45}
+      - {station: MARLOWE, platform: MARLOWE_1, arrival: "07:19:57", departure: "07:20:42", dwell_s: 45}
+      - {station: ASHDOWN, platform: ASHDOWN_1, arrival: "07:32:07", departure: "07:32:52", dwell_s: 45}
+      - {station: EDEPOT, platform: EDEPOT_1, arrival: "07:40:51", dwell_s: 60}
 
   - id: T02
-    name: 07:03 West Depot - East Depot
+    name: 07:04 West Depot - East Depot
     stock: EMU
-    departure: "07:03:30"
+    departure: "07:04:00"
     ready_lead_s: 60
     calls:
-      - {station: WDEPOT, platform: WDEPOT_2, departure: "07:03:30", dwell_s: 60}
-      - {station: KINGSFORD, platform: KINGSFORD_1, arrival: "07:10:59", departure: "07:11:44", dwell_s: 45}
-      - {station: MARLOWE, platform: MARLOWE_1, arrival: "07:23:10", departure: "07:23:55", dwell_s: 45}
-      - {station: ASHDOWN, platform: ASHDOWN_1, arrival: "07:35:21", departure: "07:36:06", dwell_s: 45}
-      - {station: EDEPOT, platform: EDEPOT_2, arrival: "07:44:31", dwell_s: 60}
+      - {station: WDEPOT, platform: WDEPOT_2, departure: "07:04:00", dwell_s: 60}
+      - {station: KINGSFORD, platform: KINGSFORD_2, arrival: "07:12:02", departure: "07:12:47", dwell_s: 45}
+      - {station: MARLOWE, platform: MARLOWE_2, arrival: "07:24:31", departure: "07:25:16", dwell_s: 45}
+      - {station: ASHDOWN, platform: ASHDOWN_2, arrival: "07:36:58", departure: "07:37:43", dwell_s: 45}
+      - {station: EDEPOT, platform: EDEPOT_2, arrival: "07:45:49", dwell_s: 60}
 
   - id: T03
-    name: 07:07 West Depot - East Depot
+    name: 07:08 West Depot - East Depot
     stock: EMU
-    departure: "07:07:00"
+    departure: "07:08:00"
     ready_lead_s: 60
     calls:
-      - {station: WDEPOT, platform: WDEPOT_1, departure: "07:07:00", dwell_s: 60}
-      - {station: KINGSFORD, platform: KINGSFORD_1, arrival: "07:14:29", departure: "07:15:14", dwell_s: 45}
-      - {station: MARLOWE, platform: MARLOWE_1, arrival: "07:26:40", departure: "07:27:25", dwell_s: 45}
-      - {station: ASHDOWN, platform: ASHDOWN_1, arrival: "07:38:51", departure: "07:39:36", dwell_s: 45}
-      - {station: EDEPOT, platform: EDEPOT_1, arrival: "07:48:01", dwell_s: 60}
+      - {station: WDEPOT, platform: WDEPOT_1, departure: "07:08:00", dwell_s: 60}
+      - {station: KINGSFORD, platform: KINGSFORD_1, arrival: "07:15:49", departure: "07:16:34", dwell_s: 45}
+      - {station: MARLOWE, platform: MARLOWE_3, arrival: "07:28:11", departure: "07:28:56", dwell_s: 45}
+      - {station: ASHDOWN, platform: ASHDOWN_3, arrival: "07:40:38", departure: "07:41:23", dwell_s: 45}
+      - {station: EDEPOT, platform: EDEPOT_1, arrival: "07:49:29", dwell_s: 60}
 
   - id: T04
-    name: 07:10 West Depot - East Depot
+    name: 07:12 West Depot - East Depot
     stock: EMU
-    departure: "07:10:30"
+    departure: "07:12:00"
     ready_lead_s: 60
     calls:
-      - {station: WDEPOT, platform: WDEPOT_2, departure: "07:10:30", dwell_s: 60}
-      - {station: KINGSFORD, platform: KINGSFORD_1, arrival: "07:17:59", departure: "07:18:44", dwell_s: 45}
-      - {station: MARLOWE, platform: MARLOWE_1, arrival: "07:30:10", departure: "07:30:55", dwell_s: 45}
-      - {station: ASHDOWN, platform: ASHDOWN_1, arrival: "07:42:21", departure: "07:43:06", dwell_s: 45}
-      - {station: EDEPOT, platform: EDEPOT_2, arrival: "07:51:31", dwell_s: 60}
+      - {station: WDEPOT, platform: WDEPOT_2, departure: "07:12:00", dwell_s: 60}
+      - {station: KINGSFORD, platform: KINGSFORD_2, arrival: "07:20:02", departure: "07:20:47", dwell_s: 45}
+      - {station: MARLOWE, platform: MARLOWE_4, arrival: "07:32:51", departure: "07:33:36", dwell_s: 45}
+      - {station: ASHDOWN, platform: ASHDOWN_1, arrival: "07:45:23", departure: "07:46:08", dwell_s: 45}
+      - {station: EDEPOT, platform: EDEPOT_2, arrival: "07:54:07", dwell_s: 60}
 
   - id: T05
-    name: 07:14 West Depot - East Depot
+    name: 07:16 West Depot - East Depot
     stock: EMU
-    departure: "07:14:00"
+    departure: "07:16:00"
     ready_lead_s: 60
     calls:
-      - {station: WDEPOT, platform: WDEPOT_1, departure: "07:14:00", dwell_s: 60}
-      - {station: KINGSFORD, platform: KINGSFORD_1, arrival: "07:21:29", departure: "07:22:14", dwell_s: 45}
-      - {station: MARLOWE, platform: MARLOWE_1, arrival: "07:33:40", departure: "07:34:25", dwell_s: 45}
-      - {station: ASHDOWN, platform: ASHDOWN_1, arrival: "07:45:51", departure: "07:46:36", dwell_s: 45}
-      - {station: EDEPOT, platform: EDEPOT_1, arrival: "07:55:01", dwell_s: 60}
+      - {station: WDEPOT, platform: WDEPOT_1, departure: "07:16:00", dwell_s: 60}
+      - {station: KINGSFORD, platform: KINGSFORD_1, arrival: "07:23:49", departure: "07:24:34", dwell_s: 45}
+      - {station: MARLOWE, platform: MARLOWE_1, arrival: "07:35:57", departure: "07:36:42", dwell_s: 45}
+      - {station: ASHDOWN, platform: ASHDOWN_2, arrival: "07:48:19", departure: "07:49:04", dwell_s: 45}
+      - {station: EDEPOT, platform: EDEPOT_1, arrival: "07:57:10", dwell_s: 60}
 
   - id: T06
-    name: 07:17 West Depot - East Depot
+    name: 07:20 West Depot - East Depot
     stock: EMU
-    departure: "07:17:30"
+    departure: "07:20:00"
     ready_lead_s: 60
     calls:
-      - {station: WDEPOT, platform: WDEPOT_2, departure: "07:17:30", dwell_s: 60}
-      - {station: KINGSFORD, platform: KINGSFORD_1, arrival: "07:24:59", departure: "07:25:44", dwell_s: 45}
-      - {station: MARLOWE, platform: MARLOWE_1, arrival: "07:37:10", departure: "07:37:55", dwell_s: 45}
-      - {station: ASHDOWN, platform: ASHDOWN_1, arrival: "07:49:21", departure: "07:50:06", dwell_s: 45}
-      - {station: EDEPOT, platform: EDEPOT_2, arrival: "07:58:31", dwell_s: 60}
+      - {station: WDEPOT, platform: WDEPOT_2, departure: "07:20:00", dwell_s: 60}
+      - {station: KINGSFORD, platform: KINGSFORD_2, arrival: "07:28:02", departure: "07:28:47", dwell_s: 45}
+      - {station: MARLOWE, platform: MARLOWE_2, arrival: "07:40:31", departure: "07:41:16", dwell_s: 45}
+      - {station: ASHDOWN, platform: ASHDOWN_3, arrival: "07:52:58", departure: "07:53:43", dwell_s: 45}
+      - {station: EDEPOT, platform: EDEPOT_2, arrival: "08:01:49", dwell_s: 60}
 
   - id: T07
-    name: 07:21 West Depot - East Depot
-    stock: EMU
-    departure: "07:21:00"
-    ready_lead_s: 60
-    calls:
-      - {station: WDEPOT, platform: WDEPOT_1, departure: "07:21:00", dwell_s: 60}
-      - {station: KINGSFORD, platform: KINGSFORD_1, arrival: "07:28:29", departure: "07:29:14", dwell_s: 45}
-      - {station: MARLOWE, platform: MARLOWE_1, arrival: "07:40:40", departure: "07:41:25", dwell_s: 45}
-      - {station: ASHDOWN, platform: ASHDOWN_1, arrival: "07:52:51", departure: "07:53:36", dwell_s: 45}
-      - {station: EDEPOT, platform: EDEPOT_1, arrival: "08:02:01", dwell_s: 60}
-
-  - id: T08
     name: 07:24 West Depot - East Depot
     stock: EMU
-    departure: "07:24:30"
+    departure: "07:24:00"
     ready_lead_s: 60
     calls:
-      - {station: WDEPOT, platform: WDEPOT_2, departure: "07:24:30", dwell_s: 60}
-      - {station: KINGSFORD, platform: KINGSFORD_1, arrival: "07:31:59", departure: "07:32:44", dwell_s: 45}
-      - {station: MARLOWE, platform: MARLOWE_1, arrival: "07:44:10", departure: "07:44:55", dwell_s: 45}
-      - {station: ASHDOWN, platform: ASHDOWN_1, arrival: "07:56:21", departure: "07:57:06", dwell_s: 45}
-      - {station: EDEPOT, platform: EDEPOT_2, arrival: "08:05:31", dwell_s: 60}
+      - {station: WDEPOT, platform: WDEPOT_1, departure: "07:24:00", dwell_s: 60}
+      - {station: KINGSFORD, platform: KINGSFORD_1, arrival: "07:31:49", departure: "07:32:34", dwell_s: 45}
+      - {station: MARLOWE, platform: MARLOWE_3, arrival: "07:44:11", departure: "07:44:56", dwell_s: 45}
+      - {station: ASHDOWN, platform: ASHDOWN_1, arrival: "07:56:26", departure: "07:57:11", dwell_s: 45}
+      - {station: EDEPOT, platform: EDEPOT_1, arrival: "08:05:10", dwell_s: 60}
+
+  - id: T08
+    name: 07:28 West Depot - East Depot
+    stock: EMU
+    departure: "07:28:00"
+    ready_lead_s: 60
+    calls:
+      - {station: WDEPOT, platform: WDEPOT_2, departure: "07:28:00", dwell_s: 60}
+      - {station: KINGSFORD, platform: KINGSFORD_2, arrival: "07:36:02", departure: "07:36:47", dwell_s: 45}
+      - {station: MARLOWE, platform: MARLOWE_4, arrival: "07:48:51", departure: "07:49:36", dwell_s: 45}
+      - {station: ASHDOWN, platform: ASHDOWN_2, arrival: "08:01:35", departure: "08:02:20", dwell_s: 45}
+      - {station: EDEPOT, platform: EDEPOT_2, arrival: "08:10:26", dwell_s: 60}

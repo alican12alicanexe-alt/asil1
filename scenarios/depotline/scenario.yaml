@@ -10,13 +10,17 @@
 #    2 roads            2 plat           4 plat         3 plat         2 roads
 #      |<-- 12 km -->|<--- 18 km --->|<--- 18 km --->|<-- 12 km -->|
 #
-# One running line and no way past except through a station. The flight is
-# homogeneous - eight trains of one type, all calling everywhere on the main
-# road, all dwelling the same - because that is what makes a headway a property
-# of the railway rather than of the traffic mix. Mix a fast unit in among
-# stoppers and the binding constraint becomes the speed difference and where the
-# loops happen to be; run one train type and what is left is the signalling and
-# the station dwell.
+# One running line and no way past except through a station. Eight trains of one
+# type, all calling everywhere, all dwelling the same - one train type is what
+# makes a headway a property of the railway rather than of the traffic mix. Mix a
+# fast unit in among stoppers and the binding constraint becomes the speed
+# difference and where the loops happen to be.
+#
+# What the flight does not share is the concrete: the roads at each station are
+# used in turn, so Marlowe's four and Ashdown's three carry trains instead of
+# standing empty. That is not free, and the cost is measured below - the loops
+# are slower than the through road, and a flight with nothing to overtake gains
+# nothing from being spread across them.
 #
 # THE ALL-GREEN HEADWAY
 #
@@ -36,31 +40,35 @@
 # is only as close-worked as its worst section, so 101-253 s does not mean this
 # railway will do 101 s. Read it as: the running line's worst section is 149 s
 # (ML_022, an 1867 m block between Marlowe and Ashdown), and the 253 s belongs to
-# the depot roads, which is survivable only because the two roads at each end are
-# used by alternate trains.
+# the 40 km/h roads - the four depot roads and Marlowe's road 4 - which is
+# survivable only because the roads at each station are used in turn, so nothing
+# is reoccupied by the train immediately behind.
 #
 # `python scenarios/depotline/_sweep_headway.py` books the same flight at every
 # interval from five minutes down to one, rebuilding the plan from the unimpeded
 # run times each time so it is always workable in isolation:
 #
 #     headway   restrained   mean delay   worst arrival
-#       240 s          0 s        0.0 s           0 s
-#       210 s          0 s        0.0 s           0 s     <- all-green
-#       195 s        105 s        6.1 s           7 s     <- degraded
-#       165 s        315 s       20.1 s          23 s
-#       135 s        876 s       68.9 s         136 s
-#       120 s       1407 s      125.1 s         247 s
-#        90 s       2366 s      231.0 s         458 s
-#        60 s       3109 s      336.9 s         669 s
+#       270 s          0 s        0.0 s           0 s
+#       240 s          0 s        0.0 s           0 s     <- all-green
+#       210 s         30 s        1.9 s          15 s     <- degraded
+#       195 s         60 s        3.9 s          31 s
+#       165 s        135 s        8.9 s          54 s
+#       135 s        537 s       37.2 s          93 s
+#       120 s        871 s       59.8 s         118 s
+#        90 s       2150 s      144.1 s         253 s
+#        60 s       2962 s      244.5 s         428 s
 #
-#     210 s = 17.1 trains an hour, against a worst section of 149 s.
+#     240 s = 15.0 trains an hour, against a worst section of 149 s.
 #
-# Restraint is reported over the 65 seconds a single train pays with the railway
-# entirely to itself. That toll is not congestion: every signal here is
-# controlled, so it stands at danger until the interlocking sets a route over it,
-# and a train alone is checked on each approach exactly as a train in traffic is.
-# Counting it would put the same floor under every row and hide the thing being
-# looked for.
+# Restraint is reported over the 193 seconds the flight pays with the railway
+# entirely to itself - about 24 s a train, summed service by service rather than
+# taken once and multiplied, because the services no longer run over the same
+# roads and a train through a loop is checked at a different set of signals. That
+# toll is not congestion: every signal here is controlled, so it stands at danger
+# until the interlocking sets a route over it, and a train alone is checked on
+# each approach exactly as a train in traffic is. Counting it would put the same
+# floor under every row and hide the thing being looked for.
 #
 # WHAT WORKING ENTIRELY BY ROUTE COSTS
 #
@@ -82,6 +90,10 @@
 #            1800 m (shipped)      165 s  21.8 tph      210 s  17.1 tph
 #            1200 m                150 s  24.0 tph      195 s  18.5 tph
 #
+# Measured while every train still took road 1 at each station, and not re-run
+# since; the 45 s is a property of the reservation, not of which platform a train
+# is booked into.
+#
 # A flat 45 s either way, so it is not interacting with block length - it is the
 # reservation itself. A route holds its block from the moment it is set, two
 # signals ahead of the train, until the train has cleared it. An automatic signal
@@ -102,7 +114,9 @@
 #
 # This line was 27 km with 5-8 km between stations before it was 60 km with
 # 12-18 km. Journey time roughly doubled, as it must. The headway moved too, from
-# 195 s to 210 s - but not because of the spacing.
+# 195 s to 210 s - but not because of the spacing. (Both figures are from the
+# road-1-only flight this line ran until the roads were used in turn; the
+# comparison is between them, and it holds.)
 #
 # `block_length_m` is a target the builder divides evenly into each stretch, so
 # the same 1800 m request that produced 1700 m sections over 8 km produces 1867 m
@@ -142,14 +156,21 @@
 #     MARLOWE_2  loop,          60 km/h    169 s
 #     ML_022     open line,    100 km/h    149 s   <- what actually binds
 #
-# A flight that used the loops alternately would put half its trains in a section
-# worth 169 s to get out of one worth 149 s, which is a loss. Loops are for
-# letting a fast train past a slow one, and this flight is homogeneous - there is
-# nothing to overtake. The lever that does work is block length: see the table
-# above, where cutting one stretch from 1800 m to 1200 m buys 15 seconds.
+# A flight that uses the loops in turn puts half its trains in a section worth
+# 169 s to get out of one worth 149 s, which is a loss - and that is exactly what
+# it measures. Spreading this flight across every road took the all-green headway
+# from 210 s to 240 s, 17.1 trains an hour to 15.0, and added 45 s to the mean
+# journey. Loops are for letting a fast train past a slow one, and this flight has
+# nothing to overtake.
+#
+# The flight uses them anyway, because a station's roads existing and never being
+# used is its own kind of lie about the railway - and because the cost is now a
+# measured number rather than a prediction from --check. The lever that does work
+# on headway is block length: see the table above, where cutting one stretch from
+# 1800 m to 1200 m buys 15 seconds.
 
 name: depotline
-description: "A 60 km single-track line between two depots, three stations with 2, 4 and 3 platform roads, and a homogeneous flight of eight units worked by three-aspect fixed block."
+description: "A 60 km single-track line between two depots, three stations with 2, 4 and 3 platform roads, and a flight of eight units taking those roads in turn, worked by three-aspect fixed block."
 
 infrastructure: infrastructure.yaml
 timetable: timetable.yaml

@@ -122,7 +122,9 @@ platforms:
 
   # Marlowe: the overtaking station. Road 1 is the through road at line speed;
   # 2, 3 and 4 are loops, which is why they are slower - points and a shorter
-  # radius, exactly as at a real passing place.
+  # radius, exactly as at a real passing place. The flight takes them in turn,
+  # and the slower roads are what its 240 s headway is made of: see the loops
+  # passage in scenario.yaml for what that costs and what it buys.
   - {id: MARLOWE_1, station: MARLOWE, track: ML, length_m: 240, y_offset: 0.0}
   - {id: MARLOWE_2, station: MARLOWE, track: ML, length_m: 240, max_speed_kmh: 60, y_offset: 0.5}
   - {id: MARLOWE_3, station: MARLOWE, track: ML, length_m: 240, max_speed_kmh: 60, y_offset: 1.0}

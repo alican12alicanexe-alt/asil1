@@ -329,8 +329,10 @@ above:
 | 1800 m (shipped) | 165 s, 21.8 tph | 210 s, 17.1 tph |
 | 1200 m | 150 s, 24.0 tph | 195 s, 18.5 tph |
 
-Flat either way, so it is not interacting with block length - it is the
-reservation itself. A route holds its block from the moment it is set, two
+Both rows measured on the road-1-only flight this line ran until the roads were
+used in turn, and not re-run since; the 45 s is a property of the reservation,
+not of which platform a train is booked into. Flat either way, so it is not
+interacting with block length - it is the reservation itself. A route holds its block from the moment it is set, two
 signals ahead of the train, until the train has cleared it; an automatic signal
 holds a section only while a train is standing in it. Two blocks of extra
 reservation depth, and the follower pays for them.
@@ -372,9 +374,11 @@ signal spacing (3-aspect, 1 block of warning)
 
 **Read the top of that range, not the bottom.** A line is only as close-worked as
 its worst section, so 101-253 s does not mean this railway will do 101 s. The
-253 s belongs to the depot roads and is survivable only because the two roads at
-each end are used by alternate trains; the worst section the flight actually
-meets is 149 s, an 1867 m block between Marlowe and Ashdown.
+253 s belongs to the 40 km/h roads - the four depot roads and Marlowe's road 4 -
+and is survivable only because a road is reoccupied by the second, third or
+fourth service after the one standing in it, never by the next one. The worst
+open-line section the flight meets is 149 s, an 1867 m block between Marlowe and
+Ashdown; what the slow roads cost is run time rather than headway.
 
 That is the theoretical figure, and it assumes the only thing in a train's way is
 the train in front. The measured one comes from running the flight:
@@ -383,22 +387,24 @@ the train in front. The measured one comes from running the flight:
 $ python scenarios/depotline/_sweep_headway.py
 
   headway   restrained   mean delay      worst
-    240 s         0 s        0.0 s        0 s
-    210 s         0 s        0.0 s        0 s     <- all-green
-    195 s       105 s        6.1 s        7 s     <- degraded
-    165 s       315 s       20.1 s       23 s
-    120 s      1407 s      125.1 s      247 s
-     60 s      3109 s      336.9 s      669 s
+    270 s         0 s        0.0 s        0 s
+    240 s         0 s        0.0 s        0 s     <- all-green
+    210 s        30 s        1.9 s       15 s     <- degraded
+    195 s        60 s        3.9 s       31 s
+    165 s       135 s        8.9 s       54 s
+    120 s       871 s       59.8 s      118 s
+     60 s      2962 s      244.5 s      428 s
 
-all-green headway: 210 s (17.1 trains an hour)
+all-green headway: 240 s (15.0 trains an hour)
 ```
 
-210 s measured against a 149 s worst section. The theory is a floor and it is not
-a tight one, because signal spacing is only half the story: the other 45 s is the
-route reservation, which the spacing formula knows nothing about. Restraint is
-reported over the 65 s a single train pays with the line entirely to itself -
-every signal here is controlled, so a train alone is checked on each approach
-exactly as a train in traffic is. That toll is the layout, not the traffic.
+240 s measured against a 149 s worst section. The theory is a floor and it is not
+a tight one: signal spacing is only part of the story, and the rest is the route
+reservation and the roads the flight is booked over, neither of which the spacing
+formula knows anything about. Restraint is reported over the 193 s the flight
+pays with the line entirely to itself, about 24 s a train - every signal here is
+controlled, so a train alone is checked on each approach exactly as a train in
+traffic is. That toll is the layout, not the traffic.
 
 **Below the all-green headway the line does not fail, it degrades** - each train
 a little later than the one in front, which is what a real railway does when it
@@ -421,6 +427,10 @@ Marlowe-Ashdown blocks   all-green headway
        1200 m                 195 s   18.5 trains/hour
 ```
 
+(Both measured on the road-1-only flight this line ran until the roads were used
+in turn, and not re-run since. The 15 s is the block length; it is not a claim
+about today's booked headway, which is 240 s.)
+
 Station spacing buys journey time. Block length buys headway. They are
 independent, and only the fact that block length is declared as a target rather
 than a count ties them together at all.
@@ -433,9 +443,17 @@ MARLOWE_2  loop,          60 km/h    169 s
 ML_022     open line,    100 km/h    149 s   <- what actually binds
 ```
 
-A flight using the loops alternately would put half its trains in a 169 s section
-to escape a 149 s one. Loops let a fast train past a slow one; this flight is
-homogeneous, so there is nothing to overtake.
+A flight using the loops in turn puts half its trains in a 169 s section to
+escape a 149 s one, and that is what it measures: spreading this flight across
+every road at every station took the all-green headway from 210 s to 240 s -
+17.1 trains an hour to 15.0 - and added 45 s to the mean journey. Loops let a
+fast train past a slow one; this flight has nothing to overtake.
+
+The shipped timetable uses them anyway. A station's roads existing and never
+being used is its own kind of lie about the railway, and the cost is now a
+measured number rather than a prediction. Every service is booked from its own
+unimpeded run, because the loops are slower and one probe no longer describes
+the flight.
 
 ### The ETCS levels
 
@@ -589,31 +607,40 @@ train appear to outperform moving block on identical physics.
 **The control experiment.** With relative braking switched off
 (`assume_leader_brakes: false`) and zero latency, virtual coupling is moving
 block at the same margin — identical to the second, 1162 s restrained and 84.0 s
-mean delay on the same flight. So everything below comes from the borrowed
-braking distance and not from a tuned constant.
+mean delay on the road-1 flight at 90 s. So everything below comes from the
+borrowed braking distance and not from a tuned constant.
 
-**Measured, depotline, the same eight-train flight booked at each interval:**
+**Measured, depotline, the eight-train flight booked at each interval — and it
+depends entirely on which roads the flight is booked over.** Mean delay:
 
-| booked | moving block | virtual coupling | VC, unfitted fleet |
-|---|---|---|---|
-| 210 s (the line's own headway) | on time | on time | on time |
-| 120 s | 11.0 s late | 7.0 s | 82.0 s |
-| 90 s | 91.6 s late | 77.6 s | 187.0 s |
-| 60 s | 192.5 s late | 140.8 s | 292.0 s |
+| booked | road 1 only, MB | road 1 only, VC | roads in turn, MB | roads in turn, VC |
+|---|---|---|---|---|
+| 240 s (the line's own headway) | on time | on time | on time | on time |
+| 120 s | 11.0 s late | 7.0 s | 5.1 s late | 5.1 s |
+| 90 s | 91.6 s late | 77.6 s | 25.0 s late | 25.0 s |
+| 60 s | 192.5 s late | 140.8 s | 104.1 s late | 104.8 s |
 
-Three things in that table are worth more than the numbers:
+Four things in that table are worth more than the numbers:
 
-- **above the line's own headway it buys nothing.** At 210 s and 150 s every
-  system on the ladder is on time, virtual coupling included. It is a congestion
-  technology, and this line's constraint at its booked interval is the station
-  dwell and the route-setting, not the following distance.
-- **it pays where the concertina starts.** At 60 s the flight is 27% less late
-  than under moving block — and still 140 s late, because relative braking does
-  nothing about a platform that is occupied.
-- **an unfitted fleet is worse off than under moving block.** No link means the
-  rear of the train ahead cannot be trusted at all, so the fallback is block
-  granularity rather than absolute distance. That is the honest answer, not a
-  penalty: the whole benefit was the link.
+- **above the line's own headway it buys nothing.** At 240 s every system on the
+  ladder is on time, virtual coupling included. It is a congestion technology,
+  and this line's constraint at its booked interval is the station dwell and the
+  route-setting, not the following distance.
+- **it pays where the concertina starts** — but only where the queue is a
+  following queue. Send every train to road 1 and virtual coupling is 27% less
+  late than moving block at 60 s, because the trains are nose to tail on one
+  piece of railway. Spread the same flight across the roads at each station and
+  the benefit disappears into the noise: what is holding trains up is a platform
+  and a throat, and no amount of radio between trains shortens a dwell.
+- **the flight that is worse at its own headway is better under overload.**
+  Using the roads in turn costs 30 s of all-green headway, and at 60 s it more
+  than halves the delay — capacity at the margin and robustness past it are not
+  the same property, and this line trades one for the other.
+- **an unfitted fleet is worse off than under moving block** — 29.8 s against
+  25.0 s at 90 s, 112.8 s against 104.1 s at 60 s. No link means the rear of the
+  train ahead cannot be trusted at all, so the fallback is block granularity
+  rather than absolute distance. That is the honest answer, not a penalty: the
+  whole benefit was the link.
 
 The hazard the model does not remove is the one that keeps this off real
 railways. Relative braking assumes the leader cannot stop faster than its own
