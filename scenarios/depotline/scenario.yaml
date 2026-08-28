@@ -40,7 +40,7 @@
 # is only as close-worked as its worst section, so 101-253 s does not mean this
 # railway will do 101 s. Read it as: the running line's worst section is 149 s
 # (ML_022, an 1867 m block between Marlowe and Ashdown), and the 253 s belongs to
-# the 40 km/h roads - the four depot roads and Marlowe's road 4 - which is
+# the ten 40 km/h roads - both roads at each depot, and every loop - which is
 # survivable only because the roads at each station are used in turn, so nothing
 # is reoccupied by the train immediately behind.
 #
@@ -51,24 +51,25 @@
 #     headway   restrained   mean delay   worst arrival
 #       270 s          0 s        0.0 s           0 s
 #       240 s          0 s        0.0 s           0 s     <- all-green
-#       210 s         30 s        1.9 s          15 s     <- degraded
-#       195 s         60 s        3.9 s          31 s
-#       165 s        135 s        8.9 s          54 s
-#       135 s        537 s       37.2 s          93 s
-#       120 s        871 s       59.8 s         118 s
-#        90 s       2150 s      144.1 s         253 s
-#        60 s       2962 s      244.5 s         428 s
+#       210 s         30 s        2.0 s          16 s     <- degraded
+#       195 s         75 s        4.9 s          31 s
+#       165 s        258 s       16.6 s          63 s
+#       135 s        776 s       51.6 s         108 s
+#       120 s       1168 s       77.6 s         153 s
+#        90 s       2415 s      156.2 s         269 s
+#        60 s       3250 s      264.6 s         452 s
 #
 #     240 s = 15.0 trains an hour, against a worst section of 149 s.
 #
-# Restraint is reported over the 193 seconds the flight pays with the railway
-# entirely to itself - about 24 s a train, summed service by service rather than
-# taken once and multiplied, because the services no longer run over the same
-# roads and a train through a loop is checked at a different set of signals. That
-# toll is not congestion: every signal here is controlled, so it stands at danger
-# until the interlocking sets a route over it, and a train alone is checked on
-# each approach exactly as a train in traffic is. Counting it would put the same
-# floor under every row and hide the thing being looked for.
+# Restraint is reported over what the flight pays with the railway entirely to
+# itself, summed service by service rather than taken once and multiplied,
+# because the services do not run over the same roads and a train through a loop
+# is checked at a different set of signals. That figure is now zero, and the
+# reason is worth knowing: since every platform road carries its own speed limit,
+# a train alone is already braking for the platform before any signal has
+# anything to say to it. The approach signals used to be what slowed a train on
+# an empty railway; the layout is now what slows it, so the column below is the
+# raw figure and the whole of it is trains getting in each other's way.
 #
 # WHAT WORKING ENTIRELY BY ROUTE COSTS
 #
@@ -152,20 +153,28 @@
 # It is worth being clear that the loops are NOT the next lever, tempting as it
 # looks that Marlowe has four roads and Ashdown three. `--check` prices them:
 #
-#     MARLOWE_1  through road, 100 km/h    101 s
-#     MARLOWE_2  loop,          60 km/h    169 s
-#     ML_022     open line,    100 km/h    149 s   <- what actually binds
+#     MARLOWE_1  main road,  60 km/h    169 s
+#     MARLOWE_2  loop,       40 km/h    253 s
+#     ML_022     open line, 100 km/h    149 s   <- what binds on the open line
 #
-# A flight that uses the loops in turn puts half its trains in a section worth
-# 169 s to get out of one worth 149 s, which is a loss - and that is exactly what
-# it measures. Spreading this flight across every road took the all-green headway
-# from 210 s to 240 s, 17.1 trains an hour to 15.0, and added 45 s to the mean
-# journey. Loops are for letting a fast train past a slow one, and this flight has
-# nothing to overtake.
+# Every station road is now worth more than the open line, so the platforms are
+# what a closer working would run into first - and the only reason the line still
+# holds 240 s is that no road is reoccupied by the train behind. A road at
+# Marlowe waits four trains for its next one.
+#
+# A flight that uses the loops in turn puts half its trains in the 253 s roads to
+# get out of the 169 s one, which is a loss - and that is exactly what it
+# measures. Spreading this flight across every road took the all-green headway
+# from 210 s to 240 s, 17.1 trains an hour to 15.0. Loops are for letting a fast
+# train past a slow one, and this flight has nothing to overtake.
 #
 # The flight uses them anyway, because a station's roads existing and never being
 # used is its own kind of lie about the railway - and because the cost is now a
-# measured number rather than a prediction from --check. The lever that does work
+# measured number rather than a prediction from --check. Past the booked interval
+# the spread flight is also the more robust one: at a 60 s booking it is 265 s
+# late where the road-1 flight is 350 s. Capacity at the margin and behaviour
+# under overload are not the same property, and this line trades one for the
+# other. The lever that does work
 # on headway is block length: see the table above, where cutting one stretch from
 # 1800 m to 1200 m buys 15 seconds.
 

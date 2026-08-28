@@ -116,21 +116,29 @@ platforms:
   - {id: EDEPOT_1, station: EDEPOT, track: ML, length_m: 220, max_speed_kmh: 40, y_offset: 0.0}
   - {id: EDEPOT_2, station: EDEPOT, track: ML, length_m: 220, max_speed_kmh: 40, y_offset: 0.5}
 
-  # Kingsford: a through road and one loop.
-  - {id: KINGSFORD_1, station: KINGSFORD, track: ML, length_m: 220, y_offset: 0.0}
-  - {id: KINGSFORD_2, station: KINGSFORD, track: ML, length_m: 220, max_speed_kmh: 60, y_offset: 0.5}
+  # Every platform road on the running line is 40 km/h, except road 1 at each
+  # station, which is 60. Nothing here is taken at line speed any more: a train
+  # calling at a platform is a train coming to a stand in a 220 m box off a
+  # turnout, and the two speeds say which turnout it came off - road 1 is the
+  # straighter one, the rest are loops with a tighter radius. What it costs is
+  # run time at every call rather than headway at one of them, which is why the
+  # flight got slower and its interval did not.
 
-  # Marlowe: the overtaking station. Road 1 is the through road at line speed;
-  # 2, 3 and 4 are loops, which is why they are slower - points and a shorter
-  # radius, exactly as at a real passing place. The flight takes them in turn,
-  # and the slower roads are what its 240 s headway is made of: see the loops
-  # passage in scenario.yaml for what that costs and what it buys.
-  - {id: MARLOWE_1, station: MARLOWE, track: ML, length_m: 240, y_offset: 0.0}
-  - {id: MARLOWE_2, station: MARLOWE, track: ML, length_m: 240, max_speed_kmh: 60, y_offset: 0.5}
-  - {id: MARLOWE_3, station: MARLOWE, track: ML, length_m: 240, max_speed_kmh: 60, y_offset: 1.0}
+  # Kingsford: a main road and one loop.
+  - {id: KINGSFORD_1, station: KINGSFORD, track: ML, length_m: 220, max_speed_kmh: 60, y_offset: 0.0}
+  - {id: KINGSFORD_2, station: KINGSFORD, track: ML, length_m: 220, max_speed_kmh: 40, y_offset: 0.5}
+
+  # Marlowe: the overtaking station. Road 1 is the main road; 2, 3 and 4 are
+  # loops, which is why they are slower - points and a shorter radius, exactly as
+  # at a real passing place. The flight takes them in turn, and the slower roads
+  # are what its headway is made of: see the loops passage in scenario.yaml for
+  # what that costs and what it buys.
+  - {id: MARLOWE_1, station: MARLOWE, track: ML, length_m: 240, max_speed_kmh: 60, y_offset: 0.0}
+  - {id: MARLOWE_2, station: MARLOWE, track: ML, length_m: 240, max_speed_kmh: 40, y_offset: 0.5}
+  - {id: MARLOWE_3, station: MARLOWE, track: ML, length_m: 240, max_speed_kmh: 40, y_offset: 1.0}
   - {id: MARLOWE_4, station: MARLOWE, track: ML, length_m: 240, max_speed_kmh: 40, y_offset: 1.5}
 
-  # Ashdown: a through road and two loops.
-  - {id: ASHDOWN_1, station: ASHDOWN, track: ML, length_m: 220, y_offset: 0.0}
-  - {id: ASHDOWN_2, station: ASHDOWN, track: ML, length_m: 220, max_speed_kmh: 60, y_offset: 0.5}
-  - {id: ASHDOWN_3, station: ASHDOWN, track: ML, length_m: 220, max_speed_kmh: 60, y_offset: 1.0}
+  # Ashdown: a main road and two loops.
+  - {id: ASHDOWN_1, station: ASHDOWN, track: ML, length_m: 220, max_speed_kmh: 60, y_offset: 0.0}
+  - {id: ASHDOWN_2, station: ASHDOWN, track: ML, length_m: 220, max_speed_kmh: 40, y_offset: 0.5}
+  - {id: ASHDOWN_3, station: ASHDOWN, track: ML, length_m: 220, max_speed_kmh: 40, y_offset: 1.0}
