@@ -32,7 +32,7 @@ def route_limit(train, sim) -> Optional[Tuple[float, str]]:
         if section.start_m <= train.chainage_m:
             continue
         signal = sim.signals.get(section.signal_id) if section.signal_id else None
-        if signal is None or not signal.controlled:
+        if signal is None or not interlocking.needs_a_route(signal):
             continue
         if interlocking.route_set_from(signal.id) is None:
             return section.start_m, "no route set at %s" % signal.id
@@ -60,7 +60,8 @@ def block_danger_point(train, sim) -> Tuple[float, str]:
         if section.start_m > train.chainage_m and section.signal_id:
             signal = sim.signals.get(section.signal_id)
             interlocking = getattr(sim, "interlocking", None)
-            if (signal is not None and signal.controlled and interlocking is not None
+            if (signal is not None and interlocking is not None
+                    and interlocking.needs_a_route(signal)
                     and interlocking.route_set_from(signal.id) is None):
                 return section.start_m, "no route set at %s" % signal.id
 

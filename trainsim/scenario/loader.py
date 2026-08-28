@@ -236,6 +236,9 @@ def build_simulation(scenario: Scenario,
             approach_locking_s=float(
                 interlocking_spec.pop("approach_locking_s", 120.0)
             ),
+            automatic_signals=bool(
+                interlocking_spec.pop("automatic_signals", True)
+            ),
         )
 
     dispatcher = TimetableDispatcher(
@@ -246,6 +249,12 @@ def build_simulation(scenario: Scenario,
         route_request_lead_s=float(
             interlocking_spec.pop("route_request_lead_s", 60.0)
         ),
+        # On a fully route-set railway the signaller has to work at least two
+        # signals ahead or every green becomes a yellow; where plain line works
+        # itself, the only routes to ask for are the one immediately in front.
+        route_lookahead=int(interlocking_spec.pop(
+            "route_lookahead",
+            1 if (interlocking is None or interlocking.automatic_signals) else 2)),
     )
     if interlocking_spec:
         raise ScenarioError(

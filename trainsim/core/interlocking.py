@@ -73,7 +73,8 @@ class Interlocking(object):
 
     def __init__(self, network, blocks, signals, points: Dict[str, Point],
                  routes: Dict[str, Route], use_overlaps: bool = False,
-                 approach_locking_s: float = 120.0):
+                 approach_locking_s: float = 120.0,
+                 automatic_signals: bool = True):
         self.network = network
         self.blocks = blocks
         self.signals = signals
@@ -81,6 +82,15 @@ class Interlocking(object):
         self.routes = routes
         self.use_overlaps = use_overlaps
         self.approach_locking_s = approach_locking_s
+        #: Whether plain-line signals work themselves off track occupancy.
+        #:
+        #: True is automatic block: a signal with no points under it has nothing
+        #: for a signaller to set, so it follows occupancy and sits green on an
+        #: empty railway. False is a fully route-set railway, where every signal
+        #: is controlled and stands at danger until a route is set through it -
+        #: so an empty line is a line of red signals, and the greens are a window
+        #: that travels ahead of each train.
+        self.automatic_signals = bool(automatic_signals)
 
         self.point_position: Dict[str, str] = {
             pid: point.normal for pid, point in points.items()
@@ -94,6 +104,18 @@ class Interlocking(object):
             self._points_at_node.setdefault(point.node, []).append(point)
 
     # ------------------------------------------------------------------ queries
+
+    def needs_a_route(self, signal) -> bool:
+        """Whether this signal may only clear on a route set from it.
+
+        The one place the question is asked. A signal reading over points always
+        needs one - granting it takes a road away from somebody else. On a fully
+        route-set railway every other signal needs one too, and there are no
+        automatic signals at all.
+        """
+        if not self.automatic_signals:
+            return True
+        return bool(getattr(signal, "controlled", False))
 
     def route_for_signal(self, signal_id: str) -> Optional[str]:
         return self._route_of_signal.get(signal_id)
@@ -302,9 +324,13 @@ class Interlocking(object):
     def describe(self) -> str:
         controlled = sum(1 for r in self.routes.values() if r.controlled)
         crossings = sum(1 for r in self.routes.values() if r.crossings)
+        if self.automatic_signals:
+            worked = "%d controlled" % (controlled,)
+        else:
+            worked = "all controlled, no automatic signals"
         described = (
-            "%d routes (%d controlled), %d points, overlaps %s"
-            % (len(self.routes), controlled, len(self.points),
+            "%d routes (%s), %d points, overlaps %s"
+            % (len(self.routes), worked, len(self.points),
                "on" if self.use_overlaps else "off")
         )
         if crossings:

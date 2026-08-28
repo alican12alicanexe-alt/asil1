@@ -44,22 +44,55 @@
 # run times each time so it is always workable in isolation:
 #
 #     headway   restrained   mean delay   worst arrival
-#       180 s          0 s        0.0 s           0 s
-#       165 s          0 s        0.0 s           0 s     <- all-green
-#       150 s        105 s        7.9 s           9 s     <- degraded
-#       135 s        763 s       70.0 s         142 s
-#       120 s       1243 s      122.5 s         247 s
-#        90 s       2229 s      230.9 s         461 s
-#        60 s       3052 s      335.0 s         670 s
+#       240 s          0 s        0.0 s           0 s
+#       210 s          0 s        0.0 s           0 s     <- all-green
+#       195 s        112 s        7.0 s           8 s     <- degraded
+#       165 s        336 s       21.0 s          24 s
+#       135 s        906 s       73.4 s         145 s
+#       120 s       1436 s      130.4 s         256 s
+#        90 s       2389 s      235.4 s         466 s
+#        60 s       3221 s      342.1 s         678 s
 #
-#     165 s = 21.8 trains an hour, against a worst section of 149 s.
+#     210 s = 17.1 trains an hour, against a worst section of 149 s.
 #
-# Restraint is reported over the 174 seconds a single train pays with the railway
-# entirely to itself. That toll is not congestion: every platform signal here is
+# Restraint is reported over the 111 seconds a single train pays with the railway
+# entirely to itself. That toll is not congestion: every signal here is
 # controlled, so it stands at danger until the interlocking sets a route over it,
 # and a train alone is checked on each approach exactly as a train in traffic is.
 # Counting it would put the same floor under every row and hide the thing being
 # looked for.
+#
+# WHAT WORKING ENTIRELY BY ROUTE COSTS
+#
+# This line had automatic signals on the plain line until recently: a signal with
+# no points under it had nothing for a signaller to set, so it worked itself off
+# track occupancy and sat green on an empty railway. It is now worked entirely by
+# route - see `automatic_signals: false` below - and nothing comes off until the
+# interlocking has set it. An empty line is a line of reds, and the greens are a
+# two-signal window that travels ahead of each train:
+#
+#     start, empty         .........................................................
+#     mid-run              ....Gy.Gy.y...Gy.Gy..Gy..Gy..............................
+#     end, trains gone     .........................................................
+#
+# That is the honest picture of a route-set railway, and it costs 45 seconds of
+# headway:
+#
+#     Marlowe-Ashdown blocks   automatic block   worked entirely by route
+#            1800 m (shipped)      165 s  21.8 tph      210 s  17.1 tph
+#            1200 m                150 s  24.0 tph      195 s  18.5 tph
+#
+# A flat 45 s either way, so it is not interacting with block length - it is the
+# reservation itself. A route holds its block from the moment it is set, two
+# signals ahead of the train, until the train has cleared it. An automatic signal
+# holds a section only while a train is physically standing in it. The difference
+# is two blocks of reservation depth, and that is what the follower pays.
+#
+# Two signals ahead is the minimum that works, not a tuning choice: a three-aspect
+# signal shows green only when the signal beyond it is off, and that one is off
+# only if a route has been set through it too. At `route_lookahead: 1` every
+# driver on this line runs on yellows and the journey takes 255 s longer. Above
+# two, nothing improves.
 #
 # Below the all-green headway the line does not fail, it degrades - each train a
 # little later than the one in front, which is what a real railway does when it is
@@ -69,17 +102,17 @@
 #
 # This line was 27 km with 5-8 km between stations before it was 60 km with
 # 12-18 km. Journey time roughly doubled, as it must. The headway moved too, from
-# 150 s to 165 s - but not because of the spacing.
+# 195 s to 210 s - but not because of the spacing.
 #
 # `block_length_m` is a target the builder divides evenly into each stretch, so
 # the same 1800 m request that produced 1700 m sections over 8 km produces 1867 m
 # ones over 18 km. Longer blocks, longer headway. Cut the Marlowe-Ashdown stretch
-# back to 1200 m blocks and the measured figure returns to 150 s with nothing else
+# back to 1200 m blocks and the measured figure comes back 15 s with nothing else
 # touched:
 #
 #     Marlowe-Ashdown blocks   all-green headway
-#            1800 m (shipped)       165 s   21.8 trains/hour
-#            1200 m                 150 s   24.0 trains/hour
+#            1800 m (shipped)       210 s   17.1 trains/hour
+#            1200 m                 195 s   18.5 trains/hour
 #
 # Station spacing buys journey time. Block length buys headway. They are
 # independent, and only the fact that block length is declared as a target rather
@@ -97,6 +130,10 @@
 # 240 s to 150 s: fifteen trains an hour to twenty-four, for two turnouts and no
 # signalling at all. With that gone the binding constraint moved out onto the
 # running line, to the longest open-line block.
+#
+# Both of those figures were measured while the plain line still worked itself,
+# and neither has been re-run since; the depot roads are controlled either way,
+# so the comparison holds even though the absolute numbers have moved.
 #
 # It is worth being clear that the loops are NOT the next lever, tempting as it
 # looks that Marlowe has four roads and Ashdown three. `--check` prices them:
@@ -130,6 +167,18 @@ signalling:
 interlocking:
   route_request_distance_m: 2000
   route_request_lead_s: 60
+  # No automatic signals on this railway. Every signal is controlled and stands
+  # at danger until the interlocking sets a route through it, so an empty line is
+  # a line of reds and the greens are a window that travels ahead of each train.
+  # Set this true for automatic block, where a signal with no points under it
+  # works itself off track occupancy and sits green on an empty railway.
+  automatic_signals: false
+  # How many signals ahead the signaller keeps routes set. Two is the minimum
+  # that works: a three-aspect signal shows green only when the signal beyond it
+  # is off, and that one is off only if a route has been set through it too. At
+  # one, every driver on this line runs on yellows and the journey takes 255 s
+  # longer. Above two, nothing improves.
+  route_lookahead: 2
 
 driver:
   reaction_time_s: 2.0

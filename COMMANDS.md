@@ -66,7 +66,7 @@ usually less, because trains stand at platforms and reoccupation binds before
 block spacing does. To measure it, sweep the flight:
 
 ```
-python scenarios/depotline/_sweep_headway.py            depotline: 165 s, 21.8 tph
+python scenarios/depotline/_sweep_headway.py            depotline: 210 s, 17.1 tph
 python scenarios/depotline/_sweep_headway.py etcs_l2    under any other system
 ```
 

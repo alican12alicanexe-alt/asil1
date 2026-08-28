@@ -40,7 +40,12 @@ COUNT = 8           # trains in the flight
 #: The interval the flight is booked at. Measured, not chosen: see the table in
 #: scenario.yaml and _sweep_headway.py, which runs the flight at every interval
 #: from four minutes down to one and reports what it costs.
-HEADWAY_S = 165
+#:
+#: 165 s while this line still had automatic signals on the plain line. Working
+#: it entirely by route costs 45 s of headway, because a route reserves its block
+#: from the moment it is set - two signals ahead of the train - while an
+#: automatic signal only holds a section that a train is physically standing in.
+HEADWAY_S = 210
 
 STOCK = {"id": "EMU", "name": "Line unit", "length_m": 160,
          "max_speed_kmh": 100, "max_accel": 1.0, "service_brake": 0.8,
@@ -81,12 +86,17 @@ def simulation(timetable, duration_s=7200, system="fixed_block_3aspect"):
         network=INFRA.network, blocks=INFRA.blocks, signals=INFRA.signals,
         block_of_segment=INFRA.block_of_segment,
         signalling=reg.create(system, sighting_distance_m=250),
-        dispatcher=TimetableDispatcher(timetable),
+        # These two must track scenario.yaml, or the timetable is generated
+        # against a different railway from the one that runs it. depotline has
+        # no automatic signals: every signal waits on a route, so the signaller
+        # has to work two ahead for a driver to see a green at all.
+        dispatcher=TimetableDispatcher(timetable, route_lookahead=2),
         driver=Driver(DriverConfig(reaction_time_s=2.0, safety_margin_m=25.0)),
         config=SimConfig(dt=1.0, start_time_s=BASE - 180, duration_s=duration_s),
         interlocking=Interlocking(network=INFRA.network, blocks=INFRA.blocks,
                                   signals=INFRA.signals, points=INFRA.points,
-                                  routes=INFRA.routes))
+                                  routes=INFRA.routes,
+                                  automatic_signals=False))
 
 
 def probe():

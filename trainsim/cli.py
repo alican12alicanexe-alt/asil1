@@ -327,16 +327,22 @@ def _signal_control_report(infra, sim) -> list:
     railway and stays that way until somebody asks for the movement, while an
     automatic signal on the same railway is already green.
     """
-    controlled = sorted(s.id for s in infra.signals.values() if s.controlled)
-    automatic = [s.id for s in infra.signals.values() if not s.controlled]
-    lines = [
-        "  %d of %d signals are controlled: they read over points and stand at"
-        % (len(controlled), len(infra.signals)),
-        "  danger until a route is set from them. The other %d are plain"
-        % (len(automatic),),
-        "  automatic block and follow occupancy alone - there is no route to ask",
-        "  for, which is what makes them automatic.",
-    ]
+    needs = (sim.interlocking.needs_a_route if sim.interlocking is not None
+             else (lambda signal: False))
+    controlled = sorted(s.id for s in infra.signals.values() if needs(s))
+    automatic = [s.id for s in infra.signals.values() if not needs(s)]
+    lines = ["  %d of %d signals may only clear on a route set from them."
+             % (len(controlled), len(infra.signals))]
+    if automatic:
+        lines.append("  The other %d are plain automatic block and follow "
+                     "occupancy alone -" % (len(automatic),))
+        lines.append("  there is no route to ask for, which is what makes them "
+                     "automatic.")
+    else:
+        lines.append("  There are no automatic signals: this railway is worked "
+                     "entirely by")
+        lines.append("  route, so nothing comes off until the interlocking has "
+                     "set it.")
     if not controlled:
         return lines
 

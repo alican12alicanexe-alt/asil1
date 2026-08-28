@@ -285,34 +285,59 @@ failing:
   red, with no braking distance in between.
 
 Set `interlocking: {enabled: false}` to run without it, as idealised automatic
-block: every signal then follows occupancy, including the ones that read over
-points. On depotline that is worth only 3 s over a 60 km run, because the
-dispatcher asks for each route 2500 m out and the answer is almost always yes -
-the cost of route-based control is paid where routes conflict, and on a plain
-double-track line with facing points only into the platforms, they rarely do.
+block: every signal then follows occupancy, and nothing is ever waited on.
 
-### A controlled signal is red until somebody asks
+### A signal is red until somebody asks
 
-Two kinds of signal, and the difference is the whole of the interlocking:
+The chain is always the same: **the interlocking sets the route, the route clears
+the signal, the signal gives the movement authority.** Nothing skips a link -
+ETCS Level 2 has no lineside signals at all and still stops in the same place,
+because `route_limit` caps every authority at the first signal ahead with no
+route locked. A radio authority is still bounded by the routes that exist.
 
-| | needs a route | with nothing running |
+What differs between railways is only *which* signals need a route:
+
+| `automatic_signals` | plain-line signals | an empty railway looks like |
 |---|---|---|
-| **controlled** - reads over points, or across another line | yes, every time | **red** |
-| **automatic** - plain line, nothing to set | no, there is none to ask for | green |
+| `true` - automatic block | work themselves off track occupancy | green everywhere, red only at the platforms |
+| `false` - worked by route | need a route like any other | **all red**, greens only ahead of a train |
 
-depotline has 24 controlled signals and 33 automatic ones. `--check` prints the
-split and what each kind reads on an empty railway, which is the one place the
-interlocking is visible without watching a train go past.
+depotline is `false`: 57 of 57 signals wait on the interlocking. The whole line
+in chainage order, `.` red, `y` yellow, `G` green:
 
-Nothing overrides this. ETCS Level 2 has no lineside signals at all and still
-stops at the same place, because `route_limit` caps every movement authority at
-the first controlled signal ahead with no route locked - a radio authority is
-still bounded by the routes that actually exist.
+```
+start, empty railway   .........................................................
+t=1200 s               ....Gy.Gy.y...Gy.Gy..Gy..Gy..............................
+end, all trains gone   .........................................................
+```
+
+The greens are a two-signal window travelling ahead of each train, and that is
+the whole display: nothing is lit that nobody has asked for.
+
+**Two signals ahead is a requirement, not a tuning choice.** A three-aspect
+signal shows green only when the signal beyond it is off, and that one is off
+only if a route has been set through it too. `route_lookahead: 1` on a route-set
+railway means every driver runs on yellows - 255 s onto a 42-minute journey.
+Above two, nothing improves.
+
+**It costs 45 seconds of headway**, and that is the real price of the picture
+above:
+
+| Marlowe-Ashdown blocks | automatic block | worked entirely by route |
+|---|---|---|
+| 1800 m (shipped) | 165 s, 21.8 tph | 210 s, 17.1 tph |
+| 1200 m | 150 s, 24.0 tph | 195 s, 18.5 tph |
+
+Flat either way, so it is not interacting with block length - it is the
+reservation itself. A route holds its block from the moment it is set, two
+signals ahead of the train, until the train has cleared it; an automatic signal
+holds a section only while a train is standing in it. Two blocks of extra
+reservation depth, and the follower pays for them.
 
 It is asserted rather than believed. `Simulation.clear_without_a_route()` runs
-every tick and records a violation for any controlled signal showing a proceed
-aspect with no route set; take the route check out of `_must_stand_at_danger` and
-a ten-minute depotline run reports 13462 of them.
+every tick and records a violation for any signal showing a proceed aspect that
+had no route set; take the route check out of `_must_stand_at_danger` and a
+ten-minute depotline run reports 13462 of them.
 
 The same principle decides the defaults. `sim.aspects.get(signal_id, RED)`, not
 `GREEN`: a signal the railway has said nothing about is a signal that has not
@@ -357,21 +382,22 @@ the train in front. The measured one comes from running the flight:
 $ python scenarios/depotline/_sweep_headway.py
 
   headway   restrained   mean delay      worst
-    180 s         0 s        0.0 s        0 s
-    165 s         0 s        0.0 s        0 s     <- all-green
-    150 s       105 s        7.9 s        9 s     <- degraded
-    120 s      1243 s      122.5 s      247 s
-     60 s      3052 s      335.0 s      670 s
+    240 s         0 s        0.0 s        0 s
+    210 s         0 s        0.0 s        0 s     <- all-green
+    195 s       112 s        7.0 s        8 s     <- degraded
+    165 s       336 s       21.0 s       24 s
+    120 s      1436 s      130.4 s      256 s
+     60 s      3221 s      342.1 s      678 s
 
-all-green headway: 165 s (21.8 trains an hour)
+all-green headway: 210 s (17.1 trains an hour)
 ```
 
-165 s measured against a 149 s worst section - the theory is a floor, and the
-railway lands a little above it. Restraint is reported over the 174 s a single
-train pays with the line entirely to itself: every platform signal here is
-controlled, so it stands at danger until the interlocking sets a route over it,
-and a train alone is checked on each approach exactly as a train in traffic is.
-That toll is the layout, not the traffic.
+210 s measured against a 149 s worst section. The theory is a floor and it is not
+a tight one, because signal spacing is only half the story: the other 45 s is the
+route reservation, which the spacing formula knows nothing about. Restraint is
+reported over the 111 s a single train pays with the line entirely to itself -
+every signal here is controlled, so a train alone is checked on each approach
+exactly as a train in traffic is. That toll is the layout, not the traffic.
 
 **Below the all-green headway the line does not fail, it degrades** - each train
 a little later than the one in front, which is what a real railway does when it
@@ -380,7 +406,7 @@ is booked tighter than it can work.
 ### What sets it, and what doesn't
 
 depotline was 27 km with 5-8 km between stations before it was 60 km with 12-18.
-Journey time roughly doubled, as it must. The headway moved too, 150 s to 165 s -
+Journey time roughly doubled, as it must. The headway moved too, 195 s to 210 s -
 but not because of the spacing.
 
 `block_length_m` is a *target* the builder divides evenly into each stretch, so
@@ -390,8 +416,8 @@ blocks and the measured figure returns, with nothing else touched:
 
 ```
 Marlowe-Ashdown blocks   all-green headway
-       1800 m (shipped)       165 s   21.8 trains/hour
-       1200 m                 150 s   24.0 trains/hour
+       1800 m (shipped)       210 s   17.1 trains/hour
+       1200 m                 195 s   18.5 trains/hour
 ```
 
 Station spacing buys journey time. Block length buys headway. They are

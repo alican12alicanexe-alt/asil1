@@ -191,11 +191,12 @@ def _must_stand_at_danger(signal, blocks, occupancy, interlocking) -> bool:
     """Whether a signal has to show red, before looking at anything ahead."""
     if not occupancy.is_free(signal.block_id):
         return True
-    if signal.controlled and interlocking is not None:
-        # A controlled signal reads over points, so it needs a route locked
-        # before it may show anything but danger. With no interlocking modelled
-        # at all there are no routes, and every signal falls back to plain
-        # automatic block working.
+    if interlocking is not None and interlocking.needs_a_route(signal):
+        # A signal that needs a route may show nothing but danger until one is
+        # locked from it. Which signals those are is the interlocking's to say:
+        # always the ones reading over points, and on a fully route-set railway
+        # every other signal too. With no interlocking modelled at all there are
+        # no routes, and every signal falls back to plain automatic block.
         return not interlocking.route_set_from(signal.id)
     return False
 

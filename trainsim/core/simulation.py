@@ -213,7 +213,7 @@ class Simulation(object):
         return sorted(
             signal.id
             for signal in self.signals.values()
-            if signal.controlled
+            if self.interlocking.needs_a_route(signal)
             and self.aspects.get(signal.id, Aspect.RED) != Aspect.RED
             and self.interlocking.route_set_from(signal.id) is None
         )

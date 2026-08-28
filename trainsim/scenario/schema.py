@@ -34,6 +34,7 @@ VIEW = frozenset({"title", "speed"})
 INTERLOCKING = frozenset({
     "enabled", "overlaps", "approach_locking_s",
     "route_request_distance_m", "route_request_lead_s",
+    "automatic_signals", "route_lookahead",
 })
 
 #: ``infrastructure.yaml``

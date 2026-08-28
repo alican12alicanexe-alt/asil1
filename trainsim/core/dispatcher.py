@@ -46,11 +46,26 @@ class TimetableDispatcher(Dispatcher):
     STATIONARY_MS = 0.2
 
     def __init__(self, timetable: Timetable, route_request_distance_m: float = 2500.0,
-                 route_request_lead_s: float = 60.0):
+                 route_request_lead_s: float = 60.0,
+                 route_lookahead: int = 1):
         self.timetable = timetable
         self._pending: List[Service] = timetable.sorted_by_departure()
         #: How far out a running train asks for the route ahead.
         self.route_request_distance_m = route_request_distance_m
+        #: How many signals ahead the signaller keeps routes set.
+        #:
+        #: One is enough where plain line works itself: the only routes to ask
+        #: for are over points, and a train needs the one immediately in front of
+        #: it. On a fully route-set railway it must be at least **two**, because
+        #: a three-aspect signal shows green only when the signal beyond it is
+        #: off, and that one is off only if a route has been set through it too.
+        #: Set routes one signal ahead there and every driver runs on yellows.
+        #:
+        #: Two is also the most that costs nothing. A green already means the two
+        #: blocks beyond are clear, so holding exactly those two takes nothing
+        #: from a follower that a green had not already denied it. Three starts
+        #: reserving a block the signalling never required, and the headway pays.
+        self.route_lookahead = max(1, int(route_lookahead))
         #: How early a standing train asks for the route out of its platform.
         #:
         #: This is a real dispatching decision, not a detail. Ask too early and a
@@ -148,13 +163,11 @@ class TimetableDispatcher(Dispatcher):
             upcoming = train.path.next_signal(train.chainage_m)
             if upcoming is None:
                 continue
-            signal_id, signal_m, _ = upcoming
-            signal = sim.signals.get(signal_id)
-            if signal is None or not signal.controlled:
-                continue  # plain-line automatic signal: no route needed
-            if interlocking.route_set_from(signal_id) is not None:
-                continue
-            if signal_m - train.chainage_m > self.route_request_distance_m:
+            _, first_m, first_index = upcoming
+            # The distance gate says whether this train is being worked yet, not
+            # which of its signals get routes. Once it is close enough to the
+            # first one, the signaller sets the next few in one go.
+            if first_m - train.chainage_m > self.route_request_distance_m:
                 continue
 
             # Never reach past a call the train has not made yet. The route out
@@ -162,15 +175,27 @@ class TimetableDispatcher(Dispatcher):
             # the approach would have a train claim the points at the far end of
             # a loop for the whole of its dwell, holding up everything behind it.
             to_stop = train.distance_to_next_stop()
-            if (train.state == "running" and to_stop is not None
-                    and signal_m - train.chainage_m >= to_stop):
-                continue
 
-            route_id = interlocking.route_for_signal(signal_id)
-            if route_id is None:
-                continue
-            decision = interlocking.request(route_id, train.id, sim)
-            self._note_decision(sim, train, decision)
+            for offset in range(self.route_lookahead):
+                ahead = train.path.signal_at_index(first_index + offset)
+                if ahead is None:
+                    break
+                signal_id, signal_m = ahead
+                if (train.state == "running" and to_stop is not None
+                        and signal_m - train.chainage_m >= to_stop):
+                    break  # the rest of the lookahead is beyond the next stop
+
+                signal = sim.signals.get(signal_id)
+                if signal is None or not interlocking.needs_a_route(signal):
+                    continue  # automatic signal: there is no route to ask for
+                if interlocking.route_set_from(signal_id) is not None:
+                    continue
+
+                route_id = interlocking.route_for_signal(signal_id)
+                if route_id is None:
+                    continue
+                decision = interlocking.request(route_id, train.id, sim)
+                self._note_decision(sim, train, decision)
 
     def _ready_to_ask(self, sim, train) -> bool:
         if train.state == "running":
