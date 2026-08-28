@@ -546,13 +546,13 @@ class TkSchematicView(SchematicView):
             occupied = bool(sim.occupancy.trains_in(block_id))
             platform = infra.blocks[block_id].platform is not None
             if occupied and self.block_separated:
+                # Only where the block is the unit of safety. Under distance
+                # separation nothing is reserved a block at a time, so colouring
+                # a whole road because a train is somewhere on it would draw a
+                # rule the system does not work by; the train's own mark says
+                # where it is, and the gap behind it is what matters.
                 colour = PALETTE["platform_occupied"] if platform else PALETTE["track_occupied"]
-            elif occupied and platform:
-                # Under distance separation a block is not the unit of safety, so
-                # lighting the whole thing up would misrepresent the system. A
-                # platform road is still worth showing as taken.
-                colour = PALETTE["platform_occupied"]
-            elif block_id in route_held:
+            elif block_id in route_held and not occupied:
                 # Locked by a route but nothing on it yet: the road is reserved.
                 colour = PALETTE["route_set"]
             else:
