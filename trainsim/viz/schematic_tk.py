@@ -214,7 +214,9 @@ class TkSchematicView(SchematicView):
         for segment in infra.network.segments.values():
             track_y = tracks.get(segment.track, {}).get("y", segment.y)
             points = self._segment_points(segment, track_y)
-            width = 5 if segment.is_platform else 3
+            width = (max(self.TRACK_WIDTH,
+                         int(round(self.PLATFORM_ROAD_WIDTH * self._vscale)))
+                     if segment.is_platform else self.TRACK_WIDTH)
             item = canvas.create_line(
                 *points, fill=PALETTE["track"], width=width,
                 capstyle=tk.ROUND, tags="static",
@@ -227,7 +229,11 @@ class TkSchematicView(SchematicView):
                 mid_km = (segment.km_start + segment.km_end) / 2.0
                 # Below the line: train labels sit above it, so they never collide.
                 canvas.create_text(
-                    layout.x(mid_km), layout.y(segment.y) + 20,
+                    layout.x(mid_km),
+                    layout.y(segment.y) + (self.PLATFORM_FACE_DROP
+                                           + self.PLATFORM_FACE_DEPTH
+                                           + self.PLATFORM_LABEL_GAP)
+                    * self._vscale,
                     text=segment.platform, fill=PALETTE["label"],
                     font=self.mono_small, tags="static",
                 )
@@ -240,6 +246,37 @@ class TkSchematicView(SchematicView):
 
         self._static_drawn = True
         self._draw_dynamic()
+
+    #: Line weights, in pixels. The platform road is drawn heavier than plain
+    #: line because a station is where the eye goes first on a signalling
+    #: schematic, and on a 60 km railway a 1200 m road is only twenty pixels
+    #: long - weight is the only dimension left to make it read as a place.
+    #: Its LENGTH is not adjustable here: it is the block section's true extent,
+    #: and drawing it longer would overlap the block next door. The only honest
+    #: way to lengthen it is platform_zone_m, which is real railway and prices
+    #: straight into the headway.
+    TRACK_WIDTH = 3
+    PLATFORM_ROAD_WIDTH = 11
+    #: Depth of the platform slab drawn against the road, and its drop below it.
+    PLATFORM_FACE_DEPTH = 7
+    PLATFORM_FACE_DROP = 9
+    #: Gap between the slab and the road's name label.
+    PLATFORM_LABEL_GAP = 9
+
+    @property
+    def _vscale(self) -> float:
+        """How much of the full vertical scale this window is actually getting.
+
+        Parallel roads are half a schematic ``y`` apart, which is 48 px at the
+        layout's full scale but shrinks with the window - and everything drawn
+        beside a road (its weight, its platform slab, its label) has to shrink
+        with it, or a short window has Marlowe's four roads drawn on top of each
+        other. Floored rather than allowed to vanish: below about half scale the
+        drawing is illegible whatever it does, and a legible overlap beats an
+        invisible tidy one.
+        """
+        full = float(SchematicLayout.PX_PER_Y)
+        return max(0.5, min(1.0, self.layout.y_scale / full))
 
     def _draw_platform_face(self, segment) -> None:
         """The platform itself - the concrete, not the road it runs beside.
@@ -273,10 +310,11 @@ class TkSchematicView(SchematicView):
         # floor: the point is to show where it is, not to survive a measurement.
         if x1 - x0 < 3.0:
             x1 = x0 + 3.0
-        y = layout.y(segment.y) + 6
+        scale = self._vscale
+        y = layout.y(segment.y) + self.PLATFORM_FACE_DROP * scale
         self.canvas.create_rectangle(
-            x0, y, x1, y + 4, fill=PALETTE["platform_face"], width=0,
-            tags="static",
+            x0, y, x1, y + self.PLATFORM_FACE_DEPTH * scale,
+            fill=PALETTE["platform_face"], width=0, tags="static",
         )
 
     def _segment_points(self, segment, track_y):
