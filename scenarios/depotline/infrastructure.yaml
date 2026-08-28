@@ -47,11 +47,27 @@
 name: depotline
 
 defaults:
-  # A platform road is a block section like any other: a train running through
-  # one at line speed meets its exit signal at speed, and that signal can be at
-  # danger. So the section has to be long enough to brake in - 911 m at 120 km/h
-  # once the brake build-up and the driver's reaction are counted - and 1200 m
-  # leaves a margin on it.
+  # THE TWO PLATFORM LENGTHS, WHICH ARE NOT THE SAME THING
+  #
+  # platform_zone_m is the BLOCK SECTION the platform road occupies - 1200 m of
+  # railway that holds one train at a time. Kingsford_1 runs km 11.400 to 12.600,
+  # and a train stops 1170 m into it (the zone less stop_margin_m). It is sized
+  # for BRAKING, not for the train: a train running through a platform road at
+  # line speed meets its exit signal at speed, and that signal can be at danger,
+  # so the section has to be long enough to stop in - 591 m here - and 1200 m
+  # leaves a margin. This is the number that prices into headway: 1200 m at
+  # 100 km/h is 101 s of occupation every time a train calls.
+  #
+  # length_m on each platform below is the CONCRETE a train stands alongside -
+  # 220 m against a 160 m unit. It is sized for the TRAIN, is always far shorter
+  # than the zone, and costs no capacity at all. Booking a train longer than it
+  # is now a timetable fault that --check reports.
+  #
+  #   km 11.400                                              km 12.600
+  #      |<----------- KINGSFORD_1 block, 1200 m ---------------->|
+  #      |                                          [220 m plat]  |
+  #      entry signal                               [160 m train] |
+  #                                            stops 1170 m in ---^
   platform_zone_m: 1200
   block_length_m: 1500
   max_speed_kmh: 120

@@ -233,7 +233,7 @@ def warn_if_unsignalable(scenario, driver_config=None) -> Optional[str]:
 class TimetableIssue:
     """Something wrong with the plan, as opposed to with the railway."""
 
-    kind: str            # "impossible" | "clash" | "ordering"
+    kind: str            # "impossible" | "clash" | "ordering" | "too long"
     service: str
     detail: str
 
@@ -322,6 +322,34 @@ def check_timetable(infrastructure, timetable) -> List["TimetableIssue"]:
     issues = []
     issues.extend(_check_ordering_and_physics(timetable))
     issues.extend(_check_platform_clashes(timetable))
+    issues.extend(_check_platform_lengths(infrastructure, timetable))
+    return issues
+
+
+def _check_platform_lengths(infrastructure, timetable):
+    """Services booked to call where the platform is shorter than the train.
+
+    ``length_m`` on a platform is the concrete a train stands alongside, and it
+    is a different thing from ``platform_zone_m``, which is the block section the
+    road occupies. The zone is sized for braking and is always the longer of the
+    two; the platform is sized for the train, and a unit booked to call at a road
+    it does not fit is a real timetabling fault - passengers at the back of the
+    train step out onto ballast, and in practice the call is either selective-door
+    or it does not happen.
+    """
+    platforms = infrastructure.network.platforms
+    issues = []
+    for service in timetable.services:
+        train_m = service.stock.length_m
+        for stop in service.stops:
+            platform = platforms.get(stop.platform)
+            if platform is None or platform.length_m >= train_m:
+                continue
+            issues.append(TimetableIssue(
+                "too long", service.id,
+                "%s at %s is %.0f m of train in a %.0f m platform (%s)"
+                % (service.stock.id, stop.station, train_m,
+                   platform.length_m, stop.platform)))
     return issues
 
 
