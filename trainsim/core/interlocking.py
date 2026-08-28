@@ -176,7 +176,27 @@ class Interlocking(object):
             return RouteDecision(False, route_id,
                                  "already set for %s" % existing.train_id)
 
-        for block_id in (route.block_id,) + route.crossings:
+        # What the route must find clear. A crossing always: two trains meeting on
+        # a flat junction is not a following move and no separation model makes
+        # it one. The block the route reads into, only where the block is the
+        # unit of separation.
+        #
+        # Under distance separation it is not, and insisting on it here is what
+        # made moving block behave like fixed block with extra steps: the
+        # follower's authority was never the rear of the train in front, it was
+        # the signal behind the block that train happened to be standing in. The
+        # granularity of the reservation became the granularity of the railway.
+        # Letting the route be set into an occupied block hands the question back
+        # to the signalling system, which is the only thing that knows how far
+        # apart these two trains actually have to be.
+        #
+        # This is safe here because a track has a direction and the route table
+        # offers no wrong-line moves, so anything already in that block is
+        # running the same way. On a bidirectional single line it would need an
+        # opposing-move check first.
+        exclusive = self._blocks_are_exclusive(sim)
+        wanted = (route.block_id,) + route.crossings if exclusive else route.crossings
+        for block_id in wanted:
             holder = self._block_held_by(block_id, ignoring=route_id)
             if holder is not None:
                 crossed = " (crossing)" if block_id != route.block_id else ""
@@ -203,7 +223,10 @@ class Interlocking(object):
                        holder.train_id if holder else "?"),
                 )
 
-        if self.use_overlaps:
+        # An overlap is the room a train needs beyond a signal it might overrun,
+        # which is a fixed-block idea: where the authority ends at a computed
+        # point rather than at a lamp, there is nothing to overrun.
+        if self.use_overlaps and exclusive:
             for overlap in route.overlap_blocks:
                 if not sim.occupancy.is_free(overlap, ignoring=train_id):
                     return RouteDecision(False, route_id,
@@ -269,8 +292,17 @@ class Interlocking(object):
                         self.point_locked_by[point_id] = None
                         sim.log_event("points_released", train.id, point_id)
 
-            # The route itself goes once the train has been through the block.
-            if lock.entered and lock.train_id not in sim.occupancy.trains_in(route.block_id):
+            # The route itself goes once the train has been through the block -
+            # or, where the block is not what separates trains, as soon as the
+            # train is on it and off its points. A route there is a permission to
+            # pass, not a reservation of the road ahead: holding it until the
+            # train had left the block would keep the follower a whole block back
+            # for no safety reason, which is the fixed-block answer to a question
+            # distance separation has already answered better.
+            if not self._blocks_are_exclusive(sim):
+                if lock.entered and not lock.points_held:
+                    self._release(route_id, sim, "train is on the route")
+            elif lock.entered and lock.train_id not in sim.occupancy.trains_in(route.block_id):
                 self._release(route_id, sim, "train has cleared")
 
     def _release(self, route_id: str, sim, why: str) -> None:
@@ -283,6 +315,17 @@ class Interlocking(object):
         sim.log_event("route_released", lock.train_id, "%s (%s)" % (route_id, why))
 
     # ----------------------------------------------------------------- internals
+
+    @staticmethod
+    def _blocks_are_exclusive(sim) -> bool:
+        """Whether one train per block is what keeps trains apart on this run.
+
+        Asked of the signalling system rather than stored, because the same
+        interlocking is handed to every system in a comparison and the answer
+        changes with it.
+        """
+        signalling = getattr(sim, "signalling", None)
+        return getattr(signalling, "separates_by", "block") == "block"
 
     def _block_held_by(self, block_id: str,
                        ignoring: Optional[str] = None) -> Optional[str]:

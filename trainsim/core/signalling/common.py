@@ -24,6 +24,13 @@ def route_limit(train, sim) -> Optional[Tuple[float, str]]:
     No level of ETCS overrides the interlocking. A radio-based authority is still
     bounded by the routes actually locked, so this limit applies to Level 2,
     Hybrid Level 3 and full moving block exactly as it does to lineside signals.
+
+    What differs under distance separation is not this cap but what the
+    interlocking will set: a route there may be given into an occupied block, and
+    is given back as soon as its train is on it and off its points. So the limit
+    keeps travelling ahead of a following train instead of stopping it at the
+    signal behind the block in front - see :meth:`Interlocking.request`. Without
+    that, this function silently turned every system into a fixed-block one.
     """
     interlocking = getattr(sim, "interlocking", None)
     if interlocking is None:

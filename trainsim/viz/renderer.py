@@ -60,9 +60,10 @@ PALETTE = {
     "train_outline": "#0e1218",
     "warning": "#ff6b6b",
     # Moving block: the space a train needs to stop, drawn as a zone that
-    # travels with it instead of a block that lights up.
+    # travels with it instead of a block that lights up. It is the only mark a
+    # train carries about its own authority - a second one, a tick at the end of
+    # the authority itself, said the same thing a tick later and is gone.
     "braking_zone": "#b8433a",
-    "authority_end": "#7ee0d4",
     "marker_board": "#5a6472",
     # Interlocking
     "route_set": "#5ad2c8",       # a route locked but not yet occupied

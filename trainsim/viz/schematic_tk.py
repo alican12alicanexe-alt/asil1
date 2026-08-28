@@ -632,50 +632,43 @@ class TkSchematicView(SchematicView):
             for item in self._train_items.pop(train_id):
                 self.canvas.delete(item)
         for train_id in [t for t in self._zone_items if t not in live]:
-            for item in self._zone_items.pop(train_id):
-                self.canvas.delete(item)
+            self.canvas.delete(self._zone_items.pop(train_id))
 
     def _draw_zone(self, train, y) -> None:
-        """The braking envelope, and a tick where the authority runs out.
+        """The braking envelope: how much railway this train needs to stop in.
 
         This is what a moving block actually is: not a fixed length of track that
         lights up, but the distance this train needs to stop, travelling with it
         and shrinking as it slows. Drawn for every signalling system, because
         seeing it sit inside a whole lit block is the clearest picture of what
         fixed block wastes.
+
+        There used to be a tick here as well, marking where the authority ran
+        out. Two marks for one idea, and the tick was the worse of them: it was
+        drawn from the authority computed before the train moved, so it lagged a
+        tick behind everything else on the screen, and where the authority ended
+        at a signal it only repeated what the signal and the route colour were
+        already saying.
         """
         layout = self.layout
-        items = self._zone_items.get(train.id)
-        if items is None:
+        zone = self._zone_items.get(train.id)
+        if zone is None:
             zone = self.canvas.create_rectangle(
                 0, 0, 0, 0, fill=PALETTE["braking_zone"], outline="",
                 stipple="gray25",
             )
-            tick = self.canvas.create_line(
-                0, 0, 0, 0, fill=PALETTE["authority_end"], width=2,
-            )
-            items = (zone, tick)
-            self._zone_items[train.id] = items
-        zone, tick = items
+            self._zone_items[train.id] = zone
 
         if not self.show_zones or train.speed_ms <= 0.3:
             self.canvas.itemconfigure(zone, state="hidden")
-        else:
-            needed = train.stopping_distance_m(self.reaction_s)
-            end = min(train.path.total_m, train.chainage_m + needed)
-            x_a = layout.x(train.km)
-            x_b = layout.x(train.path.km_at(end))
-            left, right = min(x_a, x_b), max(x_a, x_b)
-            self.canvas.coords(zone, left, y - 6, right, y + 6)
-            self.canvas.itemconfigure(zone, state="normal")
-
-        if not self.show_zones or train.last_authority_m is None:
-            self.canvas.itemconfigure(tick, state="hidden")
-        else:
-            end = min(train.path.total_m, train.chainage_m + train.last_authority_m)
-            x = layout.x(train.path.km_at(end))
-            self.canvas.coords(tick, x, y - 10, x, y + 10)
-            self.canvas.itemconfigure(tick, state="normal")
+            return
+        needed = train.stopping_distance_m(self.reaction_s)
+        end = min(train.path.total_m, train.chainage_m + needed)
+        x_a = layout.x(train.km)
+        x_b = layout.x(train.path.km_at(end))
+        left, right = min(x_a, x_b), max(x_a, x_b)
+        self.canvas.coords(zone, left, y - 6, right, y + 6)
+        self.canvas.itemconfigure(zone, state="normal")
 
     # ------------------------------------------------------------------- header
 

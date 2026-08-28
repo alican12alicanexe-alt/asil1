@@ -294,7 +294,9 @@ The chain is always the same: **the interlocking sets the route, the route clear
 the signal, the signal gives the movement authority.** Nothing skips a link -
 ETCS Level 2 has no lineside signals at all and still stops in the same place,
 because `route_limit` caps every authority at the first signal ahead with no
-route locked. A radio authority is still bounded by the routes that exist.
+route locked. A radio authority is still bounded by the routes that exist — what
+changes under distance separation is which routes the interlocking will set, not
+whether the authority obeys them.
 
 What differs between railways is only *which* signals need a route:
 
@@ -579,6 +581,51 @@ rather than a number.
   nose, so sub-sections record who claimed them - the same reason
   `Occupancy.is_free` takes an `ignoring` argument.
 
+### The interlocking was making moving block behave like fixed block
+
+For a long time the three distance-separated systems here were barely better than
+Level 2, and the reason was not in any of them. It was in the interlocking.
+
+A movement authority is capped at the first controlled signal ahead with no route
+set from it — correctly, because no ETCS level overrides an interlocking. But the
+interlocking refused to set a route into a block that was occupied or already
+held by another train's route, and it held each route until its train had left
+the block entirely. So the follower's route stopped at the signal behind whatever
+block the train in front happened to be standing in, and its authority stopped
+there too. The rear of the train ahead never entered into it. Moving block was
+running to block boundaries with extra steps, and the granularity of the
+reservation had quietly become the granularity of the railway.
+
+Under `separates_by = "distance"` the interlocking now:
+
+- **sets a route into an occupied block.** The block is not what keeps trains
+  apart there, so refusing on occupancy was answering a question the signalling
+  system answers better. Crossings are untouched — two trains meeting on a flat
+  junction is not a following move, and no separation model makes it one.
+- **gives the route back as soon as the train is on it and clear of its points**,
+  rather than when it has left the block. A route there is a permission to pass,
+  not a reservation of the road ahead.
+
+Points are unchanged: still locked to a position, still released sectionally as
+the rear passes, still refused to a route that wants them the other way. That is
+the part that was ever doing safety work.
+
+What it is worth, on the flight booked at intervals it cannot keep — mean delay:
+
+| booked | fixed block | ETCS L2 | Hybrid L3 | moving block | virtual coupling |
+|---|---|---|---|---|---|
+| 120 s | 77.6 s | 13.6 s | 0.5 s | on time | on time |
+| 90 s | 156.2 s | 49.8 s | 8.1 s | 4.4 s | 2.1 s |
+| 60 s | 264.6 s | 146.0 s | 22.6 s | 15.8 s | 12.4 s |
+
+Before the change, moving block at a 60 s booking was 104.9 s late; it is now
+15.8 s. Nothing in `MovingBlock` moved.
+
+The relaxation is safe here because a track has a direction and the route table
+offers no wrong-line moves, so anything already in the block ahead is running the
+same way. A bidirectional single line would need an opposing-move check before
+the same relaxation could be allowed.
+
 ### Virtual coupling: borrowing the braking distance in front
 
 Moving block already runs a train up to the rear of the train ahead less a
@@ -611,10 +658,12 @@ used; carrying the coupled margin into degraded working would make an unfitted
 train appear to outperform moving block on identical physics.
 
 **The control experiment.** With relative braking switched off
-(`assume_leader_brakes: false`), virtual coupling reproduces moving block at the
-same margin — 104.9 s mean delay against moving block's 104.9 s at a 60 s
-booking, where the coupled system reads 124.8 s. So everything below comes from
-the borrowed braking distance and not from a tuned constant.
+(`assume_leader_brakes: false`) and zero latency, virtual coupling reproduces
+moving block at the same margin — identical to the second at a 60 s booking,
+2965 s restrained and 14.1 s mean delay for both, where the coupled system reads
+282 s and 12.4 s. So everything below comes from the borrowed braking distance
+and not from a tuned constant. Putting three seconds of latency on the link gives
+most of it back: 13.2 s.
 
 **Measured, depotline, the eight-train flight booked at each interval — and it
 depends entirely on which roads the flight is booked over.** Mean delay:
@@ -622,33 +671,31 @@ depends entirely on which roads the flight is booked over.** Mean delay:
 | booked | road 1 only, MB | road 1 only, VC | roads in turn, MB | roads in turn, VC |
 |---|---|---|---|---|
 | 240 s (the line's own headway) | on time | on time | on time | on time |
-| 120 s | 28.1 s late | 20.4 s | 10.6 s late | 10.6 s |
-| 90 s | 110.0 s late | 74.0 s | 26.5 s late | 26.5 s |
-| 60 s | 175.1 s late | 158.4 s | 104.9 s late | 124.8 s |
+| 120 s | on time | on time | on time | on time |
+| 90 s | 10.9 s late | on time | 4.4 s late | 2.1 s |
+| 60 s | 112.4 s late | 84.5 s | 15.8 s late | 12.4 s |
 
-Four things in that table are worth more than the numbers:
+And how close the two actually stand a train behind another, in a queue on one
+road: **125 m under moving block, 72 m under virtual coupling** — the margin plus
+the driver's own 25 m, and nothing else. That difference is the whole system.
 
-- **above the line's own headway it buys nothing.** At 240 s every system on the
-  ladder is on time, virtual coupling included. It is a congestion technology,
-  and this line's constraint at its booked interval is the station dwell and the
-  route-setting, not the following distance.
+Three things in that table are worth more than the numbers:
+
+- **above the line's own headway it buys nothing.** At 240 s and 120 s every
+  system on the ladder is on time, virtual coupling included. It is a congestion
+  technology, and this line's constraint at its booked interval is the station
+  dwell and the route-setting, not the following distance.
 - **it pays where the queue is a following queue.** Send every train to road 1
-  and virtual coupling is a third less late than moving block at 90 s, because
+  and virtual coupling saves a quarter of moving block's delay at 60 s, because
   the trains are nose to tail on one piece of railway. Spread the same flight
-  across the roads at each station and the benefit disappears: what is holding
-  trains up is a platform and a throat, and no amount of radio between trains
-  shortens a dwell.
-- **at 60 s, spread across the roads, it is actively worse** — 124.8 s against
-  moving block's 104.9 s, and switching relative braking off recovers the 104.9 s
-  exactly. Closing trains up faster only delivers them to a congested throat
-  sooner, where they queue at a platform instead of out on the line. Nothing is
-  unsafe about it; it is a scheduling loss, and it is the sort of thing that only
-  shows up when the benefit is measured on a line rather than on a straight.
-- **an unfitted fleet is worse off than under moving block** — 49.8 s against
-  26.5 s at 90 s, 146.0 s against 104.9 s at 60 s. No link means the rear of the
-  train ahead cannot be trusted at all, so the fallback is block granularity
-  rather than absolute distance. That is the honest answer, not a penalty: the
-  whole benefit was the link.
+  across the roads at each station and both systems nearly empty the delay out
+  anyway: what was holding trains up was the platform and the throat, and no
+  amount of radio between trains shortens a dwell.
+- **an unfitted fleet falls back past moving block, not to it** — 49.8 s against
+  4.4 s at 90 s, 146.0 s against 15.8 s at 60 s, which is Level 2's figure to the
+  decimal. No link means the rear of the train ahead cannot be trusted at all, so
+  the fallback is block granularity rather than absolute distance. That is the
+  honest answer, not a penalty: the whole benefit was the link.
 
 The hazard the model does not remove is the one that keeps this off real
 railways. Relative braking assumes the leader cannot stop faster than its own
