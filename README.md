@@ -304,13 +304,19 @@ effectively uses up **two** block sections rather than the one it is standing in
 all-green headway = (2 block sections + train length + sighting distance) / v
 ```
 
-`--check` reports it per stretch, and names the section that binds:
+`--check` reports it per stretch:
 
 ```
 signal spacing (3-aspect, 1 block of warning)
-  ML   28 blocks  1133-1700 m   needs >= 591 m (EMU)   tightest margin +543 m
-       all-green headway 96-253 s at 120 km/h; WDEPOT_1 sets it at 253 s (14.2 trains/hour)
+  ML   50 blocks  1200-1867 m   needs >= 591 m (EMU)   tightest margin +609 m
+       all-green headway 101-253 s at 120 km/h; WDEPOT_1 sets it at 253 s (14.2 trains/hour)
 ```
+
+**Read the top of that range, not the bottom.** A line is only as close-worked as
+its worst section, so 101-253 s does not mean this railway will do 101 s. The
+253 s belongs to the depot roads and is survivable only because the two roads at
+each end are used by alternate trains; the worst section the flight actually
+meets is 149 s, an 1867 m block between Marlowe and Ashdown.
 
 That is the theoretical figure, and it assumes the only thing in a train's way is
 the train in front. The measured one comes from running the flight:
@@ -319,27 +325,58 @@ the train in front. The measured one comes from running the flight:
 $ python scenarios/depotline/_sweep_headway.py
 
   headway   restrained   mean delay      worst
-    165 s         0 s        0.0 s        0 s
-    150 s         0 s        0.0 s        0 s     <- all-green
-    135 s       323 s       37.8 s       81 s     <- degraded
-    120 s       759 s       95.4 s      193 s
-     60 s      2075 s      308.0 s      616 s
+    180 s         0 s        0.0 s        0 s
+    165 s         0 s        0.0 s        0 s     <- all-green
+    150 s       105 s        7.9 s        9 s     <- degraded
+    120 s      1243 s      122.5 s      247 s
+     60 s      3052 s      335.0 s      670 s
 
-all-green headway: 150 s (24.0 trains an hour)
+all-green headway: 165 s (21.8 trains an hour)
 ```
 
-Restraint is reported over the 174 s a single train pays with the railway
-entirely to itself - every platform signal here is controlled, so it stands at
-danger until the interlocking sets a route over it, and a train alone is checked
-on each approach exactly as a train in traffic is. That toll is the layout, not
-the traffic.
+165 s measured against a 149 s worst section - the theory is a floor, and the
+railway lands a little above it. Restraint is reported over the 174 s a single
+train pays with the line entirely to itself: every platform signal here is
+controlled, so it stands at danger until the interlocking sets a route over it,
+and a train alone is checked on each approach exactly as a train in traffic is.
+That toll is the layout, not the traffic.
 
 **Below the all-green headway the line does not fail, it degrades** - each train
 a little later than the one in front, which is what a real railway does when it
-is booked tighter than it can work. The two figures disagreeing is the useful
-part: signal spacing on the open line would allow 96 s, and never gets the chance
-to, because the binding constraint is a platform being reoccupied rather than a
-block being cleared.
+is booked tighter than it can work.
+
+### What sets it, and what doesn't
+
+depotline was 27 km with 5-8 km between stations before it was 60 km with 12-18.
+Journey time roughly doubled, as it must. The headway moved too, 150 s to 165 s -
+but not because of the spacing.
+
+`block_length_m` is a *target* the builder divides evenly into each stretch, so
+the same 1800 m request that produced 1700 m sections over 8 km produces 1867 m
+ones over 18. Longer blocks, longer headway. Cut that one stretch back to 1200 m
+blocks and the measured figure returns, with nothing else touched:
+
+```
+Marlowe-Ashdown blocks   all-green headway
+       1800 m (shipped)       165 s   21.8 trains/hour
+       1200 m                 150 s   24.0 trains/hour
+```
+
+Station spacing buys journey time. Block length buys headway. They are
+independent, and only the fact that block length is declared as a target rather
+than a count ties them together at all.
+
+The loops are not the next lever, tempting as it is that Marlowe has four roads:
+
+```
+MARLOWE_1  through road, 100 km/h    101 s
+MARLOWE_2  loop,          60 km/h    169 s
+ML_022     open line,    100 km/h    149 s   <- what actually binds
+```
+
+A flight using the loops alternately would put half its trains in a 169 s section
+to escape a 149 s one. Loops let a fast train past a slow one; this flight is
+homogeneous, so there is nothing to overtake.
 
 ### The ETCS levels
 

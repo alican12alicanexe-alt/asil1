@@ -40,7 +40,7 @@ COUNT = 8           # trains in the flight
 #: The interval the flight is booked at. Measured, not chosen: see the table in
 #: scenario.yaml and _sweep_headway.py, which runs the flight at every interval
 #: from four minutes down to one and reports what it costs.
-HEADWAY_S = 150
+HEADWAY_S = 165
 
 STOCK = {"id": "EMU", "name": "Line unit", "length_m": 160,
          "max_speed_kmh": 100, "max_accel": 1.0, "service_brake": 0.8,
@@ -95,7 +95,7 @@ def probe():
         {"stock": [STOCK],
          "services": [{"id": "P", "stock": "EMU", "departure": format_clock(BASE),
                        "ready_lead_s": 60, "calls": calls()}]}, INFRA)
-    sim = simulation(timetable, duration_s=3600)
+    sim = simulation(timetable, duration_s=5400)
     while not sim.finished:
         sim.step()
         if sim.trains.get("P") is not None and sim.trains["P"].state == "finished":

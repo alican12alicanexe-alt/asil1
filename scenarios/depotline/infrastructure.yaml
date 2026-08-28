@@ -1,8 +1,29 @@
 # depotline - a single-track line between two depots, with three stations on it.
 #
-#   WEST DEPOT ---- KINGSFORD ---- MARLOWE ---- ASHDOWN ---- EAST DEPOT
-#     km 0            km 5          km 13        km 21        km 27
-#    2 roads         2 plat        4 plat       3 plat       2 roads
+#   WEST DEPOT -------- KINGSFORD -------- MARLOWE -------- ASHDOWN -------- EAST DEPOT
+#     km 0                 km 12              km 30            km 48            km 60
+#    2 roads              2 plat             4 plat           3 plat           2 roads
+#      |<--- 12 km --->|<---- 18 km ---->|<---- 18 km ---->|<--- 12 km --->|
+#
+# Sixty kilometres between the depots, and twelve to eighteen between stations.
+# That spacing is the point of the line rather than an incidental of it: a unit
+# that tops out at 100 km/h needs about 700 m to get there and a kilometre to
+# come back down, so on a five-kilometre hop it is accelerating or braking for
+# most of the run and never really cruises. Give it eighteen, and it spends the
+# middle two thirds at line speed.
+#
+# The spacing itself costs no capacity - the headway is set by a block section
+# being cleared, and how many sections lie between two stations does not change
+# how long any one of them is held. What did cost capacity here is a side effect
+# worth knowing about: `block_length_m` is a target that the builder divides
+# evenly into each stretch, so asking for 1800 m blocks over 18 km produces 1867 m
+# ones where the same request over 8 km produced 1700 m. Bigger blocks, longer
+# headway. Stretching this line took it from 150 s to 165 s, and cutting the
+# Marlowe-Ashdown stretch back to 1200 m blocks takes it straight back to 150 s.
+#
+# So: station spacing buys journey time, block length buys headway, and the two
+# are independent. It is only the fact that block length is declared as a target
+# rather than a count that ties them together at all.
 #
 # One running line, so every train is behind or in front of every other one and
 # the only way past is through a station. That is what the platform roads are
@@ -38,10 +59,10 @@ defaults:
 
 stations:
   - {id: WDEPOT,    name: West Depot, km: 0.0}
-  - {id: KINGSFORD, name: Kingsford,  km: 5.0}
-  - {id: MARLOWE,   name: Marlowe,    km: 13.0}
-  - {id: ASHDOWN,   name: Ashdown,    km: 21.0}
-  - {id: EDEPOT,    name: East Depot, km: 27.0}
+  - {id: KINGSFORD, name: Kingsford,  km: 12.0}
+  - {id: MARLOWE,   name: Marlowe,    km: 30.0}
+  - {id: ASHDOWN,   name: Ashdown,    km: 48.0}
+  - {id: EDEPOT,    name: East Depot, km: 60.0}
 
 tracks:
   - id: ML
@@ -52,7 +73,11 @@ tracks:
     serves: [WDEPOT, KINGSFORD, MARLOWE, ASHDOWN, EDEPOT]
     block_lengths:
       # Shorter blocks where trains follow each other closely into the
-      # overtaking station, longer ones on the open stretches either side.
+      # overtaking station, longer ones on the open stretch beyond it. The long
+      # ones are what binds this line: at 1800 m they come out as 1867 m sections
+      # implying 149 s, which is the worst figure anywhere on the running line and
+      # within a few seconds of what the flight actually holds. Cut this row to
+      # 1200 and the measured headway goes from 165 s to 150 s.
       - {from: KINGSFORD, to: MARLOWE, block_length_m: 1200}
       - {from: MARLOWE,   to: ASHDOWN, block_length_m: 1800}
 

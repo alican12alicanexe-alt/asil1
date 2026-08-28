@@ -5,9 +5,10 @@
 #   python run.py scenarios/depotline --headless   (no window, prints a summary)
 #   python run.py scenarios/depotline --check      (signal spacing and the plan)
 #
-#   WEST DEPOT ---- KINGSFORD ---- MARLOWE ---- ASHDOWN ---- EAST DEPOT
-#     km 0            km 5          km 13        km 21        km 27
-#     1 road         2 plat        4 plat       3 plat        1 road
+#   WEST DEPOT ------ KINGSFORD ------ MARLOWE ------ ASHDOWN ------ EAST DEPOT
+#     km 0               km 12            km 30          km 48          km 60
+#    2 roads            2 plat           4 plat         3 plat         2 roads
+#      |<-- 12 km -->|<--- 18 km --->|<--- 18 km --->|<-- 12 km -->|
 #
 # One running line and no way past except through a station. The flight is
 # homogeneous - eight trains of one type, all calling everywhere on the main
@@ -31,22 +32,27 @@
 #
 #     all-green headway = (2 block sections + train length + sighting) / v
 #
-# On the open line here that is 96 s. The measured figure is 150 s, and the gap
-# between them is the whole point of running the thing.
+# It is reported as a range, and the number that matters is the TOP of it. A line
+# is only as close-worked as its worst section, so 101-253 s does not mean this
+# railway will do 101 s. Read it as: the running line's worst section is 149 s
+# (ML_022, an 1867 m block between Marlowe and Ashdown), and the 253 s belongs to
+# the depot roads, which is survivable only because the two roads at each end are
+# used by alternate trains.
 #
 # `python scenarios/depotline/_sweep_headway.py` books the same flight at every
 # interval from five minutes down to one, rebuilding the plan from the unimpeded
 # run times each time so it is always workable in isolation:
 #
 #     headway   restrained   mean delay   worst arrival
-#       165 s          0 s        0.0 s           0 s
-#       150 s          0 s        0.0 s           0 s     <- all-green
-#       135 s        323 s       37.8 s          81 s     <- degraded
-#       120 s        759 s       95.4 s         193 s
-#        90 s       1606 s      203.0 s         406 s
-#        60 s       2075 s      308.0 s         616 s
+#       180 s          0 s        0.0 s           0 s
+#       165 s          0 s        0.0 s           0 s     <- all-green
+#       150 s        105 s        7.9 s           9 s     <- degraded
+#       135 s        763 s       70.0 s         142 s
+#       120 s       1243 s      122.5 s         247 s
+#        90 s       2229 s      230.9 s         461 s
+#        60 s       3052 s      335.0 s         670 s
 #
-#     150 s = 24 trains an hour.
+#     165 s = 21.8 trains an hour, against a worst section of 149 s.
 #
 # Restraint is reported over the 174 seconds a single train pays with the railway
 # entirely to itself. That toll is not congestion: every platform signal here is
@@ -55,15 +61,29 @@
 # Counting it would put the same floor under every row and hide the thing being
 # looked for.
 #
-# Over that baseline the column is zero down to 150 s and rises from 135 s. Below
-# the all-green headway the line does not fail, it degrades - each train a little
-# later than the one in front, which is what a real railway does when it is booked
-# tighter than it can work.
+# Below the all-green headway the line does not fail, it degrades - each train a
+# little later than the one in front, which is what a real railway does when it is
+# booked tighter than it can work.
 #
-# What binds first is not signal spacing. The open-line blocks would allow 96 s
-# and never get the chance, because a train cannot be let into a station road
-# until the train in front has cleared it, and on a single track with no way past,
-# reoccupation sets the interval.
+# WHAT THE STATION SPACING COSTS, AND WHAT IT DOES NOT
+#
+# This line was 27 km with 5-8 km between stations before it was 60 km with
+# 12-18 km. Journey time roughly doubled, as it must. The headway moved too, from
+# 150 s to 165 s - but not because of the spacing.
+#
+# `block_length_m` is a target the builder divides evenly into each stretch, so
+# the same 1800 m request that produced 1700 m sections over 8 km produces 1867 m
+# ones over 18 km. Longer blocks, longer headway. Cut the Marlowe-Ashdown stretch
+# back to 1200 m blocks and the measured figure returns to 150 s with nothing else
+# touched:
+#
+#     Marlowe-Ashdown blocks   all-green headway
+#            1800 m (shipped)       165 s   21.8 trains/hour
+#            1200 m                 150 s   24.0 trains/hour
+#
+# Station spacing buys journey time. Block length buys headway. They are
+# independent, and only the fact that block length is declared as a target rather
+# than a count ties them together at all.
 #
 # WHAT THE DEPOTS COST
 #
@@ -75,18 +95,24 @@
 #
 # A second road in each depot, used by alternate trains, took the headway from
 # 240 s to 150 s: fifteen trains an hour to twenty-four, for two turnouts and no
-# signalling at all. The binding constraint moved to the station roads, where a
-# train stands for 45 seconds and holds 1200 m of block while it does.
+# signalling at all. With that gone the binding constraint moved out onto the
+# running line, to the longest open-line block.
 #
-# The same lever is still there and unpulled: Marlowe has four roads, Ashdown
-# three and Kingsford two, and a flight that used them alternately rather than
-# queueing for the main road would go further again. It would not be free - the
-# loops are worked at 60 km/h, so a train routed through one is slower and has to
-# be booked as such - and that trade, road capacity against road speed, is the
-# one a real timetable is written around.
+# It is worth being clear that the loops are NOT the next lever, tempting as it
+# looks that Marlowe has four roads and Ashdown three. `--check` prices them:
+#
+#     MARLOWE_1  through road, 100 km/h    101 s
+#     MARLOWE_2  loop,          60 km/h    169 s
+#     ML_022     open line,    100 km/h    149 s   <- what actually binds
+#
+# A flight that used the loops alternately would put half its trains in a section
+# worth 169 s to get out of one worth 149 s, which is a loss. Loops are for
+# letting a fast train past a slow one, and this flight is homogeneous - there is
+# nothing to overtake. The lever that does work is block length: see the table
+# above, where cutting one stretch from 1800 m to 1200 m buys 15 seconds.
 
 name: depotline
-description: "A 27 km single-track line between two depots, three stations with 2, 4 and 3 platform roads, and a homogeneous flight of eight units worked by three-aspect fixed block."
+description: "A 60 km single-track line between two depots, three stations with 2, 4 and 3 platform roads, and a homogeneous flight of eight units worked by three-aspect fixed block."
 
 infrastructure: infrastructure.yaml
 timetable: timetable.yaml
@@ -94,7 +120,7 @@ timetable: timetable.yaml
 simulation:
   dt: 1.0                 # seconds per tick; microscopic
   start_time: "06:57:00"
-  duration_s: 4200        # 70 minutes, enough for every service to complete
+  duration_s: 6000        # 100 minutes, enough for every service to complete
   strict: false           # true makes a block-exclusivity violation raise
 
 signalling:
