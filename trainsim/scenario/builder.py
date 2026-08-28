@@ -875,13 +875,22 @@ class _Builder(object):
                 station=station_id,
                 grade_permille=float(plat.get("grade_permille", grade_permille)),
             )
+            # Where a train berths. The platform is centred in its road, and a
+            # train draws up at the far end of the concrete - not at the end of
+            # the block. That is the whole point of length_m: without it a 160 m
+            # train runs 1170 m into a 1200 m road and stands half a kilometre
+            # past the platform it is meant to be at. The road stays long
+            # because it is sized for braking through at line speed; only the
+            # stopping point belongs to the platform.
+            platform_length = float(plat.get("length_m", 200.0))
+            stop = (zone_length + min(platform_length, zone_length)) / 2.0
             self.platforms.append(Platform(
                 id=platform_id,
                 station=station_id,
                 segment=platform_id,
                 track=track_id,
-                length_m=float(plat.get("length_m", 200.0)),
-                stop_offset_m=max(1.0, zone_length - stop_margin),
+                length_m=platform_length,
+                stop_offset_m=max(1.0, stop - stop_margin),
             ))
             self.station_platforms.setdefault(station_id, []).append(platform_id)
 

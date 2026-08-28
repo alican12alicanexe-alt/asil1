@@ -384,10 +384,10 @@ $ python scenarios/depotline/_sweep_headway.py
   headway   restrained   mean delay      worst
     240 s         0 s        0.0 s        0 s
     210 s         0 s        0.0 s        0 s     <- all-green
-    195 s       112 s        7.0 s        8 s     <- degraded
-    165 s       336 s       21.0 s       24 s
-    120 s      1436 s      130.4 s      256 s
-     60 s      3221 s      342.1 s      678 s
+    195 s       105 s        6.1 s        7 s     <- degraded
+    165 s       315 s       20.1 s       23 s
+    120 s      1407 s      125.1 s      247 s
+     60 s      3109 s      336.9 s      669 s
 
 all-green headway: 210 s (17.1 trains an hour)
 ```
@@ -395,7 +395,7 @@ all-green headway: 210 s (17.1 trains an hour)
 210 s measured against a 149 s worst section. The theory is a floor and it is not
 a tight one, because signal spacing is only half the story: the other 45 s is the
 route reservation, which the spacing formula knows nothing about. Restraint is
-reported over the 111 s a single train pays with the line entirely to itself -
+reported over the 65 s a single train pays with the line entirely to itself -
 every signal here is controlled, so a train alone is checked on each approach
 exactly as a train in traffic is. That toll is the layout, not the traffic.
 

@@ -46,16 +46,16 @@
 #     headway   restrained   mean delay   worst arrival
 #       240 s          0 s        0.0 s           0 s
 #       210 s          0 s        0.0 s           0 s     <- all-green
-#       195 s        112 s        7.0 s           8 s     <- degraded
-#       165 s        336 s       21.0 s          24 s
-#       135 s        906 s       73.4 s         145 s
-#       120 s       1436 s      130.4 s         256 s
-#        90 s       2389 s      235.4 s         466 s
-#        60 s       3221 s      342.1 s         678 s
+#       195 s        105 s        6.1 s           7 s     <- degraded
+#       165 s        315 s       20.1 s          23 s
+#       135 s        876 s       68.9 s         136 s
+#       120 s       1407 s      125.1 s         247 s
+#        90 s       2366 s      231.0 s         458 s
+#        60 s       3109 s      336.9 s         669 s
 #
 #     210 s = 17.1 trains an hour, against a worst section of 149 s.
 #
-# Restraint is reported over the 111 seconds a single train pays with the railway
+# Restraint is reported over the 65 seconds a single train pays with the railway
 # entirely to itself. That toll is not congestion: every signal here is
 # controlled, so it stands at danger until the interlocking sets a route over it,
 # and a train alone is checked on each approach exactly as a train in traffic is.

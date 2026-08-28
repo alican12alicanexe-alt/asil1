@@ -50,9 +50,9 @@ defaults:
   # THE TWO PLATFORM LENGTHS, WHICH ARE NOT THE SAME THING
   #
   # platform_zone_m is the BLOCK SECTION the platform road occupies - 1200 m of
-  # railway that holds one train at a time. Kingsford_1 runs km 11.400 to 12.600,
-  # and a train stops 1170 m into it (the zone less stop_margin_m). It is sized
-  # for BRAKING, not for the train: a train running through a platform road at
+  # railway that holds one train at a time. Kingsford_1 runs km 11.400 to 12.600.
+  # It is sized for BRAKING, not for the train: a train running through a
+  # platform road at
   # line speed meets its exit signal at speed, and that signal can be at danger,
   # so the section has to be long enough to stop in - 591 m here - and 1200 m
   # leaves a margin. This is the number that prices into headway: 1200 m at
@@ -63,11 +63,19 @@ defaults:
   # than the zone, and costs no capacity at all. Booking a train longer than it
   # is now a timetable fault that --check reports.
   #
+  # It is also what decides where a train stops. The concrete is centred in the
+  # road and a train draws up at the far end of it - 680 m in here, not 1170.
+  # Running on to the end of the block would put a berthed train half a
+  # kilometre past the platform it is meant to be standing at, which is the one
+  # thing length_m exists to prevent. The road behind the train stays occupied
+  # either way, so this costs no capacity; it only puts the train where the
+  # passengers are.
+  #
   #   km 11.400                                              km 12.600
   #      |<----------- KINGSFORD_1 block, 1200 m ---------------->|
-  #      |                                          [220 m plat]  |
-  #      entry signal                               [160 m train] |
-  #                                            stops 1170 m in ---^
+  #      |                     [220 m plat]                       |
+  #      entry signal          [160 m train]                      |
+  #                              stops 680 m in ---^
   platform_zone_m: 1200
   block_length_m: 1500
   max_speed_kmh: 120
