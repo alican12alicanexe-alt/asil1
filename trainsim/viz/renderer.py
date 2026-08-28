@@ -37,6 +37,10 @@ PALETTE = {
     "track_occupied": "#8c3a3a",
     "platform": "#7d8b9e",
     "platform_occupied": "#a8574a",
+    #: The concrete a train stands alongside, as opposed to the road it stands
+    #: on. Drawn as a slab beside the platform road so the two lengths - the
+    #: block section and the platform itself - can be told apart by eye.
+    "platform_face": "#5f6f85",
     "station": "#cfd8e3",
     "station_tick": "#38424f",
     "label": "#8d9aab",
