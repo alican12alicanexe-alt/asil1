@@ -1,7 +1,7 @@
 """Pluggable signalling systems.
 
 Every train control system - conventional lineside signalling, ETCS Levels 1 and
-2, Hybrid Level 3 and full moving block - is an implementation of
+2, Hybrid Level 3, full moving block and virtual coupling - is an implementation of
 :class:`~trainsim.core.signalling.base.SignallingSystem`. The kernel never imports
 a concrete one, so comparing systems is a scenario setting rather than a rewrite,
 and `--compare` runs one timetable through all of them.
@@ -16,6 +16,7 @@ from .base import MovementAuthority, SignallingSystem
 from .etcs import ETCSLevel1, ETCSLevel2, MovingBlock
 from .fixed_block import ThreeAspectFixedBlock
 from .hybrid_l3 import HybridLevel3
+from .virtual_coupling import VirtualCoupling
 
 #: Name used in scenario files -> implementation.
 REGISTRY = {
@@ -24,6 +25,7 @@ REGISTRY = {
     "etcs_l2": ETCSLevel2,
     "etcs_hybrid_l3": HybridLevel3,
     "etcs_moving_block": MovingBlock,
+    "virtual_coupling": VirtualCoupling,
 }
 
 #: The order a comparison report presents them in: oldest technology first.
@@ -33,6 +35,7 @@ LADDER = (
     "etcs_l2",
     "etcs_hybrid_l3",
     "etcs_moving_block",
+    "virtual_coupling",
 )
 
 
@@ -56,6 +59,7 @@ __all__ = [
     "ETCSLevel2",
     "HybridLevel3",
     "MovingBlock",
+    "VirtualCoupling",
     "REGISTRY",
     "LADDER",
     "create",

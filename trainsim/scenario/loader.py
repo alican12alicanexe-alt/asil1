@@ -327,6 +327,7 @@ def _build_stock(entries: List[dict]) -> Dict[str, RollingStock]:
                 emergency_brake=float(entry.get("emergency_brake", 1.2)),
                 etcs_level=str(entry.get("etcs_level", "none")).lower(),
                 tims=bool(entry.get("tims", False)),
+                v2v=bool(entry.get("v2v", False)),
                 # Dynamics. Anything left out is derived in RollingStock from
                 # the size and performance above, so a timetable written before
                 # there was a traction curve still describes a plausible train.

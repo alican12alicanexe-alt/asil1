@@ -113,6 +113,20 @@ class Simulation(object):
                 continue
             self.signalling.observe(train, self)
             authority = self.signalling.movement_authority(train, self)
+            if (authority.target_speed_ms > 0.0
+                    and not getattr(self.signalling,
+                                    "permits_relative_braking", False)):
+                # An authority that ends at a speed rather than at a stand says
+                # the danger point is moving with a known speed. Only a system
+                # in radio contact with the train in front may say that, so a
+                # system that has not declared itself one is reporting a bug
+                # rather than a permission - and a quiet one, since it would
+                # look exactly like a capacity gain.
+                raise ValueError(
+                    "%s issued target_speed_ms=%r without declaring "
+                    "permits_relative_braking"
+                    % (type(self.signalling).__name__, authority.target_speed_ms)
+                )
             accel, target, reason = self.driver.decide(
                 train, authority, self.dt, self.limits)
             decisions.append((train, accel, target, reason, authority))
@@ -205,7 +219,7 @@ class Simulation(object):
         Automatic plain-line signals are exempt by construction, because there is
         no route to set: they follow occupancy, which is what makes them
         automatic. So the check is exactly the set of signals the route table
-        governs, and it holds regardless of which of the five systems is running
+        governs, and it holds regardless of which of the six systems is running
         - none of them overrides the interlocking.
         """
         if self.interlocking is None:

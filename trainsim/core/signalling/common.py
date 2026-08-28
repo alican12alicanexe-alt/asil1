@@ -1,6 +1,6 @@
 """Machinery shared by every train control system.
 
-All five systems modelled here answer the same underlying question - *where is the
+All six systems modelled here answer the same underlying question - *where is the
 first point this train may not pass?* - and differ only in two things:
 
 * **how that point is worked out**: the entry of the first occupied block, or the

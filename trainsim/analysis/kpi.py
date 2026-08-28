@@ -74,6 +74,11 @@ class RunMetrics:
 RESTRAINT_MARKERS = (
     "caution", "danger", "block", "rear of", "no route",
     "vss", ".1 ", ".2 ", ".3 ", ".4 ",
+    # Virtual coupling words the same thing its own way: a train held down
+    # behind the one in front, whether over the link or on absolute braking
+    # distance once the link is gone. Without these the column reads near zero
+    # under virtual coupling and the system looks free of a cost it is paying.
+    "coupled to", "absolute distance",
 )
 
 

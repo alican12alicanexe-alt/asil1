@@ -65,7 +65,7 @@ CROSSOVER = frozenset({
 TIMETABLE = frozenset({"stock", "services"})
 STOCK = frozenset({
     "id", "name", "length_m", "max_speed_kmh", "max_accel", "service_brake",
-    "emergency_brake", "etcs_level", "tims",
+    "emergency_brake", "etcs_level", "tims", "v2v",
     # Dynamics. All optional: what is not given is derived from the size and
     # performance already declared, in trainsim/core/dynamics.py.
     "mass_t", "rotating_mass_pct", "power_kw",

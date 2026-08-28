@@ -109,6 +109,7 @@ trainsim/
       fixed_block.py         conventional three-aspect
       etcs.py                ETCS L1, L2 and full moving block
       hybrid_l3.py           Hybrid Level 3 over virtual sub-sections
+      virtual_coupling.py    relative braking distance over a V2V link
   analysis/
     kpi.py                   run metrics and the side-by-side comparison
     propagation.py           primary vs knock-on delay, by difference
@@ -438,7 +439,7 @@ homogeneous, so there is nothing to overtake.
 
 ### The ETCS levels
 
-Milestone 3. Five train control systems, all reading the same interlocking, all
+Milestone 3. Six train control systems, all reading the same interlocking, all
 using the same braking physics, driver model and timetable. They differ along
 exactly two axes and nothing else:
 
@@ -449,6 +450,7 @@ exactly two axes and nothing else:
 | ETCS Level 2 | fixed-block detection | continuously, by radio |
 | Hybrid Level 3 | virtual sub-sections | continuously, by radio |
 | moving block (L3) | rear of the train ahead | continuously, by radio |
+| virtual coupling | where the train ahead **will stop** | continuously, train to train |
 
 `--compare` runs one timetable through all of them:
 
@@ -520,6 +522,7 @@ stock:
   - id: EMU_FAST
     etcs_level: l2      # none | l1 | l2 | l3
     tims: true          # can it confirm its own integrity?
+    v2v: false          # train-to-train link, for virtual coupling
 ```
 
 #### Seeing it: fixed block against moving block
@@ -546,11 +549,76 @@ rather than a number.
   trains sharing a block section is the entire point. Each system now declares
   `separates_by = "block"` or `"distance"`, and the kernel picks its invariant
   accordingly - but *physical separation*, no train's front passing another's
-  rear, is asserted for all five.
+  rear, is asserted for all six.
 - **A train must not be blocked by its own footprint.** An unfitted train marks
   every sub-section of its block unknown, including the ones ahead of its own
   nose, so sub-sections record who claimed them - the same reason
   `Occupancy.is_free` takes an `ignoring` argument.
+
+### Virtual coupling: borrowing the braking distance in front
+
+Moving block already runs a train up to the rear of the train ahead less a
+margin, and under absolute braking distance that is as close as it gets: the
+follower has to be able to stop short of where the leader *is*, because the
+leader might be a wall.
+
+Virtual coupling drops that assumption. A train-to-train radio link tells the
+follower what the leader is doing, so the follower may plan to stop where the
+leader *will* stop:
+
+```
+danger point = rear of the leader
+             + how far the leader runs on if it brakes now
+             - (standing margin + what the follower covers awaiting the news)
+```
+
+The borrowed term is the whole benefit, and it is worth most at speed and
+nothing at all against a stationary train — there is nothing to borrow from a
+train that has already stopped. The leader's run-on is taken at the *hardest*
+rate it can brake at, not the rate it would normally use: the follower is
+planning to stop where the leader stops, so it has to assume the leader stops as
+short as it possibly can.
+
+Two things pay for it, and both are modelled. The link has latency, which turns
+into distance at the follower's speed — the reason the concept waits on FRMCS
+rather than GSM-R. And when the link is gone the justification for the tight
+margin goes with it, so the degraded margin is the one moving block would have
+used; carrying the coupled margin into degraded working would make an unfitted
+train appear to outperform moving block on identical physics.
+
+**The control experiment.** With relative braking switched off
+(`assume_leader_brakes: false`) and zero latency, virtual coupling is moving
+block at the same margin — identical to the second, 1162 s restrained and 84.0 s
+mean delay on the same flight. So everything below comes from the borrowed
+braking distance and not from a tuned constant.
+
+**Measured, depotline, the same eight-train flight booked at each interval:**
+
+| booked | moving block | virtual coupling | VC, unfitted fleet |
+|---|---|---|---|
+| 210 s (the line's own headway) | on time | on time | on time |
+| 120 s | 11.0 s late | 7.0 s | 82.0 s |
+| 90 s | 91.6 s late | 77.6 s | 187.0 s |
+| 60 s | 192.5 s late | 140.8 s | 292.0 s |
+
+Three things in that table are worth more than the numbers:
+
+- **above the line's own headway it buys nothing.** At 210 s and 150 s every
+  system on the ladder is on time, virtual coupling included. It is a congestion
+  technology, and this line's constraint at its booked interval is the station
+  dwell and the route-setting, not the following distance.
+- **it pays where the concertina starts.** At 60 s the flight is 27% less late
+  than under moving block — and still 140 s late, because relative braking does
+  nothing about a platform that is occupied.
+- **an unfitted fleet is worse off than under moving block.** No link means the
+  rear of the train ahead cannot be trusted at all, so the fallback is block
+  granularity rather than absolute distance. That is the honest answer, not a
+  penalty: the whole benefit was the link.
+
+The hazard the model does not remove is the one that keeps this off real
+railways. Relative braking assumes the leader cannot stop faster than its own
+emergency brake. A leader that hits something stops in far less than that, and
+the follower, by construction, cannot.
 
 ### The metro line: where moving block actually pays
 
@@ -1202,7 +1270,7 @@ PyYAML on every shipped file. `.json` scenario files work too.
 - **the route finder uses a crossover without being told to** — no timetable
   names one; a slow-line platform to a fast-line platform simply routes that way
 - **and the trains that do not need it never touch it**
-- **physical separation** — asserted under all five systems, including the two
+- **physical separation** — asserted under all six systems, including the three
   where block exclusivity correctly does not apply
 
 A note on the numbers: the fast services arrive about 41 s early against their

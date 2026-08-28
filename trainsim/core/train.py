@@ -38,6 +38,12 @@ class RollingStock:
     etcs_level: str = "none"
     #: Train Integrity Monitoring: can the train confirm its rear is still there?
     tims: bool = False
+    #: Train-to-train radio: can this train tell the one behind it what it is
+    #: doing, and be told the same by the one in front? Separate from ``tims``
+    #: and from ``etcs_level`` because it is a separate fit, and virtual
+    #: coupling needs all three - a link, a trustworthy rear, and a cab to
+    #: display the authority in.
+    v2v: bool = False
 
     # ------------------------------------------------------- dynamics, physical
     #
