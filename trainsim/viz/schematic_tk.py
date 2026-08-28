@@ -238,8 +238,9 @@ class TkSchematicView(SchematicView):
                     font=self.mono_small, tags="static",
                 )
 
+        signal_x = self._signal_positions(infra, tracks)
         for signal in infra.signals.values():
-            self._draw_signal(signal, tracks)
+            self._draw_signal(signal, tracks, signal_x)
 
         for point in infra.points.values():
             self._draw_point(point)
@@ -367,6 +368,49 @@ class TkSchematicView(SchematicView):
         taper = (hi - lo) * self.ROAD_TAPER_FRAC
         return lo + taper, hi - taper
 
+    def _signal_positions(self, infra, tracks):
+        """Where every signal lamp goes, as a signal id -> x in pixels.
+
+        Two rules, and they have to be settled together, which is why this is a
+        pass over all the signals rather than a decision taken one at a time.
+
+        A lamp belongs on the road it applies to, so one whose chainage falls in
+        a road's divergence is slid along to where that road reaches its own
+        alignment. And the signals of one throat stand in a vertical line, as
+        they do on a real gantry, so the whole group takes a single x.
+
+        The group takes the REARMOST of those positions - the first a train
+        reaches. Sliding a lamp back only shows it to a driver sooner, which
+        costs nothing; sliding one forward would draw a signal further along the
+        line than it stands, which is the direction that lies about where a
+        train may run to.
+        """
+        layout = self.layout
+        wanted = {}
+        for signal in infra.signals.values():
+            x = layout.x(signal.km)
+            road = self._signal_road(signal)
+            if road is not None:
+                road_track_y = tracks.get(road.track, {}).get("y", road.y)
+                lo, hi = self._road_span(road, road_track_y)
+                if lo <= hi:
+                    x = max(lo, min(hi, x))
+            wanted[signal.id] = x
+
+        groups = {}
+        for signal in infra.signals.values():
+            groups.setdefault((signal.node_id, signal.track), []).append(signal.id)
+
+        placed = {}
+        for (_, track_id), signal_ids in groups.items():
+            # Chainage grows left to right, so the first lamp a train reaches is
+            # the leftmost on an up track and the rightmost on a down one.
+            up = tracks.get(track_id, {}).get("direction", "up") == "up"
+            rearmost = (min if up else max)(wanted[sid] for sid in signal_ids)
+            for sid in signal_ids:
+                placed[sid] = rearmost
+        return placed
+
     def _signal_road(self, signal):
         """The road a signal is drawn on: the one its own alignment belongs to.
 
@@ -384,7 +428,7 @@ class TkSchematicView(SchematicView):
                 return segment
         return None
 
-    def _draw_signal(self, signal, tracks) -> None:
+    def _draw_signal(self, signal, tracks, signal_x) -> None:
         """A signal lamp, or an unlit marker board where the level has no signals.
 
         ETCS Level 2 and above put the authority in the cab and leave nothing lit
@@ -394,20 +438,8 @@ class TkSchematicView(SchematicView):
         anything.
         """
         layout = self.layout
-        x = layout.x(signal.km)
+        x = signal_x.get(signal.id, layout.x(signal.km))
         y = layout.y(signal.y)
-        # Kept on the road it belongs to. At the throat itself the roads of a
-        # station are one road on the schematic, so a signal placed at its true
-        # chainage there would hang in blank space above the convergence - and
-        # four of them would share the spot. Sliding it to the near end of its
-        # road's own alignment costs a little chainage and buys a lamp that is
-        # visibly on the rail it applies to.
-        road = self._signal_road(signal)
-        if road is not None:
-            road_track_y = tracks.get(road.track, {}).get("y", road.y)
-            lo, hi = self._road_span(road, road_track_y)
-            if lo <= hi:
-                x = max(lo, min(hi, x))
         track = tracks.get(signal.track, {})
         # Down-line signals sit below their track, up-line above, so a signal is
         # visually on the side its trains are approaching from.
