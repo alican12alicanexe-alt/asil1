@@ -313,7 +313,41 @@ def _interlocking_report(scenario, sim) -> str:
         conflicts = sim.interlocking.conflicts_for(route.id) if sim.interlocking else ()
         if conflicts:
             lines.append("      cannot be set with: %s" % ", ".join(conflicts))
+
+    lines.append("")
+    lines.extend(_signal_control_report(infra, sim))
     return "\n".join(lines)
+
+
+def _signal_control_report(infra, sim) -> list:
+    """Which signals need a route, and what they read with nothing running.
+
+    Worth stating explicitly, because it is the one place the interlocking is
+    visible without watching a train: a controlled signal is dark-red on an empty
+    railway and stays that way until somebody asks for the movement, while an
+    automatic signal on the same railway is already green.
+    """
+    controlled = sorted(s.id for s in infra.signals.values() if s.controlled)
+    automatic = [s.id for s in infra.signals.values() if not s.controlled]
+    lines = [
+        "  %d of %d signals are controlled: they read over points and stand at"
+        % (len(controlled), len(infra.signals)),
+        "  danger until a route is set from them. The other %d are plain"
+        % (len(automatic),),
+        "  automatic block and follow occupancy alone - there is no route to ask",
+        "  for, which is what makes them automatic.",
+    ]
+    if not controlled:
+        return lines
+
+    standing = sorted(set(sim.aspects.get(s, "?") for s in controlled))
+    lines.append("  on an empty railway, with no route locked anywhere, the")
+    lines.append("  controlled signals read: %s" % ", ".join(standing))
+    if automatic:
+        lines.append("  and the automatic ones read: %s"
+                     % ", ".join(sorted(set(sim.aspects.get(s, "?")
+                                            for s in automatic))))
+    return lines
 
 
 def _spacing(scenario, sighting_distance_m: float = 0.0):

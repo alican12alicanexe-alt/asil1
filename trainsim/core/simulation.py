@@ -20,7 +20,7 @@ from typing import Dict, List, Optional
 
 from .disruption import DisruptedSpeedLimits, Disruptions
 from .network import Network
-from .signals import BlockSection, Occupancy, Signal, compute_aspects
+from .signals import Aspect, BlockSection, Occupancy, Signal, compute_aspects
 from .train import Train, nearest_ahead
 from .units import format_clock, format_delay, ms_to_kmh
 
@@ -175,6 +175,11 @@ class Simulation(object):
         entire point, so asserting exclusivity there would flag correct behaviour
         as a fault. What must hold in every case is physical separation: no
         train's front may pass another train's rear.
+
+        The third property is not about the trains at all but about the
+        signalling that authorised them: no controlled signal may be off without
+        a route locked from it. That one holds under every system, because none
+        of them overrides the interlocking.
         """
         for message in self.check_separation():
             self._violation("trains overlap: " + message)
@@ -183,6 +188,35 @@ class Simulation(object):
             for block_id in self.occupancy.check_exclusivity():
                 trains = ", ".join(sorted(self.occupancy.trains_in(block_id)))
                 self._violation("block %s holds %s" % (block_id, trains))
+
+        for signal_id in self.clear_without_a_route():
+            self._violation("controlled signal %s is off with no route set"
+                            % (signal_id,))
+
+    def clear_without_a_route(self) -> List[str]:
+        """Controlled signals showing a proceed aspect with no route locked.
+
+        The interlocking's whole purpose, stated as something that can fail. A
+        signal reading over points may only come off once a route is set from it
+        and the points under it are locked; if one is ever off without that, the
+        movement it is authorising is a movement nobody has checked, and the
+        points beneath the train are free to be called elsewhere.
+
+        Automatic plain-line signals are exempt by construction, because there is
+        no route to set: they follow occupancy, which is what makes them
+        automatic. So the check is exactly the set of signals the route table
+        governs, and it holds regardless of which of the five systems is running
+        - none of them overrides the interlocking.
+        """
+        if self.interlocking is None:
+            return []
+        return sorted(
+            signal.id
+            for signal in self.signals.values()
+            if signal.controlled
+            and self.aspects.get(signal.id, Aspect.RED) != Aspect.RED
+            and self.interlocking.route_set_from(signal.id) is None
+        )
 
     def _violation(self, message: str) -> None:
         self.violations.append("%s %s" % (self.clock, message))

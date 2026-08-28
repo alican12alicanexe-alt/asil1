@@ -56,7 +56,10 @@ class ThreeAspectFixedBlock(SignallingSystem):
             signal_id, signal_m, _ = upcoming
             if signal_m - train.chainage_m <= self.sighting_distance_m:
                 train.sighted_signal_id = signal_id
-                train.sighted_aspect = sim.aspects.get(signal_id, Aspect.GREEN)
+                # Default red, not green: a signal the railway has said nothing
+                # about is a signal that has not cleared. Absence of information
+                # is danger, never permission.
+                train.sighted_aspect = sim.aspects.get(signal_id, Aspect.RED)
 
     # -------------------------------------------------------- movement authority
 
@@ -77,7 +80,7 @@ class ThreeAspectFixedBlock(SignallingSystem):
         in_sight = distance <= self.sighting_distance_m
 
         if in_sight:
-            aspect = sim.aspects.get(signal_id, Aspect.GREEN)
+            aspect = sim.aspects.get(signal_id, Aspect.RED)
             if aspect == Aspect.RED:
                 # Stop at this signal.
                 return MovementAuthority(distance, 0.0, reason="signal at danger")

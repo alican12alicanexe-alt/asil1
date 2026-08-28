@@ -250,7 +250,8 @@ inside `SignallingSystem` would mean reimplementing it four times.
 mentions either. Two segments leaving a node is a facing point; two arriving is a
 trailing point; the route table is generated from there. A route is *controlled*
 if it needs points - otherwise it is plain automatic block and its signal simply
-follows occupancy. corridor3 has 2 points and 34 routes, 4 of them controlled.
+follows occupancy. depotline has 10 points and 57 routes, 24 of them
+controlled.
 
 **Sectional release is what makes the railway work.** Each point is given back the
 moment the train's rear is past it, not when the whole movement finishes:
@@ -284,8 +285,39 @@ failing:
   red, with no braking distance in between.
 
 Set `interlocking: {enabled: false}` to run without it, as idealised automatic
-block. On corridor3 that gets the fast train to Gamma 33 s earlier - the
-measurable cost of route-based control.
+block: every signal then follows occupancy, including the ones that read over
+points. On depotline that is worth only 3 s over a 60 km run, because the
+dispatcher asks for each route 2500 m out and the answer is almost always yes -
+the cost of route-based control is paid where routes conflict, and on a plain
+double-track line with facing points only into the platforms, they rarely do.
+
+### A controlled signal is red until somebody asks
+
+Two kinds of signal, and the difference is the whole of the interlocking:
+
+| | needs a route | with nothing running |
+|---|---|---|
+| **controlled** - reads over points, or across another line | yes, every time | **red** |
+| **automatic** - plain line, nothing to set | no, there is none to ask for | green |
+
+depotline has 24 controlled signals and 33 automatic ones. `--check` prints the
+split and what each kind reads on an empty railway, which is the one place the
+interlocking is visible without watching a train go past.
+
+Nothing overrides this. ETCS Level 2 has no lineside signals at all and still
+stops at the same place, because `route_limit` caps every movement authority at
+the first controlled signal ahead with no route locked - a radio authority is
+still bounded by the routes that actually exist.
+
+It is asserted rather than believed. `Simulation.clear_without_a_route()` runs
+every tick and records a violation for any controlled signal showing a proceed
+aspect with no route set; take the route check out of `_must_stand_at_danger` and
+a ten-minute depotline run reports 13462 of them.
+
+The same principle decides the defaults. `sim.aspects.get(signal_id, RED)`, not
+`GREEN`: a signal the railway has said nothing about is a signal that has not
+cleared, and the lamp on the schematic is drawn red before the first refresh for
+the same reason. Absence of information is danger, never permission.
 
 ### The all-green headway
 

@@ -360,9 +360,12 @@ class TkSchematicView(SchematicView):
         self.canvas.create_line(
             x, y, x, y + mast, fill=PALETTE["track"], width=1, tags="static",
         )
+        # Lit red until the first refresh says otherwise. A lamp has to be
+        # drawn as something before the railway has been asked, and a signal
+        # nobody has asked about is at danger.
         lamp = self.canvas.create_oval(
             x - 3, y + mast - 3, x + 3, y + mast + 3,
-            fill=PALETTE["green"], outline="", tags="static",
+            fill=ASPECT_COLOURS["red"], outline="", tags="static",
         )
         self._signal_items[signal.id] = lamp
 
@@ -442,8 +445,9 @@ class TkSchematicView(SchematicView):
                 self.canvas.itemconfig(item, fill=colour)
 
         for signal_id, item in self._signal_items.items():
-            aspect = sim.aspects.get(signal_id, "green")
-            self.canvas.itemconfig(item, fill=ASPECT_COLOURS.get(aspect, PALETTE["green"]))
+            aspect = sim.aspects.get(signal_id, "red")
+            self.canvas.itemconfig(
+                item, fill=ASPECT_COLOURS.get(aspect, ASPECT_COLOURS["red"]))
 
         self._draw_trains()
 
