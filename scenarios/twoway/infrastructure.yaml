@@ -17,27 +17,29 @@
 # A crossover joins two lines that run the same way: up fast to up slow. An up
 # line to a down line is a different thing, because a train taking it is then
 # running against the way that line is signalled. Real railways do it anyway -
-# it is what single-line working under a pilotman is - and it is what the
-# `reversible: true` on each line below is for.
+# it is what single-line working under a pilotman is - and it is what the two
+# connections at the bottom of this file are for.
 #
-# A reversible line gets a second set of block sections laid over the same rails,
-# running the other way, named after the originals with `_R` on the end. Each of
-# them is declared to CROSS the block underneath it, and crossing blocks already
-# mean something here: the interlocking will not set a route over one while
-# anything holds or occupies the other. So a train may be signalled up the down
-# line, and while it is, nothing can be signalled down it. That is the whole of
-# the safety case, and it is the same mechanism that polices a flat junction.
+# Nothing here declares which stretch is reversible. A line is worked both ways
+# exactly where a train can get onto the opposite line AND off it again, so the
+# stretch is whatever the crossovers bracket - here km 13.5 to km 32.4, which
+# puts Marlowe in the middle of it. That is how a real railway reads too:
+# bidirectional signalling is provided between the crossovers, because between
+# them is the only place it is any use.
 #
-# The four connections below are two pairs. Each pair takes a train off its own
-# line, along the wrong one for eighteen kilometres, and back:
+# Over that stretch each line gets a second set of block sections laid over the
+# same rails, running the other way, named after the originals with `_R` on the
+# end. Each of them is declared to CROSS the block underneath it, and crossing
+# blocks already mean something here: the interlocking will not set a route over
+# one while anything holds or occupies the other. So a train may be signalled up
+# the down line, and while it is, nothing can be signalled down it. That is the
+# whole of the safety case, and it is the same mechanism that polices a flat
+# junction.
 #
-#   XO_TO_DN     UP -> DN_R   at km 13.5, just past Kingsford
-#   XO_FROM_DN   DN_R -> UP   at km 32.0, just past Marlowe
-#   XO_TO_UP     DN -> UP_R   at km 45.0, before Ashdown
-#   XO_FROM_UP   UP_R -> DN   at km 27.0, before Marlowe
-#
-# Each pair brackets Marlowe, so a train can be worked round the far side of it
-# on the opposite line and put back on its own beyond.
+# Each crossover below is one piece of pointwork and four movements over it: up
+# train onto the down line and back, down train onto the up line and back. The
+# scenario does not write them out - it draws the crossover, and the four fall
+# out of it.
 #
 # Nothing in the timetable names them. They are there for when the road ahead is
 # blocked - see scenario-blocked.yaml, where Marlowe's up platform is closed and
@@ -64,9 +66,6 @@ tracks:
     y: 0.0
     max_speed_kmh: 100
     block_length_m: 1500
-    # Only the stretch between the two connections is worked both ways. A
-    # whole line reversible end to end is not a railway anyone signals.
-    reversible: {from_km: 12.6, to_km: 32.4}
     serves: [WDEPOT, KINGSFORD, MARLOWE, ASHDOWN, EDEPOT]
 
   - id: DN
@@ -74,7 +73,6 @@ tracks:
     y: 2.0
     max_speed_kmh: 100
     block_length_m: 1500
-    reversible: {from_km: 12.6, to_km: 32.4}
     serves: [EDEPOT, ASHDOWN, MARLOWE, KINGSFORD, WDEPOT]
 
 platforms:
@@ -109,14 +107,13 @@ platforms:
   - {id: ASHDOWN_DN_2, station: ASHDOWN, track: DN, length_m: 220, max_speed_kmh: 40, y_offset: 0.4}
 
 crossovers:
-  # Onto the wrong line and back. Each end names the twin road - DN_R is the road
-  # up the down line - so both ends of every connection run the same way, which
-  # is the rule for a crossover and is not being bent here.
+  # Two crossovers between the up line and the down line, one each side of
+  # Marlowe. Each is usable in all four ways - a train off either line onto the
+  # other, and back - so these two are what let a train be worked round the far
+  # side of Marlowe on the opposite line and put back on its own beyond.
   #
-  # Both ends of each connection have to be clear of a platform zone: a zone is
-  # one block section from throat to throat, and a connection cannot land in the
+  # Both ends of a connection have to be clear of a platform zone: a zone is one
+  # block section from throat to throat, and a connection cannot land in the
   # middle of one - there is no boundary there for it to join at.
-  - {id: XO_TO_DN,   from: UP,   to: DN_R, km: 13.5, length_m: 400, max_speed_kmh: 60}
-  - {id: XO_FROM_DN, from: DN_R, to: UP,   km: 32.0, length_m: 400, max_speed_kmh: 60}
-  - {id: XO_TO_UP,   from: DN,   to: UP_R, km: 45.0, length_m: 400, max_speed_kmh: 60}
-  - {id: XO_FROM_UP, from: UP_R, to: DN,   km: 27.0, length_m: 400, max_speed_kmh: 60}
+  - {id: XO_WEST, from: UP, to: DN, km: 13.5, length_m: 400, max_speed_kmh: 60}
+  - {id: XO_EAST, from: UP, to: DN, km: 32.0, length_m: 400, max_speed_kmh: 60}

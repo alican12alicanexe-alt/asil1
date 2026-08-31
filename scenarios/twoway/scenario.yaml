@@ -22,10 +22,11 @@
 #
 # A crossover joins two lines that run the same way. An up-to-down connection is
 # a different thing: a train taking it runs against the way that line is
-# signalled. Railways do it anyway when something is in the way, and here each
-# line is declared `reversible: true`, which gives it a second set of block
-# sections over the same rails running the other way - DN_012_R is the road up
-# the down line where DN_012 is the road down it.
+# signalled. Railways do it anyway when something is in the way, and here the
+# infrastructure draws two of them, one each side of Marlowe. The stretch between
+# them - the only stretch a train can get onto the wrong line and off it again -
+# gets a second set of block sections over the same rails running the other way:
+# DN_012_R is the road up the down line where DN_012 is the road down it.
 #
 # Every one of those twin blocks is declared to CROSS the block underneath it.
 # Crossing blocks already meant something here - it is how a flat junction is
@@ -50,7 +51,7 @@
 # the up trains are booked round the back of it on the down line.
 
 name: twoway
-description: "Sixty kilometres with a line each way, both reversible, and four connections between them - the railway where wrong-line working is possible."
+description: "Sixty kilometres with a line each way and a crossover between them each side of Marlowe - the railway where wrong-line working is possible."
 
 infrastructure: infrastructure.yaml
 timetable: timetable.yaml
@@ -77,5 +78,5 @@ driver:
   stop_tolerance_m: 1.0
 
 view:
-  title: "twoway - up and down, both reversible"
+  title: "twoway - up and down, with crossovers between"
   speed: 30

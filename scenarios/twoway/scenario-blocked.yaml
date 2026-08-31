@@ -10,9 +10,9 @@
 # train now:
 #
 #   1. runs up its own line as far as km 13.5
-#   2. crosses to the down line over XO_TO_DN
+#   2. crosses to the down line over XO_WEST
 #   3. runs eighteen kilometres up the down line, calling at Marlowe on the way
-#   4. crosses back to the up line over XO_FROM_DN at km 32.0
+#   4. crosses back to the up line over XO_EAST at km 32.0
 #
 # and the down services keep to their own line throughout. Which means the two
 # flights are now sharing eighteen kilometres of railway, in opposite directions,

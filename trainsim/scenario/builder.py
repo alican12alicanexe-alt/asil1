@@ -252,7 +252,7 @@ class _Builder(object):
     # ------------------------------------------------------ reversible working
 
     def _declare_reversible(self) -> None:
-        """Give every ``reversible`` track a twin running the other way.
+        """Give a line a twin running the other way, wherever the crossovers do.
 
         Wrong-line working is what a railway does when something is in the way: a
         train crosses to the opposite line, runs along it against the normal
@@ -260,48 +260,89 @@ class _Builder(object):
         same rails - what changes is which way trains are being signalled over
         them.
 
-        That is exactly how it is modelled here. A reversible track gets a second
-        set of blocks laid over the same alignment, running the other way, and
-        each of those blocks is declared to *cross* the one beneath it. Crossing
-        blocks already mean something to the interlocking - it is how a flat
-        junction is policed - so a route over the wrong line is refused while
-        anything holds or occupies the right one, and a head-on movement cannot
-        be set up. Nothing in the kernel, the signalling or the driver has to
-        learn about direction at all.
+        That is modelled as a second set of blocks laid over the same alignment,
+        running the other way, each of them declared to *cross* the one beneath
+        it. Crossing blocks already mean something to the interlocking - it is
+        how a flat junction is policed - so a route over the wrong line is
+        refused while anything holds or occupies the right one, and a head-on
+        movement cannot be set up. Nothing in the kernel, the signalling or the
+        driver has to learn about direction at all. The alternative was to teach
+        trains to traverse a segment backwards, which touches the path, the
+        signals, the routes and the occupancy, and would have made every one of
+        them ask "which way is this train facing?". A second set of blocks asks
+        nothing.
 
-        The alternative was to teach trains to traverse a segment backwards,
-        which touches the path, the signals, the routes and the occupancy, and
-        would have made every one of them ask "which way is this train facing?".
-        A second set of blocks asks nothing.
+        What is *not* declared is where. A stretch of line is worked in both
+        directions exactly where a train can get onto the opposite line and off
+        it again, and that is decided by the crossovers - which is how a real
+        railway reads too: bidirectional signalling is provided between the
+        crossovers, because between them is the only place it is any use. So the
+        scenario draws its connections and the reversible stretch falls out of
+        them. Declaring it separately meant saying the same thing twice, in two
+        places that could disagree; making every line reversible end to end
+        meant signalling twice the railway to no purpose, since a train that
+        cannot get back off the wrong line is not going anywhere.
         """
-        for track_id, track in list(self.tracks_spec.items()):
-            if not track.get("reversible"):
+        spans: Dict[str, List[float]] = {}
+        connections: Dict[str, int] = {}
+        for crossover_id, spec in self.crossovers_spec.items():
+            pair = self._wrong_line_pair(crossover_id, spec)
+            if pair is None:
                 continue
-            span = track["reversible"]
-            if not isinstance(span, dict) or "from_km" not in span or "to_km" not in span:
+            km = float(spec["km"])
+            length = float(spec.get("length_m", 300.0))
+            for track_id in pair:
+                spans.setdefault(track_id, []).extend((km, km + length / 1000.0))
+                connections[track_id] = connections.get(track_id, 0) + 1
+        for track_id, kms in sorted(spans.items()):
+            if connections[track_id] < 2:
                 raise InfrastructureError(
-                    "track %r: reversible needs the stretch that can be worked "
-                    "both ways, as {from_km: .., to_km: ..}. A whole line worked "
-                    "in either direction is not a railway anyone signals - what "
-                    "is reversible is a section between two connections."
-                    % (track_id,))
-            mirror_id = "%s_R" % track_id
-            if mirror_id in self.tracks_spec:
-                raise InfrastructureError(
-                    "track %r is reversible, so %r is the name of the road "
-                    "back along it - the scenario cannot use that name too"
-                    % (track_id, mirror_id))
-            mirror = dict(track)
-            mirror.pop("reversible", None)
-            mirror["direction"] = ("up" if track.get("direction", "up") == "down"
-                                   else "down")
-            mirror["serves"] = list(reversed(list(track.get("serves") or [])))
-            mirror["mirrors"] = track_id
-            self.tracks_spec[mirror_id] = mirror
-            self.mirror_of[mirror_id] = track_id
-            self.reversible_span[mirror_id] = (
-                min(float(span["from_km"]), float(span["to_km"])),
-                max(float(span["from_km"]), float(span["to_km"])))
+                    "track %r has one connection to a line running the other "
+                    "way, at km %.3f. One is a way onto the wrong line and no "
+                    "way off it - a train would be left facing the wrong "
+                    "direction with nothing in front of it. Wrong-line working "
+                    "needs a connection at each end of the stretch to be worked."
+                    % (track_id, min(kms)))
+            self._lay_twin(track_id, min(kms), max(kms))
+
+    def _wrong_line_pair(self, crossover_id: str,
+                         spec: dict) -> Optional[Tuple[str, str]]:
+        """The two tracks of a connection between lines running opposite ways.
+
+        ``None`` for anything else - a connection between platform roads, a
+        crossover between two lines that run the same way, or a spec that is
+        wrong in a manner :meth:`_plan_crossovers` will report properly. This
+        runs before validation and must not pre-empt its error messages.
+        """
+        from_id, to_id = str(spec.get("from", "")), str(spec.get("to", ""))
+        if from_id in self.platforms_spec or to_id in self.platforms_spec:
+            return None
+        if from_id not in self.tracks_spec or to_id not in self.tracks_spec:
+            return None
+        if "km" not in spec or from_id == to_id:
+            return None
+        if (self.tracks_spec[from_id].get("direction", "up")
+                == self.tracks_spec[to_id].get("direction", "up")):
+            return None
+        return from_id, to_id
+
+    def _lay_twin(self, track_id: str, low: float, high: float) -> None:
+        """The road back along ``track_id``, over the stretch ``low..high``."""
+        track = self.tracks_spec[track_id]
+        mirror_id = "%s_R" % track_id
+        if mirror_id in self.tracks_spec:
+            raise InfrastructureError(
+                "%r is worked in both directions, so %r is the name of the road "
+                "back along it - the scenario cannot use that name too"
+                % (track_id, mirror_id))
+        mirror = dict(track)
+        mirror["direction"] = ("up" if track.get("direction", "up") == "down"
+                               else "down")
+        mirror["serves"] = list(reversed(list(track.get("serves") or [])))
+        mirror["mirrors"] = track_id
+        self.tracks_spec[mirror_id] = mirror
+        self.mirror_of[mirror_id] = track_id
+        self.reversible_span[mirror_id] = (low, high)
 
     def _on_the_rails(self, track_id: str, chainage: float) -> float:
         """A chainage on a mirror, restated on the track it lies over.
@@ -485,45 +526,95 @@ class _Builder(object):
             from_dir = self.tracks_spec[from_id].get("direction", "up")
             to_dir = self.tracks_spec[to_id].get("direction", "up")
             if from_dir != to_dir:
-                raise InfrastructureError(
-                    "crossover %r connects %s (%s) to %s (%s), which run in "
-                    "opposite directions. A train taking it would be running "
-                    "against the way %s is signalled - that is wrong-line "
-                    "working, and it needs bidirectional signalling, which is "
-                    "not modelled. Crossovers here connect lines that run the "
-                    "same way, such as a slow line to a fast line."
-                    % (crossover_id, from_id, from_dir, to_id, to_dir, to_id))
+                self._plan_wrong_line_crossover(
+                    crossover_id, spec, from_id, to_id)
+                continue
 
-            length = float(spec.get("length_m", 300.0))
-            from_km, from_sign = self._track_origin(from_id)
-            to_km, to_sign = self._track_origin(to_id)
-            leave_ch = (km - from_km) * from_sign * 1000.0
-            join_ch = (km - to_km) * to_sign * 1000.0 + length
-            if leave_ch <= 0 or join_ch <= 0:
-                raise InfrastructureError(
-                    "crossover %r at km %.3f falls off the end of %s or %s"
-                    % (crossover_id, km, from_id, to_id))
+            self._plan_line_crossover(crossover_id, spec, from_id, to_id, km)
 
-            # A mirror has no rails of its own: the boundary a connection needs
-            # has to be forced on the track it lies over, and the connection then
-            # finds it there.
-            self.required_chainages.setdefault(
-                self.mirror_of.get(from_id, from_id), []).append(
-                    self._on_the_rails(from_id, leave_ch))
-            self.required_chainages.setdefault(
-                self.mirror_of.get(to_id, to_id), []).append(
-                    self._on_the_rails(to_id, join_ch))
-            self.crossovers.append({
-                "id": crossover_id,
-                "from": from_id,
-                "to": to_id,
-                "leave_ch": leave_ch,
-                "join_ch": join_ch,
-                "length_m": length,
-                "km": km,
-                "max_speed_ms": kmh_to_ms(float(
-                    spec.get("max_speed_kmh", 60.0))),
-            })
+    def _plan_line_crossover(self, crossover_id, spec, from_id, to_id,
+                             km) -> None:
+        """A connection between two roads that run the same way, at ``km``."""
+        length = float(spec.get("length_m", 300.0))
+        from_km, from_sign = self._track_origin(from_id)
+        to_km, to_sign = self._track_origin(to_id)
+        leave_ch = (km - from_km) * from_sign * 1000.0
+        join_ch = (km - to_km) * to_sign * 1000.0 + length
+        if leave_ch <= 0 or join_ch <= 0:
+            raise InfrastructureError(
+                "crossover %r at km %.3f falls off the end of %s or %s"
+                % (crossover_id, km, from_id, to_id))
+
+        # A mirror has no rails of its own: the boundary a connection needs
+        # has to be forced on the track it lies over, and the connection then
+        # finds it there.
+        self._needs_boundary(self.mirror_of.get(from_id, from_id),
+                             self._on_the_rails(from_id, leave_ch))
+        self._needs_boundary(self.mirror_of.get(to_id, to_id),
+                             self._on_the_rails(to_id, join_ch))
+        self.crossovers.append({
+            "id": crossover_id,
+            "from": from_id,
+            "to": to_id,
+            "leave_ch": leave_ch,
+            "join_ch": join_ch,
+            "length_m": length,
+            "km": km,
+            "max_speed_ms": kmh_to_ms(float(
+                spec.get("max_speed_kmh", 60.0))),
+        })
+
+    def _needs_boundary(self, track_id: str, chainage: float) -> None:
+        """Ask for a block boundary at ``chainage``, once.
+
+        Several connections meet a line in the same place - the four movements
+        over one crossover do, by definition - and asking twice would divide the
+        track there twice, leaving a block of no length between the two copies.
+        """
+        wanted = self.required_chainages.setdefault(track_id, [])
+        if not any(abs(chainage - already) < 1e-6 for already in wanted):
+            wanted.append(chainage)
+
+    def _plan_wrong_line_crossover(self, crossover_id, spec, from_id,
+                                   to_id) -> None:
+        """A crossover between the up line and the down line.
+
+        One piece of pointwork, and four movements over it - which is what a
+        crossover between opposite lines is on the ground, and what it is drawn
+        as on a track diagram. An up train can cross to the down line and an up
+        train already on the down line can cross back; the same for a down train
+        on the up line. None of the four is a movement against the way its road
+        is signalled, because each of them names the road for the direction it
+        is going: ``DN_R`` is the road *up* the down line, laid over the same
+        rails by :meth:`_declare_reversible`.
+
+        So the scenario writes one connection and gets the pointwork it drew.
+        Writing the four out by hand meant naming the ``_R`` roads in the file,
+        which is an implementation detail of how the wrong line is modelled, and
+        it made it possible to write three of them - a way on with no way back.
+        """
+        km = float(spec["km"])
+        far = km + float(spec.get("length_m", 300.0)) / 1000.0
+        movements = ((from_id, "%s_R" % to_id), ("%s_R" % to_id, from_id),
+                     (to_id, "%s_R" % from_id), ("%s_R" % from_id, to_id))
+        laid = []
+        for leaves, joins in movements:
+            if leaves not in self.tracks_spec or joins not in self.tracks_spec:
+                # Only reachable if _declare_reversible declined to lay a twin,
+                # and it says why in an error of its own.
+                continue
+            # A connection is measured from the end the train leaves by, which
+            # for a road worked downwards is the far end of the pointwork.
+            at = km if self.tracks_spec[leaves].get(
+                "direction", "up") == "up" else far
+            movement_id = "%s_%s_%s" % (crossover_id, leaves, joins)
+            self._plan_line_crossover(movement_id, spec, leaves, joins, at)
+            laid.append(movement_id)
+        # The four are the same pointwork. Two trains cannot be on it at once,
+        # whichever way each of them is going.
+        for movement_id in laid:
+            self.mirror_conflicts.setdefault(movement_id, set()).update(
+                other for other in laid if other != movement_id)
 
     def _plan_road_crossover(self, crossover_id, spec, from_id, to_id) -> None:
         """A connection whose ends are platform roads rather than running lines.

@@ -85,9 +85,8 @@ run.py                       launcher (no install needed)
 run_tests.py                 test runner (no pytest needed)
 scenarios/depotline/         a single line between two depots: 60 km, three
                              stations, and every road used in turn
-scenarios/twoway/            the same railway with a line each way, both
-                             reversible over the middle stretch, and the
-                             connections that let a train work the wrong one
+scenarios/twoway/            the same railway with a line each way, and the
+                             crossovers that let a train work the wrong one
 trainsim/
   core/
     units.py                 SI conversions and the braking-curve formulae
@@ -1233,21 +1232,33 @@ against the normal direction, and crosses back beyond the obstruction.
 The obvious way to model that is to let a train traverse a block backwards. It is
 also the wrong way: the path, the signals, the routes and the occupancy would all
 have to start asking which way a train is facing, and every one of them is
-simpler for not knowing. So a line that can be worked both ways declares the
-stretch that can be:
+simpler for not knowing. So the scenario draws a crossover between the up line
+and the down line, and says nothing else:
 
 ```yaml
-tracks:
-  - id: DN
-    direction: down
-    reversible: {from_km: 12.6, to_km: 32.4}
+crossovers:
+  - {id: XO_WEST, from: UP, to: DN, km: 13.5, length_m: 400}
+  - {id: XO_EAST, from: UP, to: DN, km: 32.0, length_m: 400}
 ```
 
-and gets **a second set of block sections over the same rails**, running the
-other way — `DN_019_R` is the road up the down line where `DN_019` is the road
-down it. A crossover then joins `UP` to `DN_R`, which run the same way, so the
-rule that a crossover joins lines running the same way is not being bent. Two
-things police it, and neither is new:
+Everything else falls out of those two lines. Each crossover becomes **four
+movements over one piece of pointwork** — an up train onto the down line and
+back, a down train onto the up line and back — which is what a crossover between
+opposite lines is on the ground and what it is drawn as on a track diagram. And
+the stretch **between** them, km 13.5 to km 32.4, gets **a second set of block
+sections over the same rails**, running the other way: `DN_019_R` is the road up
+the down line where `DN_019` is the road down it. Each movement then joins two
+roads that run the same way, so the rule that a crossover joins lines running the
+same way is not being bent.
+
+Where the reversible stretch is is not declared, because it is not a free
+choice: a line is worked both ways exactly where a train can get onto the
+opposite line *and off it again*, which is decided by the crossovers. That is
+how a real railway reads too — bidirectional signalling is provided between the
+crossovers, because between them is the only place it is any use. Declaring it
+separately meant saying the same thing twice in two places that could disagree;
+making every line reversible end to end meant signalling twice the railway to no
+purpose. Two things police it, and neither is new:
 
 - **each twin block crosses the block underneath it.** Crossing blocks already
   meant something — it is how a flat junction is policed — so the interlocking
@@ -1255,7 +1266,7 @@ things police it, and neither is new:
   right one. The kernel now also reports a violation if two trains are ever in a
   crossing pair at once, under every signalling system: no separation model makes
   it safe to run a train up a line another train is coming down.
-- **a reversible section is worked one way at a time.** Safety is not liveness:
+- **a section worked both ways is worked one way at a time.** Safety is not liveness:
   admit a train at each end and they meet in the middle, each holding what the
   other needs, and neither can be backed out. Every railway that works a section
   both ways solves this the same way — a token, a staff, a pilotman in the cab —
@@ -1269,9 +1280,9 @@ and crosses back at km 32.0.
 
 ```
 service   delay      what happened
-U01-U06   on time    714 ticks each on the wrong line, twelve minutes
-D01       +35:28     queued at Ashdown for a section it could not have
-D06       +14:15     by then the up flight was through
+U01-U06   on time    815 ticks each on the wrong line, thirteen minutes
+D01       +35:43     queued at Ashdown for a section it could not have
+D06       +14:34     by then the up flight was through
 ```
 
 Nobody is late by accident there. The diverted direction keeps time because it
@@ -1544,9 +1555,7 @@ on the plain line rather than only at a station.
 
 What is left over from it is smaller: flank protection, and overlaps switched on
 (the mechanism is already in the route table, off by default so its cost can be
-measured rather than assumed). Bidirectional working - which is what an
-up-to-down crossover would need, and what reversible and single-line working need
-too - is the one structural gap left in the topology. Four-aspect signalling, which gives two blocks of
+measured rather than assumed). Four-aspect signalling, which gives two blocks of
 warning and so permits blocks shorter than braking distance. And blocking-time
 theory with UIC 406 compression, which is the capacity method these KPIs are a
 down payment on.
