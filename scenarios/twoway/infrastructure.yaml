@@ -1,0 +1,122 @@
+# twoway - depotline's geography with an up line and a down line, and the
+# crossovers that let a train use the wrong one.
+#
+#                 WEST DEPOT ---- KINGSFORD ---- MARLOWE ---- ASHDOWN ---- EAST DEPOT
+#                   km 0             km 12         km 30        km 48        km 60
+#
+#   UP   >           2 roads        2 plat        3 plat       2 plat        2 roads
+#   DN   <           2 roads        2 plat        3 plat       2 plat        2 roads
+#
+# depotline is one line, so every train is in front of or behind every other one
+# and the only way past is through a station. This is the same sixty kilometres
+# with a line each way - and, more to the point, with the connections between
+# them that a railway uses when something is in the way.
+#
+# WRONG-LINE WORKING
+#
+# A crossover joins two lines that run the same way: up fast to up slow. An up
+# line to a down line is a different thing, because a train taking it is then
+# running against the way that line is signalled. Real railways do it anyway -
+# it is what single-line working under a pilotman is - and it is what the
+# `reversible: true` on each line below is for.
+#
+# A reversible line gets a second set of block sections laid over the same rails,
+# running the other way, named after the originals with `_R` on the end. Each of
+# them is declared to CROSS the block underneath it, and crossing blocks already
+# mean something here: the interlocking will not set a route over one while
+# anything holds or occupies the other. So a train may be signalled up the down
+# line, and while it is, nothing can be signalled down it. That is the whole of
+# the safety case, and it is the same mechanism that polices a flat junction.
+#
+# The four connections below are two pairs. Each pair takes a train off its own
+# line, along the wrong one for eighteen kilometres, and back:
+#
+#   XO_TO_DN     UP -> DN_R   at km 13.5, just past Kingsford
+#   XO_FROM_DN   DN_R -> UP   at km 32.0, just past Marlowe
+#   XO_TO_UP     DN -> UP_R   at km 45.0, before Ashdown
+#   XO_FROM_UP   UP_R -> DN   at km 27.0, before Marlowe
+#
+# Each pair brackets Marlowe, so a train can be worked round the far side of it
+# on the opposite line and put back on its own beyond.
+#
+# Nothing in the timetable names them. They are there for when the road ahead is
+# blocked - see scenario-blocked.yaml, where Marlowe's up platform is closed and
+# the up trains find their own way round.
+
+name: twoway
+
+defaults:
+  platform_zone_m: 1200
+  block_length_m: 1500
+  max_speed_kmh: 120
+  stop_margin_m: 30
+
+stations:
+  - {id: WDEPOT,    name: West Depot, km: 0.0}
+  - {id: KINGSFORD, name: Kingsford,  km: 12.0}
+  - {id: MARLOWE,   name: Marlowe,    km: 30.0}
+  - {id: ASHDOWN,   name: Ashdown,    km: 48.0}
+  - {id: EDEPOT,    name: East Depot, km: 60.0}
+
+tracks:
+  - id: UP
+    direction: up
+    y: 0.0
+    max_speed_kmh: 100
+    block_length_m: 1500
+    # Only the stretch between the two connections is worked both ways. A
+    # whole line reversible end to end is not a railway anyone signals.
+    reversible: {from_km: 12.6, to_km: 32.4}
+    serves: [WDEPOT, KINGSFORD, MARLOWE, ASHDOWN, EDEPOT]
+
+  - id: DN
+    direction: down
+    y: 2.0
+    max_speed_kmh: 100
+    block_length_m: 1500
+    reversible: {from_km: 12.6, to_km: 32.4}
+    serves: [EDEPOT, ASHDOWN, MARLOWE, KINGSFORD, WDEPOT]
+
+platforms:
+  # Two roads at each depot on each line: a depot road is held for four minutes
+  # and one of them would set the headway on its own.
+  - {id: WDEPOT_UP_1, station: WDEPOT, track: UP, length_m: 240, max_speed_kmh: 40, y_offset: 0.0}
+  - {id: WDEPOT_UP_2, station: WDEPOT, track: UP, length_m: 240, max_speed_kmh: 40, y_offset: 0.4}
+  - {id: WDEPOT_DN_1, station: WDEPOT, track: DN, length_m: 240, max_speed_kmh: 40, y_offset: 0.0}
+  - {id: WDEPOT_DN_2, station: WDEPOT, track: DN, length_m: 240, max_speed_kmh: 40, y_offset: 0.4}
+  - {id: EDEPOT_UP_1, station: EDEPOT, track: UP, length_m: 240, max_speed_kmh: 40, y_offset: 0.0}
+  - {id: EDEPOT_UP_2, station: EDEPOT, track: UP, length_m: 240, max_speed_kmh: 40, y_offset: 0.4}
+  - {id: EDEPOT_DN_1, station: EDEPOT, track: DN, length_m: 240, max_speed_kmh: 40, y_offset: 0.0}
+  - {id: EDEPOT_DN_2, station: EDEPOT, track: DN, length_m: 240, max_speed_kmh: 40, y_offset: 0.4}
+
+  # The intermediate stations. Road 1 is the main road at 60 km/h, the loops 40,
+  # as on depotline.
+  - {id: KINGSFORD_UP_1, station: KINGSFORD, track: UP, length_m: 220, max_speed_kmh: 60, y_offset: 0.0}
+  - {id: KINGSFORD_UP_2, station: KINGSFORD, track: UP, length_m: 220, max_speed_kmh: 40, y_offset: 0.4}
+  - {id: KINGSFORD_DN_1, station: KINGSFORD, track: DN, length_m: 220, max_speed_kmh: 60, y_offset: 0.0}
+  - {id: KINGSFORD_DN_2, station: KINGSFORD, track: DN, length_m: 220, max_speed_kmh: 40, y_offset: 0.4}
+
+  - {id: MARLOWE_UP_1, station: MARLOWE, track: UP, length_m: 240, max_speed_kmh: 60, y_offset: 0.0}
+  - {id: MARLOWE_UP_2, station: MARLOWE, track: UP, length_m: 240, max_speed_kmh: 40, y_offset: 0.4}
+  - {id: MARLOWE_UP_3, station: MARLOWE, track: UP, length_m: 240, max_speed_kmh: 40, y_offset: 0.8}
+  - {id: MARLOWE_DN_1, station: MARLOWE, track: DN, length_m: 240, max_speed_kmh: 60, y_offset: 0.0}
+  - {id: MARLOWE_DN_2, station: MARLOWE, track: DN, length_m: 240, max_speed_kmh: 40, y_offset: 0.4}
+  - {id: MARLOWE_DN_3, station: MARLOWE, track: DN, length_m: 240, max_speed_kmh: 40, y_offset: 0.8}
+
+  - {id: ASHDOWN_UP_1, station: ASHDOWN, track: UP, length_m: 220, max_speed_kmh: 60, y_offset: 0.0}
+  - {id: ASHDOWN_UP_2, station: ASHDOWN, track: UP, length_m: 220, max_speed_kmh: 40, y_offset: 0.4}
+  - {id: ASHDOWN_DN_1, station: ASHDOWN, track: DN, length_m: 220, max_speed_kmh: 60, y_offset: 0.0}
+  - {id: ASHDOWN_DN_2, station: ASHDOWN, track: DN, length_m: 220, max_speed_kmh: 40, y_offset: 0.4}
+
+crossovers:
+  # Onto the wrong line and back. Each end names the twin road - DN_R is the road
+  # up the down line - so both ends of every connection run the same way, which
+  # is the rule for a crossover and is not being bent here.
+  #
+  # Both ends of each connection have to be clear of a platform zone: a zone is
+  # one block section from throat to throat, and a connection cannot land in the
+  # middle of one - there is no boundary there for it to join at.
+  - {id: XO_TO_DN,   from: UP,   to: DN_R, km: 13.5, length_m: 400, max_speed_kmh: 60}
+  - {id: XO_FROM_DN, from: DN_R, to: UP,   km: 32.0, length_m: 400, max_speed_kmh: 60}
+  - {id: XO_TO_UP,   from: DN,   to: UP_R, km: 45.0, length_m: 400, max_speed_kmh: 60}
+  - {id: XO_FROM_UP, from: UP_R, to: DN,   km: 27.0, length_m: 400, max_speed_kmh: 60}

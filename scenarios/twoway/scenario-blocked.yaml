@@ -1,0 +1,61 @@
+# twoway with Marlowe's up roads out of use - the scenario the connections exist
+# for.
+#
+#   python run.py scenarios/twoway/scenario-blocked.yaml
+#   python run.py scenarios/twoway/scenario-blocked.yaml --headless
+#
+# Same railway, same twelve trains, one difference: every up service calls at
+# MARLOWE_DN_1_R instead of a Marlowe up road. That is the down main road taken
+# in the up direction - the same concrete, worked the other way - so each up
+# train now:
+#
+#   1. runs up its own line as far as km 13.5
+#   2. crosses to the down line over XO_TO_DN
+#   3. runs eighteen kilometres up the down line, calling at Marlowe on the way
+#   4. crosses back to the up line over XO_FROM_DN at km 32.0
+#
+# and the down services keep to their own line throughout. Which means the two
+# flights are now sharing eighteen kilometres of railway, in opposite directions,
+# with nothing but the interlocking between them.
+#
+# What holds them apart is the crossing declaration. Each wrong-line block
+# crosses the block underneath it, so a route up the down line cannot be set
+# while a down train holds or occupies any of it, and a down train cannot be
+# signalled into a section a diverted up train is standing in. It is the same
+# mechanism that polices a flat junction, and the kernel reports a violation if
+# two trains are ever in a crossing pair at once - which is the check that says
+# whether any of this actually worked.
+#
+# The cost is the point of the exercise: single-line working over a stretch is
+# slow, and it should be. Read the delays against scenario.yaml's.
+
+name: twoway (Marlowe up roads closed)
+description: "twoway with the up services diverted over the down line round Marlowe - wrong-line working, policed by the interlocking."
+
+infrastructure: infrastructure.yaml
+timetable: timetable-blocked.yaml
+
+simulation:
+  dt: 1.0
+  start_time: "06:57:00"
+  duration_s: 9000
+  strict: false
+
+signalling:
+  system: fixed_block_3aspect
+  sighting_distance_m: 250
+
+interlocking:
+  route_request_distance_m: 2000
+  route_request_lead_s: 60
+  automatic_signals: false
+  route_lookahead: 2
+
+driver:
+  reaction_time_s: 2.0
+  safety_margin_m: 25.0
+  stop_tolerance_m: 1.0
+
+view:
+  title: "twoway - up trains diverted over the down line at Marlowe"
+  speed: 30

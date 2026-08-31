@@ -74,7 +74,8 @@ class Interlocking(object):
     def __init__(self, network, blocks, signals, points: Dict[str, Point],
                  routes: Dict[str, Route], use_overlaps: bool = False,
                  approach_locking_s: float = 120.0,
-                 automatic_signals: bool = True):
+                 automatic_signals: bool = True,
+                 direction_sections: Optional[Dict[str, Tuple[str, str]]] = None):
         self.network = network
         self.blocks = blocks
         self.signals = signals
@@ -97,6 +98,15 @@ class Interlocking(object):
         }
         self.point_locked_by: Dict[str, Optional[str]] = {pid: None for pid in points}
         self.locks: Dict[str, RouteLock] = {}
+
+        #: Block -> (section, direction) for stretches of railway that may be
+        #: worked either way. Grouped here into section -> direction -> blocks,
+        #: which is the form the one question about them is asked in.
+        self.direction_sections = dict(direction_sections or {})
+        self._section_blocks: Dict[str, Dict[str, List[str]]] = {}
+        for block_id, (section, way) in self.direction_sections.items():
+            self._section_blocks.setdefault(section, {}).setdefault(
+                way, []).append(block_id)
 
         self._route_of_signal = {r.entry_signal: r.id for r in routes.values()}
         self._points_at_node: Dict[str, List[Point]] = {}
@@ -212,6 +222,10 @@ class Interlocking(object):
                     False, route_id,
                     "%s%s occupied by %s" % (block_id, crossed, occupier))
 
+        against = self._worked_the_other_way(route.block_id, train_id, sim)
+        if against is not None:
+            return RouteDecision(False, route_id, against)
+
         for point_id, leg in route.points.items():
             locked_by = self.point_locked_by.get(point_id)
             if locked_by is not None and self.point_position[point_id] != leg:
@@ -316,6 +330,46 @@ class Interlocking(object):
 
     # ----------------------------------------------------------------- internals
 
+    def _worked_the_other_way(self, block_id: str, train_id: str,
+                              sim) -> Optional[str]:
+        """Whether a stretch worked in both directions is busy the other way.
+
+        Two blocks over the same rails already refuse each other one at a time -
+        that is the crossing check above, and it is what makes wrong-line working
+        *safe*. It does not make it *work*: a train admitted at one end of the
+        section and a train admitted at the other meet in the middle, each
+        holding what the other needs, and neither can be backed out. Every
+        railway that works a section in both directions solves this the same way,
+        by giving the whole section to one direction at a time - a token, a staff,
+        a pilotman riding in the cab.
+
+        This is that rule. While anything is moving one way through a reversible
+        section, nothing may be signalled into it the other way; when the section
+        is clear, either direction may have it.
+        """
+        here = self.direction_sections.get(block_id)
+        if here is None:
+            return None
+        section, way = here
+        for other_way, blocks in self._section_blocks.get(section, {}).items():
+            if other_way == way:
+                continue
+            for other in blocks:
+                # Held *as its own block*, not as a crossing. Every route over
+                # the right line names the wrong-line block it lies under as a
+                # crossing, so asking the general question here would have each
+                # up train reading as a movement down the same rails and locking
+                # the section against the train behind it.
+                holder = self._block_set_for(other)
+                if holder is not None and holder != train_id:
+                    return ("%s is being worked the other way: %s is held by a "
+                            "route set for %s" % (section, other, holder))
+                occupants = sim.occupancy.trains_in(other) - {train_id}
+                if occupants:
+                    return ("%s is being worked the other way: %s holds %s"
+                            % (section, other, ", ".join(sorted(occupants))))
+        return None
+
     @staticmethod
     def _blocks_are_exclusive(sim) -> bool:
         """Whether one train per block is what keeps trains apart on this run.
@@ -326,6 +380,13 @@ class Interlocking(object):
         """
         signalling = getattr(sim, "signalling", None)
         return getattr(signalling, "separates_by", "block") == "block"
+
+    def _block_set_for(self, block_id: str) -> Optional[str]:
+        """The train whose route runs *into* this block, ignoring crossings."""
+        for lock in self.locks.values():
+            if self.routes[lock.route_id].block_id == block_id:
+                return lock.train_id
+        return None
 
     def _block_held_by(self, block_id: str,
                        ignoring: Optional[str] = None) -> Optional[str]:

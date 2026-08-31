@@ -16,7 +16,7 @@ system or dispatch policy, only to the interfaces.
 """
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from .disruption import DisruptedSpeedLimits, Disruptions
 from .network import Network
@@ -59,7 +59,8 @@ class Simulation(object):
     def __init__(self, network: Network, blocks: Dict[str, BlockSection],
                  signals: Dict[str, Signal], block_of_segment: Dict[str, str],
                  signalling, dispatcher, driver, config: Optional[SimConfig] = None,
-                 interlocking=None, disruptions: Optional[Disruptions] = None):
+                 interlocking=None, disruptions: Optional[Disruptions] = None,
+                 crossings: Optional[Dict[str, Tuple[str, ...]]] = None):
         self.network = network
         self.blocks = blocks
         self.signals = signals
@@ -68,6 +69,9 @@ class Simulation(object):
         self.dispatcher = dispatcher
         self.driver = driver
         self.interlocking = interlocking
+        #: Block -> the blocks it may not be occupied with. A flat junction, and
+        #: on a reversible line the same rails worked the other way.
+        self.crossings = dict(crossings or {})
         self.config = config or SimConfig()
         #: What has been declared to go wrong on this run. Empty is the normal
         #: case and takes the same code path, so the disturbed run is not a
@@ -203,9 +207,35 @@ class Simulation(object):
                 trains = ", ".join(sorted(self.occupancy.trains_in(block_id)))
                 self._violation("block %s holds %s" % (block_id, trains))
 
+        for block_id, other_id in self.blocks_in_conflict():
+            self._violation(
+                "%s and %s are the same railway and both hold a train: %s, %s"
+                % (block_id, other_id,
+                   ", ".join(sorted(self.occupancy.trains_in(block_id))),
+                   ", ".join(sorted(self.occupancy.trains_in(other_id)))))
+
         for signal_id in self.clear_without_a_route():
             self._violation("controlled signal %s is off with no route set"
                             % (signal_id,))
+
+    def blocks_in_conflict(self) -> List[Tuple[str, str]]:
+        """Pairs of crossing blocks that are both occupied.
+
+        Two blocks that cross are two names for one piece of railway - a flat
+        junction, or a reversible line being worked the other way. One train in
+        each is two trains in the same place, and unlike block exclusivity this
+        holds under every signalling system: no separation model makes a diamond
+        safe to share, and none makes it safe to send a train up a line another
+        train is coming down.
+        """
+        found = []
+        for block_id, others in self.crossings.items():
+            if not self.occupancy.trains_in(block_id):
+                continue
+            for other_id in others:
+                if block_id < other_id and self.occupancy.trains_in(other_id):
+                    found.append((block_id, other_id))
+        return found
 
     def clear_without_a_route(self) -> List[str]:
         """Controlled signals showing a proceed aspect with no route locked.

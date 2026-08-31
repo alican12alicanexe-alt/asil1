@@ -1,0 +1,81 @@
+# twoway - an up line and a down line over depotline's sixty kilometres, and the
+# connections that let a train use the wrong one.
+#
+#   python run.py scenarios/twoway              (live schematic)
+#   python run.py scenarios/twoway --headless
+#   python run.py scenarios/twoway --check      (the connections, and the plan)
+#   python run.py scenarios/twoway/scenario-blocked.yaml   (the diversion)
+#
+# WHAT THIS SCENARIO IS FOR
+#
+# depotline is one running line, and everything about it follows from that. This
+# is the same railway with a line each way. Two things come with the second line
+# and neither is the obvious one:
+#
+#   - the two directions stop competing. An up train and a down train pass each
+#     other instead of queueing, and the headway is a property of each direction
+#     on its own.
+#   - the rails become shareable. A line each way is what makes wrong-line
+#     working possible, and that is the whole point of the connections below.
+#
+# WRONG-LINE WORKING, AND HOW IT IS MODELLED
+#
+# A crossover joins two lines that run the same way. An up-to-down connection is
+# a different thing: a train taking it runs against the way that line is
+# signalled. Railways do it anyway when something is in the way, and here each
+# line is declared `reversible: true`, which gives it a second set of block
+# sections over the same rails running the other way - DN_012_R is the road up
+# the down line where DN_012 is the road down it.
+#
+# Every one of those twin blocks is declared to CROSS the block underneath it.
+# Crossing blocks already meant something here - it is how a flat junction is
+# policed - so:
+#
+#   - the interlocking will not set a route over the wrong line while anything
+#     holds or occupies the right one, and vice versa
+#   - the kernel reports a violation if two trains are ever in a crossing pair
+#     at once, under every signalling system, because no separation model makes
+#     it safe to run a train up a line another train is coming down
+#
+# Nothing in the kernel, the signalling or the driver had to learn about
+# direction for this. The alternative - teaching trains to traverse a block
+# backwards - would have made the path, the signals, the routes and the
+# occupancy all ask which way a train was facing.
+#
+# THE BOOKED SERVICE USES NONE OF IT
+#
+# Six trains each way, six minutes apart, every one on its own line. The
+# connections sit there unused, which is what a connection normally does. To see
+# one worked, run scenario-blocked.yaml: Marlowe's up main road is closed, and
+# the up trains are booked round the back of it on the down line.
+
+name: twoway
+description: "Sixty kilometres with a line each way, both reversible, and four connections between them - the railway where wrong-line working is possible."
+
+infrastructure: infrastructure.yaml
+timetable: timetable.yaml
+
+simulation:
+  dt: 1.0
+  start_time: "06:57:00"
+  duration_s: 7200
+  strict: false
+
+signalling:
+  system: fixed_block_3aspect
+  sighting_distance_m: 250
+
+interlocking:
+  route_request_distance_m: 2000
+  route_request_lead_s: 60
+  automatic_signals: false
+  route_lookahead: 2
+
+driver:
+  reaction_time_s: 2.0
+  safety_margin_m: 25.0
+  stop_tolerance_m: 1.0
+
+view:
+  title: "twoway - up and down, both reversible"
+  speed: 30

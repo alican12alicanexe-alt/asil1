@@ -47,21 +47,44 @@ def derive_points(network) -> Dict[str, Point]:
     for node_id, node in network.nodes.items():
         for kind, legs in (("facing", network.outgoing(node_id)),
                            ("trailing", network.incoming(node_id))):
-            if len(legs) < 2:
-                continue
-            ordered = _order_legs(network, node, legs)
-            point_id = "PT_%s_%s" % (_clean(node_id), kind[0].upper())
-            points[point_id] = Point(
-                id=point_id,
-                node=node_id,
-                kind=kind,
-                legs=tuple(ordered),
-                normal=ordered[0],
-                km=node.km,
-                y=node.y,
-                track=network.segments[ordered[0]].track,
-            )
+            for way, group in sorted(_by_direction(network, legs).items()):
+                if len(group) < 2:
+                    continue
+                ordered = _order_legs(network, node, group)
+                point_id = "PT_%s_%s%s" % (_clean(node_id), kind[0].upper(),
+                                           "" if way >= 0 else "R")
+                points[point_id] = Point(
+                    id=point_id,
+                    node=node_id,
+                    kind=kind,
+                    legs=tuple(ordered),
+                    normal=ordered[0],
+                    km=node.km,
+                    y=node.y,
+                    track=network.segments[ordered[0]].track,
+                )
     return points
+
+
+def _by_direction(network, legs) -> Dict[int, List[str]]:
+    """Legs grouped by which way along the railway they run.
+
+    Two roads at a node are alternatives - a point - only if a train could take
+    either one. Roads running opposite ways are not alternatives at all: they are
+    the two directions of the same place, and on a reversible line, often the two
+    directions of the very same rails. Grouping by direction is what keeps a
+    line worked both ways from sprouting a set of points at every block boundary.
+
+    Direction is read off the schematic chainage rather than declared, so it
+    holds for a crossover landing on the wrong line as much as for plain track:
+    what matters is which way a train on that road would be travelling here.
+    """
+    groups: Dict[int, List[str]] = {}
+    for leg in legs:
+        segment = network.segments[leg]
+        way = -1 if segment.km_end < segment.km_start else 1
+        groups.setdefault(way, []).append(leg)
+    return groups
 
 
 def points_at(points: Dict[str, Point], node_id: str) -> List[Point]:

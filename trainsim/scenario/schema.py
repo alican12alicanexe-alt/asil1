@@ -45,9 +45,12 @@ DEFAULTS = frozenset({
     "platform_y_step", "grade_permille",
 })
 STATION = frozenset({"id", "name", "km"})
+#: ``reversible`` gives a track a second set of blocks over the same rails,
+#: running the other way, for wrong-line working. See the builder.
 TRACK = frozenset({
     "id", "direction", "y", "max_speed_kmh", "block_length_m", "platform_zone_m",
     "serves", "block_lengths", "junction", "grade_permille", "gradients",
+    "reversible",
 })
 BLOCK_LENGTHS = frozenset({"from", "to", "block_length_m"})
 GRADIENTS = frozenset({"from", "to", "grade_permille"})

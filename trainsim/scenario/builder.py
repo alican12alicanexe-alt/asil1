@@ -67,6 +67,9 @@ class Infrastructure:
     crossings: Dict[str, Tuple[str, ...]] = field(default_factory=dict)
     #: Connections built from the ``crossovers:`` list, in the order declared.
     connections: Tuple["Connection", ...] = ()
+    #: Block -> (section, direction) for stretches worked in both directions.
+    #: A section may only be worked one way at a time; see the interlocking.
+    direction_sections: Dict[str, Tuple[str, str]] = field(default_factory=dict)
 
     def platform_segment(self, platform_id: str) -> str:
         return self.network.platforms[platform_id].segment
@@ -143,6 +146,22 @@ class _Builder(object):
         #: A crossover has to start and end somewhere a signal can stand.
         self.required_chainages: Dict[str, List[float]] = {}
 
+        #: Mirror track -> the track whose rails it is laid over. A reversible
+        #: line is modelled as a second set of blocks over the same railway,
+        #: running the other way, each block conflicting with the one it lies on
+        #: top of. See :meth:`_declare_reversible`.
+        self.mirror_of: Dict[str, str] = {}
+        #: Block -> the blocks over the same rails it may not be used with.
+        self.mirror_conflicts: Dict[str, set] = {}
+        #: Mirror track -> the km range over which its line may be worked both
+        #: ways. Only that stretch gets a twin.
+        self.reversible_span: Dict[str, Tuple[float, float]] = {}
+        #: Block -> (section id, "normal" or "reverse"). A section may only be
+        #: worked one way at a time, which is what stops the two directions
+        #: deadlocking head to head inside it.
+        self.direction_sections: Dict[str, Tuple[str, str]] = {}
+        self._declare_reversible()
+
     # -------------------------------------------------------------------- build
 
     def build(self, overlaps: bool = False) -> Infrastructure:
@@ -158,11 +177,18 @@ class _Builder(object):
 
         # Plain tracks first: a branch attaches to a node on the line it joins,
         # so that line has to exist before the branch can be laid out.
-        plain = [t for t in self.tracks_spec if not self.tracks_spec[t].get("junction")]
-        branches = [t for t in self.tracks_spec if self.tracks_spec[t].get("junction")]
+        plain = [t for t in self.tracks_spec
+                 if not self.tracks_spec[t].get("junction")
+                 and t not in self.mirror_of]
+        branches = [t for t in self.tracks_spec
+                    if self.tracks_spec[t].get("junction")
+                    and t not in self.mirror_of]
         for track_id in plain + branches:
             self._build_track(track_id)
 
+        # The twin road over each reversible line, before the connections that
+        # reach it: a crossover onto the wrong line joins one of these blocks.
+        self._emit_mirrors()
         self._emit_crossovers()
         self._link_successors()
 
@@ -203,6 +229,7 @@ class _Builder(object):
 
         return Infrastructure(
             crossings=crossings,
+            direction_sections=dict(self.direction_sections),
             connections=tuple(
                 Connection(
                     id=c["id"], from_road=c["from"], to_road=c["to"],
@@ -221,6 +248,175 @@ class _Builder(object):
             points=points,
             routes=routes,
         )
+
+    # ------------------------------------------------------ reversible working
+
+    def _declare_reversible(self) -> None:
+        """Give every ``reversible`` track a twin running the other way.
+
+        Wrong-line working is what a railway does when something is in the way: a
+        train crosses to the opposite line, runs along it against the normal
+        direction, and crosses back beyond the obstruction. The rails are the
+        same rails - what changes is which way trains are being signalled over
+        them.
+
+        That is exactly how it is modelled here. A reversible track gets a second
+        set of blocks laid over the same alignment, running the other way, and
+        each of those blocks is declared to *cross* the one beneath it. Crossing
+        blocks already mean something to the interlocking - it is how a flat
+        junction is policed - so a route over the wrong line is refused while
+        anything holds or occupies the right one, and a head-on movement cannot
+        be set up. Nothing in the kernel, the signalling or the driver has to
+        learn about direction at all.
+
+        The alternative was to teach trains to traverse a segment backwards,
+        which touches the path, the signals, the routes and the occupancy, and
+        would have made every one of them ask "which way is this train facing?".
+        A second set of blocks asks nothing.
+        """
+        for track_id, track in list(self.tracks_spec.items()):
+            if not track.get("reversible"):
+                continue
+            span = track["reversible"]
+            if not isinstance(span, dict) or "from_km" not in span or "to_km" not in span:
+                raise InfrastructureError(
+                    "track %r: reversible needs the stretch that can be worked "
+                    "both ways, as {from_km: .., to_km: ..}. A whole line worked "
+                    "in either direction is not a railway anyone signals - what "
+                    "is reversible is a section between two connections."
+                    % (track_id,))
+            mirror_id = "%s_R" % track_id
+            if mirror_id in self.tracks_spec:
+                raise InfrastructureError(
+                    "track %r is reversible, so %r is the name of the road "
+                    "back along it - the scenario cannot use that name too"
+                    % (track_id, mirror_id))
+            mirror = dict(track)
+            mirror.pop("reversible", None)
+            mirror["direction"] = ("up" if track.get("direction", "up") == "down"
+                                   else "down")
+            mirror["serves"] = list(reversed(list(track.get("serves") or [])))
+            mirror["mirrors"] = track_id
+            self.tracks_spec[mirror_id] = mirror
+            self.mirror_of[mirror_id] = track_id
+            self.reversible_span[mirror_id] = (
+                min(float(span["from_km"]), float(span["to_km"])),
+                max(float(span["from_km"]), float(span["to_km"])))
+
+    def _on_the_rails(self, track_id: str, chainage: float) -> float:
+        """A chainage on a mirror, restated on the track it lies over.
+
+        The twin runs the other way, so its chainage counts from the other end.
+        A node is a place on the ground and belongs to the rails, not to the
+        direction anyone is being signalled over them.
+        """
+        original = self.mirror_of.get(track_id)
+        if original is None:
+            return chainage
+        return self._track_length(original) - chainage
+
+    def _track_length(self, track_id: str) -> float:
+        """How long a track is, before it has been laid out."""
+        track = self.tracks_spec[track_id]
+        serves = list(track.get("serves") or [])
+        if len(serves) < 2:
+            raise InfrastructureError(
+                "track %r must serve at least two stations" % (track_id,))
+        first = float(self.stations_spec[serves[0]]["km"])
+        last = float(self.stations_spec[serves[-1]]["km"])
+        return abs(last - first) * 1000.0
+
+    def _emit_mirrors(self) -> None:
+        """Lay each reversible track's twin over it, block for block.
+
+        The twin borrows everything: the same nodes, the same lengths, the same
+        speeds, the same platform roads. Only the direction is reversed - so its
+        segments run from the original's exit node to its entry node, and its
+        gradient is the opposite of the original's, because a climb one way is a
+        fall the other.
+        """
+        for mirror_id, track_id in self.mirror_of.items():
+            originals = [b for b in self.blocks.values() if b.track == track_id]
+            if not originals:
+                raise InfrastructureError(
+                    "track %r is reversible but was never laid out"
+                    % (track_id,))
+            if not any(min(b.km_start, b.km_end) >= self.reversible_span[mirror_id][0] - 1e-6
+                       and max(b.km_start, b.km_end) <= self.reversible_span[mirror_id][1] + 1e-6
+                       for b in originals):
+                raise InfrastructureError(
+                    "track %r has no complete block section between km %.3f and "
+                    "%.3f, so there is nothing there to work in both directions"
+                    % ((track_id,) + self.reversible_span[mirror_id]))
+            low, high = self.reversible_span[mirror_id]
+            for block in originals:
+                inside = (min(block.km_start, block.km_end) >= low - 1e-6
+                          and max(block.km_start, block.km_end) <= high + 1e-6)
+                if not inside:
+                    continue
+                if len(block.segment_ids) != 1:
+                    raise InfrastructureError(
+                        "block %s spans %d segments, and only single-segment "
+                        "blocks can be worked in both directions so far"
+                        % (block.id, len(block.segment_ids)))
+                source = next(s for s in self.segments
+                              if s.id == block.segment_ids[0])
+                mirror_seg = "%s_R" % source.id
+                self.segments.append(Segment(
+                    id=mirror_seg,
+                    start_node=source.end_node,
+                    end_node=source.start_node,
+                    length_m=source.length_m,
+                    max_speed_ms=source.max_speed_ms,
+                    track=mirror_id,
+                    km_start=source.km_end,
+                    km_end=source.km_start,
+                    y=source.end_y,
+                    y_end=source.y,
+                    platform=None,
+                    station=source.station,
+                    grade_permille=-source.grade_permille,
+                ))
+                self.blocks[mirror_seg] = BlockSection(
+                    id=mirror_seg,
+                    segment_ids=(mirror_seg,),
+                    track=mirror_id,
+                    entry_node=source.end_node,
+                    exit_node=source.start_node,
+                    length_m=source.length_m,
+                    km_start=source.km_end,
+                    km_end=source.km_start,
+                    platform=None,
+                    station=block.station,
+                )
+                self.block_of_segment[mirror_seg] = mirror_seg
+                if source.platform is not None:
+                    # A platform road worked the other way is still a platform
+                    # road: a train diverted onto the wrong line can call at it,
+                    # and the timetable has to be able to say so. It is NOT added
+                    # to the station's list of roads - the station has the roads
+                    # it has, and this is one of them being used backwards, not a
+                    # second platform that would show up in every count.
+                    original = next(pl for pl in self.platforms
+                                    if pl.id == source.platform)
+                    self.platforms.append(Platform(
+                        id=mirror_seg,
+                        station=original.station,
+                        segment=mirror_seg,
+                        track=mirror_id,
+                        length_m=original.length_m,
+                        stop_offset_m=max(
+                            1.0, source.length_m - original.stop_offset_m),
+                    ))
+                # The two are the same rails. Declaring them as each other's
+                # crossing is what stops the interlocking setting a route over
+                # one while the other is held or occupied.
+                self.mirror_conflicts.setdefault(mirror_seg, set()).add(block.id)
+                self.mirror_conflicts.setdefault(block.id, set()).add(mirror_seg)
+                # Both copies belong to one section, and the section is what may
+                # only be worked one way at a time.
+                self.direction_sections[block.id] = (mirror_id, "normal")
+                self.direction_sections[mirror_seg] = (mirror_id, "reverse")
 
     # -------------------------------------------------------------- crossovers
 
@@ -308,8 +504,15 @@ class _Builder(object):
                     "crossover %r at km %.3f falls off the end of %s or %s"
                     % (crossover_id, km, from_id, to_id))
 
-            self.required_chainages.setdefault(from_id, []).append(leave_ch)
-            self.required_chainages.setdefault(to_id, []).append(join_ch)
+            # A mirror has no rails of its own: the boundary a connection needs
+            # has to be forced on the track it lies over, and the connection then
+            # finds it there.
+            self.required_chainages.setdefault(
+                self.mirror_of.get(from_id, from_id), []).append(
+                    self._on_the_rails(from_id, leave_ch))
+            self.required_chainages.setdefault(
+                self.mirror_of.get(to_id, to_id), []).append(
+                    self._on_the_rails(to_id, join_ch))
             self.crossovers.append({
                 "id": crossover_id,
                 "from": from_id,
@@ -372,8 +575,10 @@ class _Builder(object):
                         % (crossover["id"], road_id))
             return leaving.exit_node, joining.entry_node
 
-        start = self._node_id(from_id, crossover["leave_ch"])
-        end = self._node_id(to_id, crossover["join_ch"])
+        start = self._node_id(self.mirror_of.get(from_id, from_id),
+                              self._on_the_rails(from_id, crossover["leave_ch"]))
+        end = self._node_id(self.mirror_of.get(to_id, to_id),
+                            self._on_the_rails(to_id, crossover["join_ch"]))
         for node_id, track_id in ((start, from_id), (end, to_id)):
             if node_id not in self.nodes:
                 raise InfrastructureError(
@@ -559,7 +764,7 @@ class _Builder(object):
             segment = network.segments[segment_id]
             low, high = sorted((segment.y, segment.end_y))
             for other_id, other in self.tracks_spec.items():
-                if other_id == segment.track:
+                if other_id == segment.track or other_id in self.mirror_of:
                     continue
                 other_y = float(other.get("y", 0.0))
                 if not (low + 1e-6 < other_y < high - 1e-6):
@@ -575,6 +780,8 @@ class _Builder(object):
                     )
                 crossings.setdefault(segment_id, set()).add(crossed)
                 crossings.setdefault(crossed, set()).add(segment_id)
+        for block_id, others in self.mirror_conflicts.items():
+            crossings.setdefault(block_id, set()).update(others)
         return {block: tuple(sorted(others))
                 for block, others in crossings.items()}
 

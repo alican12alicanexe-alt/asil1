@@ -232,6 +232,7 @@ def build_simulation(scenario: Scenario,
             signals=infra.signals,
             points=infra.points,
             routes=infra.routes,
+            direction_sections=infra.direction_sections,
             use_overlaps=bool(interlocking_spec.pop("overlaps", False)),
             approach_locking_s=float(
                 interlocking_spec.pop("approach_locking_s", 120.0)
@@ -270,6 +271,7 @@ def build_simulation(scenario: Scenario,
     return Simulation(
         disruptions=disruptions,
         network=infra.network,
+        crossings=infra.crossings,
         blocks=infra.blocks,
         signals=infra.signals,
         block_of_segment=infra.block_of_segment,

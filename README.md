@@ -83,11 +83,11 @@ throws away.
 ```
 run.py                       launcher (no install needed)
 run_tests.py                 test runner (no pytest needed)
-scenarios/corridor3/         a main line: 30 km, three stations, a loop at Beta
-scenarios/metro/             an urban line: 12 km, six stations, no overtaking
-scenarios/junction/          a branch converging on a main line at Beta,
-                             flat and grade separated
-scenarios/fourtrack/         four running lines, and crossovers between them
+scenarios/depotline/         a single line between two depots: 60 km, three
+                             stations, and every road used in turn
+scenarios/twoway/            the same railway with a line each way, both
+                             reversible over the middle stretch, and the
+                             connections that let a train work the wrong one
 trainsim/
   core/
     units.py                 SI conversions and the braking-curve formulae
@@ -1222,6 +1222,65 @@ and MARLOWE_3 begins at km 29.400, which is behind it. Two roads at one station
 already meet at their throats - the points join them - so a connection between
 them has nothing to connect.
 ```
+
+#### Wrong-line working, without teaching trains to run backwards
+
+`scenarios/twoway` is depotline's sixty kilometres with a line each way, and it
+exists for the move a crossover between an up line and a down line is for: when
+something is in the way, a train crosses to the opposite line, runs along it
+against the normal direction, and crosses back beyond the obstruction.
+
+The obvious way to model that is to let a train traverse a block backwards. It is
+also the wrong way: the path, the signals, the routes and the occupancy would all
+have to start asking which way a train is facing, and every one of them is
+simpler for not knowing. So a line that can be worked both ways declares the
+stretch that can be:
+
+```yaml
+tracks:
+  - id: DN
+    direction: down
+    reversible: {from_km: 12.6, to_km: 32.4}
+```
+
+and gets **a second set of block sections over the same rails**, running the
+other way — `DN_019_R` is the road up the down line where `DN_019` is the road
+down it. A crossover then joins `UP` to `DN_R`, which run the same way, so the
+rule that a crossover joins lines running the same way is not being bent. Two
+things police it, and neither is new:
+
+- **each twin block crosses the block underneath it.** Crossing blocks already
+  meant something — it is how a flat junction is policed — so the interlocking
+  will not set a route over the wrong line while anything holds or occupies the
+  right one. The kernel now also reports a violation if two trains are ever in a
+  crossing pair at once, under every signalling system: no separation model makes
+  it safe to run a train up a line another train is coming down.
+- **a reversible section is worked one way at a time.** Safety is not liveness:
+  admit a train at each end and they meet in the middle, each holding what the
+  other needs, and neither can be backed out. Every railway that works a section
+  both ways solves this the same way — a token, a staff, a pilotman in the cab —
+  and the interlocking now refuses a route into a section that is being worked
+  the other way.
+
+`scenario-blocked.yaml` books every up train through `MARLOWE_DN_1_R`: the down
+main road, taken in the up direction. Each up train then leaves its own line at
+km 13.5, runs eighteen kilometres up the down line calling at Marlowe on the way,
+and crosses back at km 32.0.
+
+```
+service   delay      what happened
+U01-U06   on time    714 ticks each on the wrong line, twelve minutes
+D01       +35:28     queued at Ashdown for a section it could not have
+D06       +14:15     by then the up flight was through
+```
+
+Nobody is late by accident there. The diverted direction keeps time because it
+has the section; the direction that lost its line pays the whole bill, and the
+delay decays down the flight as the section frees up. That is what single-line
+working costs, and it is the answer the model should give.
+
+Zero ticks with two trains on the same rails, zero violations, across the whole
+run.
 
 #### Adding one changes which way the trains go
 
