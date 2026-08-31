@@ -348,24 +348,43 @@ The same principle decides the defaults. `sim.aspects.get(signal_id, RED)`, not
 cleared, and the lamp on the schematic is drawn red before the first refresh for
 the same reason. Absence of information is danger, never permission.
 
-### Which road: the junction indicator
+### Which road: the route indicator
 
 An aspect says how far a train may go. It does not say **which way**, and until
 now the schematic could not either: three roads at Marlowe, one green lamp, and
 no way to tell from the picture which of them the interlocking had set.
 
-So a signal that reads over a facing divergence gets a second mark — a small
-rhombus beside the lamp, unlit for the road straight ahead and lit for a
-diverging one, with the platform number in it where the roads are numbered:
+So a signal that reads over a facing divergence gets a second mark beside the
+lamp. There are two of them, because real railways have two and they are not
+interchangeable.
+
+A **theatre indicator** — a small box with the road number in it — where the
+roads ahead are platforms. That is what stands on a station approach, and the
+number is the thing a driver is looking for. It shows whichever road is set,
+platform 1 included: at a station every road has a number and none of them is
+"straight on".
 
 ```
-   ─── ●  ── platform 1 (through road): lamp only, rhombus dark
-   ─── ● ◇2  platform 2 is set: rhombus lit, showing the road
+   ─── ● [1]  platform 1 is set
+   ─── ● [2]  platform 2 is set
+   ─── ● [ ]  nothing set: box dark, no number
 ```
 
-Three things about it are deliberate.
+A **feather** — a short row of lights at forty-five degrees — where the road
+ahead is a connection to another line. That is what stands at a junction. Dark
+means the line ahead; lit means you are leaving it. There is nothing to number,
+and numbering it would invent a road name nobody uses.
 
-**It carries no aspect.** How far a train may go stays entirely the lamp's
+```
+                ·
+              ·          the connection is set
+   ─────── ● ·
+   ─────── ●             the line ahead: feather dark
+```
+
+Three things about both of them are deliberate.
+
+**They carry no aspect.** How far a train may go stays entirely the lamp's
 business. Yellow means "the next signal is at danger" and nothing else — in
 particular it does not mean "you are booked to stop here", which is the
 timetable's business and which the signalling has no opinion about. Letting a
@@ -373,23 +392,46 @@ booked call darken a signal would make every following train brake for a signal
 protecting nothing, and every headway figure in this README would stop meaning
 what it says.
 
-**Unlit is the normal case.** A driver reads an indication as an exception; a
-mark that lit everywhere would say nothing anywhere. On a railway running to
-plan the rhombuses stay dark, and the eye is drawn to the one that isn't.
+**A feather dark is the normal case.** A driver reads a junction indication as
+an exception; a mark that lit everywhere would say nothing anywhere. On a
+railway running to plan the feathers stay dark, and the eye is drawn to the one
+that isn't. A theatre box is different — at a station there is no "straight on"
+to be the quiet case, so it shows the number every time a road is set.
 
-**It changes nothing.** A train here is given its path at dispatch, and the
+**They change nothing.** A train here is given its path at dispatch, and the
 interlocking guarantees the points agree with it — nothing chooses at the
 junction, so nothing needs telling. This is a display of a fact the simulator
-already knew and could not show. Measured: it is drawn 20 times on `twoway` and
-5 on `depotline`, lights at 8 places on the booked twoway service and 9 on the
-diverted one, and no run's numbers move by a second.
+already knew and could not show. Measured: `twoway` draws 10 theatre boxes and
+10 feathers, `depotline` 5 boxes and no feathers; on the booked twoway service
+the boxes show 1, 2 and 3 and no feather ever lights, and on the diverted one
+`UP@13500` and `DN@28000` light — a train being turned off its own line onto
+the other one and put back beyond the obstruction. No run's numbers move by a
+second.
 
-The one that only appears on the diverted run is the point: `UP@13500` and
-`DN@28000` light with no number, which is a train being turned off its own line
-onto the other one. A connection gets a lit rhombus and no character, because
-that is what a junction indicator on plain line is — there is one way off the
-line here, and a lit indication means you are taking it. Numbering it would be
-inventing a road name nobody uses.
+### One post, one lamp
+
+Three roads at Marlowe had three lamps at one place, one per road. A train
+standing there is looking at one signal post, and it is one post on the ground
+too: a home signal reading into any of several roads is a single head, with the
+route indicator beside it carrying which road. So the alternatives at a facing
+divergence share a lamp, and it shows the least restrictive aspect of the
+group — which is not a fudge, because only one route can be set at a time, so
+at most one of them is off and the one that is off is the one being shown to
+the driver. `twoway` draws 104 lamps for 158 signals, `depotline` 49 for 57.
+
+The signals at the **departure** end of a station are the opposite case and stay
+separate. Three roads converging on one block is three starting signals, one per
+platform — which is what a real station has, because each of them protects a
+different road and a train at platform 3 must not be released by platform 1's
+lamp. Merging them would make the whole station one block, and Marlowe's third
+road would stop paying for itself.
+
+They are drawn at the end of their own platform rather than out at the throat
+with the others. That is where a real starter stands, just ahead of the nose of
+the train at the platform: a 240 m platform sits in the middle of a 1200 m
+block, so the lamp moves 480 m back from the block boundary — the rearward
+slide the positioning pass already allows, since showing a driver a signal
+sooner than it stands costs nothing and showing it later would lie.
 
 ### The all-green headway
 

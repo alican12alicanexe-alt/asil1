@@ -39,6 +39,8 @@ class TkSchematicView(SchematicView):
         self._signal_items = {}
         self._two_way_groups = {}
         self._indicator_items = {}
+        self._lamp_groups = {}
+        self._sharing_lamp = set()
         self._point_items = {}
         self._train_items = {}
         self._zone_items = {}
@@ -198,6 +200,8 @@ class TkSchematicView(SchematicView):
         self._signal_items.clear()
         self._two_way_groups.clear()
         self._indicator_items.clear()
+        self._lamp_groups.clear()
+        self._sharing_lamp.clear()
         self._point_items.clear()
         layout = self.layout
         infra = self.scenario.infrastructure
@@ -243,6 +247,7 @@ class TkSchematicView(SchematicView):
                 )
 
         signal_x = self._signal_positions(infra, tracks)
+        self._plan_shared_lamps(infra, tracks)
         for signal in infra.signals.values():
             self._draw_signal(signal, tracks, signal_x)
 
@@ -313,13 +318,38 @@ class TkSchematicView(SchematicView):
         centring in the builder, so a berthed train stands on the concrete drawn
         for it rather than half a kilometre past the end of it.
         """
-        platform = self.scenario.infrastructure.network.platforms.get(segment.platform)
-        if platform is None or platform.length_m <= 0:
+        face = self._platform_face_span(segment, track_y)
+        if face is None:
             return
+        layout = self.layout
+        x0, x1 = face
+        y = layout.y(segment.y)
+        slab = self.canvas.create_line(
+            x0, y, x1, y, fill=PALETTE["platform_face"],
+            width=road_width + self.PLATFORM_FACE_EXTRA,
+            capstyle=tk.BUTT, tags="static",
+        )
+        # Behind the road, showing either side of it. The road line carries the
+        # block's occupation and route colour, so the platform has to sit under
+        # it or it blanks that out for exactly the stretch where trains stand.
+        self.canvas.tag_lower(slab, road_item)
+
+    def _platform_face_span(self, segment, track_y):
+        """The x range of the concrete on a platform road, or ``None``.
+
+        Split out from the drawing because two things need it: the slab, and the
+        starting signal at the platform's departure end. They have to agree, or
+        the lamp ends up standing on the ballast beyond the platform it belongs
+        to.
+        """
+        platform = self.scenario.infrastructure.network.platforms.get(
+            segment.platform)
+        if platform is None or platform.length_m <= 0:
+            return None
         layout = self.layout
         road_m = abs(segment.km_end - segment.km_start) * 1000.0
         if road_m <= 0:
-            return
+            return None
         # Centred in the road, as a fraction of it either side of the middle.
         # Clamped because a platform longer than its own road would otherwise be
         # drawn off the end of it.
@@ -339,22 +369,12 @@ class TkSchematicView(SchematicView):
         lo, hi = self._road_span(segment, track_y)
         span = x1 - x0
         if span >= hi - lo:
-            x0, x1 = lo, hi
-        else:
-            if x1 > hi:
-                x0, x1 = hi - span, hi
-            if x0 < lo:
-                x0, x1 = lo, lo + span
-        y = layout.y(segment.y)
-        face = self.canvas.create_line(
-            x0, y, x1, y, fill=PALETTE["platform_face"],
-            width=road_width + self.PLATFORM_FACE_EXTRA,
-            capstyle=tk.BUTT, tags="static",
-        )
-        # Behind the road, showing either side of it. The road line carries the
-        # block's occupation and route colour, so the platform has to sit under
-        # it or it blanks that out for exactly the stretch where trains stand.
-        self.canvas.tag_lower(face, road_item)
+            return lo, hi
+        if x1 > hi:
+            x0, x1 = hi - span, hi
+        if x0 < lo:
+            x0, x1 = lo, lo + span
+        return x0, x1
 
     def _segment_points(self, segment, track_y):
         """Polyline for a segment; platform roads splay off the running line."""
@@ -404,9 +424,18 @@ class TkSchematicView(SchematicView):
         costs nothing; sliding one forward would draw a signal further along the
         line than it stands, which is the direction that lies about where a
         train may run to.
+
+        A starting signal is the exception to the second rule. It stands at the
+        departure end of its own platform, not out at the throat with the
+        others: that is where a real one is, just ahead of the nose of the train
+        standing at the platform, and it is what makes three roads at Marlowe
+        read as three roads with three starters rather than one gantry. The
+        block boundary is still out at the throat - this is the permitted
+        rearward slide, several hundred metres of it.
         """
         layout = self.layout
         wanted = {}
+        pinned = set()
         for signal in infra.signals.values():
             x = layout.x(signal.km)
             road = self._signal_road(signal)
@@ -415,13 +444,19 @@ class TkSchematicView(SchematicView):
                 lo, hi = self._road_span(road, road_track_y)
                 if lo <= hi:
                     x = max(lo, min(hi, x))
+                platform_end = self._starter_x(signal, road, road_track_y)
+                if platform_end is not None:
+                    x = platform_end
+                    pinned.add(signal.id)
             wanted[signal.id] = x
 
         groups = {}
         for signal in infra.signals.values():
+            if signal.id in pinned:
+                continue
             groups.setdefault((signal.node_id, signal.track), []).append(signal.id)
 
-        placed = {}
+        placed = dict((sid, wanted[sid]) for sid in pinned)
         for (_, track_id), signal_ids in groups.items():
             # Chainage grows left to right, so the first lamp a train reaches is
             # the leftmost on an up track and the rightmost on a down one.
@@ -430,6 +465,23 @@ class TkSchematicView(SchematicView):
             for sid in signal_ids:
                 placed[sid] = rearmost
         return placed
+
+    def _starter_x(self, signal, road, track_y):
+        """Where a platform's starting signal stands, or ``None``.
+
+        A signal is a starter when the road it is drawn on is the one a train
+        arrives ON - a platform road - rather than the one it reads INTO. Those
+        are the signals a train at a platform is waiting for, and they belong at
+        the end of the concrete it is standing on.
+        """
+        if road.id != signal.from_segment or not road.platform:
+            return None
+        face = self._platform_face_span(road, track_y)
+        if face is None:
+            return None
+        # The departure end: forward is rightwards on a road whose chainage
+        # grows to the right, leftwards on one worked the other way.
+        return face[1] if road.km_end >= road.km_start else face[0]
 
     def _signal_road(self, signal):
         """The road a signal is drawn on: the one its own alignment belongs to.
@@ -458,9 +510,14 @@ class TkSchematicView(SchematicView):
         anything.
 
         Signals on a stretch signalled both ways are not drawn here at all -
-        they share a lamp, and :meth:`_draw_two_way_signals` draws it.
+        they share a lamp, and :meth:`_draw_two_way_signals` draws it. Nor are
+        the alternatives at a facing divergence: they are one post on the
+        ground, and :meth:`_plan_shared_lamps` has already picked which of them
+        carries it.
         """
         if self._two_way_section(signal) is not None:
+            return
+        if signal.id in self._sharing_lamp:
             return
         layout = self.layout
         x = signal_x.get(signal.id, layout.x(signal.km))
@@ -489,6 +546,33 @@ class TkSchematicView(SchematicView):
             fill=ASPECT_COLOURS["red"], outline="", tags="static",
         )
         self._signal_items[signal.id] = lamp
+
+    def _plan_shared_lamps(self, infra, tracks) -> None:
+        """One lamp for the alternatives at a facing divergence.
+
+        Three roads at Marlowe had three lamps at one place, one per road, and a
+        train standing there is looking at one signal post. It is one post on
+        the ground too: a home signal reading into any of several roads is a
+        single head, and WHICH road is set is carried beside it by the route
+        indicator rather than by a second lamp.
+
+        So one of the group keeps the lamp - the one on the line's own
+        alignment, where there is one - and shows the least restrictive aspect
+        of the group. That is not a fudge: only one route can be set at a time,
+        so at most one of them is off, and the one that is off is the one being
+        shown to the driver.
+
+        Signals on a stretch signalled both ways are left alone. They already
+        share a lamp per boundary, by direction, which subsumes this.
+        """
+        for members in self._junction_groups(infra).values():
+            if any(self._two_way_section(signal) is not None
+                   for signal in members):
+                continue
+            anchor = self._through_signal(infra, members, tracks) or members[0]
+            self._lamp_groups[anchor.id] = [signal.id for signal in members]
+            self._sharing_lamp.update(
+                signal.id for signal in members if signal.id != anchor.id)
 
     # ------------------------------------------------- signalled both ways
 
@@ -585,6 +669,8 @@ class TkSchematicView(SchematicView):
             # everywhere else here, so the side is read the same way whether the
             # line has one direction or two.
             up = group["normal_up"] if way == "normal" else not group["normal_up"]
+            # Recorded so the route indicator beside this lamp can follow it.
+            group["up"] = up
             mast = -self.TWO_WAY_MAST if up else self.TWO_WAY_MAST
             x, y = group["x"], group["y"]
             self.canvas.coords(group["mast"], x, y, x, y + mast)
@@ -594,11 +680,15 @@ class TkSchematicView(SchematicView):
                 group["lamp"],
                 fill=ASPECT_COLOURS.get(aspect, ASPECT_COLOURS["red"]))
 
-    #: Half-extents of a junction indicator rhombus, and how far beyond the lamp
-    #: it stands. Drawn small: it is read as present-or-absent long before it is
-    #: read as a shape.
-    INDICATOR_HALF = 4
-    INDICATOR_GAP = 11
+    #: The route indicator, in pixels: the theatre box's half-width and
+    #: half-height, how far the whole thing stands beyond the lamp, and the
+    #: spacing and radius of a feather's lights.
+    THEATRE_HALF_W = 5
+    THEATRE_HALF_H = 5
+    INDICATOR_GAP = 13
+    FEATHER_STEP = 4
+    FEATHER_DOT = 1.5
+    FEATHER_LIGHTS = 3
 
     def _junction_groups(self, infra):
         """Signals that are alternatives to one another, keyed by where they are.
@@ -609,8 +699,8 @@ class TkSchematicView(SchematicView):
         approach and differ only in the road they read into, so that is the key.
 
         A group of one is not a divergence: there is one way to go and nothing
-        to indicate. Those get no rhombus, which is the point of the exercise -
-        an indicator that lit everywhere would say nothing anywhere.
+        to indicate. Those get no indicator, which is the point of the exercise -
+        an indication that showed everywhere would say nothing anywhere.
         """
         groups = {}
         for signal in infra.signals.values():
@@ -646,15 +736,11 @@ class TkSchematicView(SchematicView):
 
     @staticmethod
     def _road_label(infra, block_id: str) -> str:
-        """What the indicator displays for a road, if anything.
+        """The road number a theatre indicator displays: MARLOWE_UP_2 is "2".
 
-        A platform road gets its number, which is what a theatre indicator on a
-        station approach actually shows: MARLOWE_UP_2 is "2", and the same road
-        worked the other way is "1R". Anything else - a connection, the next
-        section of plain line - gets nothing but the lit rhombus, because that
-        is what a junction indicator on plain line is: there is one way off the
-        line here and a lit indication means you are taking it. Numbering it
-        would be inventing a road name nobody uses.
+        The same road worked the other way is "1R", which is the road's name and
+        not a made-up one. Anything without a platform gets nothing, because
+        nothing without a platform has a number a driver would recognise.
         """
         block = infra.blocks.get(block_id)
         if block is None or block.platform is None:
@@ -665,18 +751,53 @@ class TkSchematicView(SchematicView):
                 return "".join(parts[index:])
         return ""
 
+    def _theatre_coords(self, x, y, up):
+        """Box outline and text point for a theatre indicator beside a lamp."""
+        cy = y + (-self.INDICATOR_GAP if up else self.INDICATOR_GAP)
+        w, h = self.THEATRE_HALF_W, self.THEATRE_HALF_H
+        return (x - w, cy - h, x + w, cy + h), (x, cy)
+
+    def _feather_coords(self, x, y, up):
+        """The lights of a feather, as a list of dot bounding boxes.
+
+        A row at forty-five degrees, running forward in the direction of travel
+        and away from the rail, starting just outboard of the lamp - which is
+        what a junction indicator is, and it points the way a train taking the
+        connection is about to go.
+        """
+        side = -1 if up else 1
+        forward = 1 if up else -1
+        boxes = []
+        for light in range(1, self.FEATHER_LIGHTS + 1):
+            cx = x + forward * self.FEATHER_STEP * light
+            cy = y + side * (self.TWO_WAY_MAST + self.FEATHER_STEP * light)
+            r = self.FEATHER_DOT
+            boxes.append((cx - r, cy - r, cx + r, cy + r))
+        return boxes
+
     def _draw_route_indicators(self, infra, tracks, signal_x) -> None:
-        """A rhombus beside each signal that reads over a facing divergence.
+        """What the signal at a facing divergence says about WHICH road.
 
-        It carries no aspect. How far a train may go is the lamp's business and
-        stays entirely the lamp's business - the indicator says only WHICH road
-        the interlocking has set, which is a fact the schematic could not show
-        at all before: three roads at Marlowe, one green lamp, and no way to
-        tell which of them was set.
+        How far a train may go is the lamp's business and stays entirely the
+        lamp's business. This says only which of the roads ahead the
+        interlocking has set, which is a fact the schematic could not show at
+        all before: three roads at Marlowe, one green lamp, and no way to tell
+        which of them was set.
 
-        Unlit means the through road, lit means a divergence, and the number in
-        it is the road. That is the way round a real one works, and it means the
-        indicator is quiet on a railway running normally.
+        Two kinds, because real railways have two and they are not
+        interchangeable:
+
+        A THEATRE INDICATOR - a small box showing the road number - where the
+        roads ahead are platforms. That is what stands on a station approach,
+        and the number is the thing a driver is actually looking for. It shows
+        the road that is set, platform 1 included: at a station every road has a
+        number and none of them is "straight on".
+
+        A FEATHER - a short row of lights at forty-five degrees - where the road
+        ahead is a connection to another line. That is what stands at a
+        junction. Dark means the line ahead; lit means you are leaving it. There
+        is nothing to number, and numbering it would invent a road name nobody
+        uses.
         """
         if not self.lineside:
             return
@@ -684,51 +805,87 @@ class TkSchematicView(SchematicView):
         for key, members in self._junction_groups(infra).items():
             through = self._through_signal(infra, members, tracks)
             anchor = through or members[0]
-            x = signal_x.get(anchor.id, layout.x(anchor.km))
-            y = layout.y(anchor.y)
-            up = tracks.get(anchor.track, {}).get("direction", "up") == "up"
-            gap = -self.INDICATOR_GAP if up else self.INDICATOR_GAP
-            cy = y + gap
-            half = self.INDICATOR_HALF
-            shape = self.canvas.create_polygon(
-                x, cy - half, x + half, cy, x, cy + half, x - half, cy,
-                fill="", outline=PALETTE["route_indicator_dark"], width=1,
-                tags="static",
-            )
-            text = self.canvas.create_text(
-                x, cy, text="", fill=PALETTE["route_indicator_lit"],
-                font=self.mono_small, tags="static",
-            )
-            self._indicator_items[key] = (
-                shape, text,
-                tuple(signal.id for signal in members),
-                through.id if through is not None else None,
-                {signal.id: self._road_label(infra, signal.block_id)
-                 for signal in members},
-            )
+            platform_roads = all(
+                infra.blocks[signal.block_id].platform for signal in members
+                if signal.block_id in infra.blocks)
+            here = self._two_way_section(anchor)
+            two_way_key = None
+            if here is None:
+                x = signal_x.get(anchor.id, layout.x(anchor.km))
+                y = layout.y(anchor.y)
+                up = tracks.get(anchor.track, {}).get("direction", "up") == "up"
+            else:
+                # The lamp this stands beside is the shared one, which moves to
+                # whichever side the section is being worked from. The indicator
+                # goes with it, so its coordinates are settled at refresh.
+                two_way_key = (anchor.node_id, here[0])
+                group = self._two_way_groups.get(two_way_key)
+                if group is None:
+                    continue
+                x, y, up = group["x"], group["y"], group["normal_up"]
+
+            if platform_roads:
+                box, _ = self._theatre_coords(x, y, up)
+                items = [self.canvas.create_rectangle(
+                    *box, outline=PALETTE["route_indicator_dark"], width=1,
+                    tags="static")]
+                text = self.canvas.create_text(
+                    x, y, text="", fill=PALETTE["route_indicator_lit"],
+                    font=self.mono_small, tags="static")
+            else:
+                items = [self.canvas.create_oval(
+                    *dot, fill=PALETTE["route_indicator_dark"], outline="",
+                    tags="static")
+                    for dot in self._feather_coords(x, y, up)]
+                text = None
+
+            self._indicator_items[key] = {
+                "kind": "theatre" if platform_roads else "feather",
+                "items": items, "text": text, "x": x, "y": y, "up": up,
+                "two_way": two_way_key,
+                "signals": tuple(signal.id for signal in members),
+                "through": through.id if through is not None else None,
+                "labels": {signal.id: self._road_label(infra, signal.block_id)
+                           for signal in members},
+            }
 
     def _refresh_route_indicators(self) -> None:
-        """Light the rhombus for whichever road the interlocking has set."""
+        """Show whichever road the interlocking has set, beside its own lamp."""
         interlocking = self.sim.interlocking
+        canvas = self.canvas
         for entry in self._indicator_items.values():
-            shape, text, signal_ids, through_id, labels = entry
-            shown = None
+            set_from = None
             if interlocking is not None:
-                for signal_id in signal_ids:
-                    if (signal_id != through_id
-                            and interlocking.route_set_from(signal_id)):
-                        shown = signal_id
+                for signal_id in entry["signals"]:
+                    if interlocking.route_set_from(signal_id):
+                        set_from = signal_id
                         break
-            if shown is None:
-                self.canvas.itemconfig(
-                    shape, fill="",
-                    outline=PALETTE["route_indicator_dark"])
-                self.canvas.itemconfig(text, text="")
+
+            x, y, up = entry["x"], entry["y"], entry["up"]
+            if entry["two_way"] is not None:
+                group = self._two_way_groups.get(entry["two_way"])
+                if group is not None:
+                    x, y, up = group["x"], group["y"], group.get("up", up)
+
+            if entry["kind"] == "theatre":
+                box, point = self._theatre_coords(x, y, up)
+                canvas.coords(entry["items"][0], *box)
+                canvas.coords(entry["text"], *point)
+                lit = set_from is not None and entry["labels"].get(set_from)
+                canvas.itemconfig(
+                    entry["items"][0],
+                    outline=(PALETTE["route_indicator_lit"] if lit
+                             else PALETTE["route_indicator_dark"]))
+                canvas.itemconfig(entry["text"], text=lit or "")
             else:
-                self.canvas.itemconfig(
-                    shape, fill="",
-                    outline=PALETTE["route_indicator_lit"])
-                self.canvas.itemconfig(text, text=labels[shown])
+                # Dark for the line ahead, lit for the connection off it.
+                lit = (set_from is not None and set_from != entry["through"])
+                for item, dot in zip(entry["items"],
+                                     self._feather_coords(x, y, up)):
+                    canvas.coords(item, *dot)
+                    canvas.itemconfig(
+                        item, fill=(PALETTE["route_indicator_lit"] if lit
+                                    else PALETTE["route_indicator_dark"]))
 
     #: Half-extents of a point diamond, along and across the running line.
     POINT_LONG = 7
@@ -828,7 +985,14 @@ class TkSchematicView(SchematicView):
                 )
 
         for signal_id, item in self._signal_items.items():
-            aspect = sim.aspects.get(signal_id, "red")
+            shared = self._lamp_groups.get(signal_id)
+            if shared is None:
+                aspect = sim.aspects.get(signal_id, "red")
+            else:
+                # One post reading into several roads: it shows the aspect of
+                # whichever route is set, and only one of them can be.
+                aspect = Aspect.least_restrictive(
+                    [sim.aspects.get(sid, Aspect.RED) for sid in shared])
             self.canvas.itemconfig(
                 item, fill=ASPECT_COLOURS.get(aspect, ASPECT_COLOURS["red"]))
 
