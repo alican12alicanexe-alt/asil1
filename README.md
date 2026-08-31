@@ -383,7 +383,7 @@ set, and a proceed aspect for a route nobody set is precisely what
 The fourth row is not special-cased — it falls out of the rule, and it is worth
 having. "You are going that way, and you are not going yet" is a different
 picture from "you are stopped and nobody has decided", and until now they looked
-identical. Measured on `twoway`: 4314 ticks of both-red against 114003 of
+identical. Measured on `twoway`: 4314 ticks of both-red against 148442 of
 inner-red-outer-dark.
 
 **A dark head is not a red one.** Two reds on a post leave a driver working out
@@ -450,8 +450,25 @@ than it sounds, because two lamps at one spot showing different things is the
 picture of a failed signal. It also fixed the last four places on `twoway` that
 held two, all of them at the crossovers, where a signal for a train arriving
 over the connection had been drawn on the line it came from rather than the
-line it joins. `twoway` draws 128 lamps for 158 signals, `depotline` 49 for 57,
+line it joins. `twoway` draws 104 lamps for 158 signals, `depotline` 49 for 57,
 and no place on either holds more than one.
+
+**Every lamp stands above its line**, whichever way its trains run. Hanging the
+down line's signals below it was meant to put a lamp on the side its trains
+approach from, but on a schematic it just reads as an upside-down signal, and it
+made the same boundary look like two different things depending on which
+direction you were following. One side for everything, and the two directions at
+a plain-line boundary — which are at the same point, unlike a platform's, which
+are at opposite ends of the road — then share that one lamp. 26 lamps on
+`twoway` stand for signals both ways.
+
+Point diamonds moved below the line to make room. They used to be drawn below
+for a facing point and above for a trailing one, so the kind was readable
+without a label, but signals own the space above the line now and that put a
+diamond on top of a lamp at twelve places on `twoway`. Two marks at one spot
+saying different things is worse than losing the side distinction — and it was
+the weaker of the two, since whether a point is facing or trailing is visible in
+the geometry it stands at, while a lamp with a diamond over it is unreadable.
 
 ### The all-green headway
 
@@ -1411,11 +1428,15 @@ purpose. Two things police it, and neither is new:
   lamps nothing can be approaching. They are drawn, because a signal that exists
   is on the ground whether or not it is in use and hiding it hides the layout —
   and they are drawn **dark**. That is the same word it is on a second head:
-  *not this way*. Nobody has to work out which of two lamps at a boundary
-  applies to them, because only one is lit, and which way the stretch is set is
-  readable at a glance from which line's signals are alight. On `twoway`, 38 of
-  128 lamps are dark at any moment; the set flips twice on the diverted run, and
-  is empty on `depotline`, which has no two-way stretch.
+  *not this way*. Nobody has to work out which of two lamps applies to them,
+  because only one is lit, and which way the stretch is set is readable at a
+  glance from which lamps are alight. Where the two directions' signals stand at
+  the same point they share a lamp and the sharing does the same job: it is dark
+  only when both are. On `twoway` 8 of 104 lamps are dark through the booked
+  service — the reverse-direction starters at the platforms in the two-way
+  stretch — and the diverted run passes through three different sets of them,
+  averaging 11. `depotline` has no two-way stretch and nothing on it is ever
+  dark.
 - **a section worked both ways is worked one way at a time.** Safety is not liveness:
   admit a train at each end and they meet in the middle, each holding what the
   other needs, and neither can be backed out. Every railway that works a section

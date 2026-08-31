@@ -39,6 +39,7 @@ class TkSchematicView(SchematicView):
         self._signal_items = {}
         self._branch_heads = {}
         self._lamp_groups = {}
+        self._lamp_owner = {}
         self._sharing_lamp = set()
         self._point_items = {}
         self._train_items = {}
@@ -199,6 +200,7 @@ class TkSchematicView(SchematicView):
         self._signal_items.clear()
         self._branch_heads.clear()
         self._lamp_groups.clear()
+        self._lamp_owner.clear()
         self._sharing_lamp.clear()
         self._point_items.clear()
         layout = self.layout
@@ -554,11 +556,7 @@ class TkSchematicView(SchematicView):
         layout = self.layout
         x = signal_x.get(signal.id, layout.x(signal.km))
         y = self._signal_y(signal)
-        track = tracks.get(signal.track, {})
-        # Down-line signals sit below their track, up-line above, so a signal is
-        # visually on the side its trains are approaching from.
-        up = track.get("direction", "up") == "up"
-        mast = -9 if up else 9
+        mast = -self.TWO_WAY_MAST
 
         if not self.lineside:
             self.canvas.create_line(
@@ -631,9 +629,8 @@ class TkSchematicView(SchematicView):
         for signal in infra.signals.values():
             if signal.id in self._sharing_lamp:
                 continue
-            up = tracks.get(signal.track, {}).get("direction", "up") == "up"
             key = (round(signal_x.get(signal.id, 0.0), 1),
-                   round(self._signal_y(signal), 1), up)
+                   round(self._signal_y(signal), 1))
             places.setdefault(key, []).append(signal)
         for members in places.values():
             if len(members) < 2:
@@ -645,6 +642,12 @@ class TkSchematicView(SchematicView):
             self._lamp_groups[anchor.id] = merged
             self._sharing_lamp.update(
                 signal.id for signal in members if signal.id != anchor.id)
+        # Which lamp each signal ended up on. A divergence whose own post was
+        # merged into another still has a second head - it is on the lamp that
+        # absorbed it.
+        for owner, members in self._lamp_groups.items():
+            for signal_id in members:
+                self._lamp_owner[signal_id] = owner
 
     # ------------------------------------------------- signalled both ways
 
@@ -781,13 +784,13 @@ class TkSchematicView(SchematicView):
         for key, members in self._junction_groups(infra).items():
             through = self._through_signal(infra, members, tracks)
             anchor = through or members[0]
-            main = self._signal_items.get(anchor.id)
+            carrier = self._lamp_owner.get(anchor.id, anchor.id)
+            main = self._signal_items.get(carrier)
             if main is None:
                 continue
+            anchor = infra.signals[carrier] if carrier != anchor.id else anchor
             x = signal_x.get(anchor.id, layout.x(anchor.km))
-            y = self._signal_y(anchor)
-            up = tracks.get(anchor.track, {}).get("direction", "up") == "up"
-            mast, box = self._branch_coords(x, y, up)
+            mast, box = self._branch_coords(x, self._signal_y(anchor))
 
             self._branch_heads[key] = {
                 "main": main, "anchor": anchor.id,
@@ -799,11 +802,10 @@ class TkSchematicView(SchematicView):
                 "through": through.id if through is not None else None,
             }
 
-    def _branch_coords(self, x, y, up):
+    def _branch_coords(self, x, y):
         """Mast extension and lamp box for a second head beyond the main one."""
-        side = -1 if up else 1
-        inner = y + side * self.TWO_WAY_MAST
-        outer = inner + side * self.BRANCH_GAP
+        inner = y - self.TWO_WAY_MAST
+        outer = inner - self.BRANCH_GAP
         r = self.LAMP_RADIUS
         return (x, inner, x, outer), (x - r, outer - r, x + r, outer + r)
 
@@ -842,10 +844,11 @@ class TkSchematicView(SchematicView):
                         set_from = signal_id
                         break
 
-            if entry["anchor"] in dark:
-                # The whole post is for the direction not in force. Both heads
-                # go out with it - a second head on a dark signal would be the
-                # one lamp lit at a boundary nothing can be approaching.
+            if all(sid in dark for sid in entry["signals"]):
+                # This divergence is for the direction not in force. The second
+                # head goes out, whatever the post's inner head is doing - the
+                # same lamp may be standing for a signal the other way, and that
+                # one has no branch to talk about.
                 canvas.itemconfig(entry["lamp"], fill=PALETTE["lamp_dark"])
                 continue
 
@@ -880,15 +883,23 @@ class TkSchematicView(SchematicView):
                   else (cls.POINT_LONG, cls.POINT_SHORT))
         return (x, y - dy, x + dx, y, x, y + dy, x - dx, y)
 
+    #: How far below its line a point diamond sits.
+    POINT_GAP = 11
+
     def _draw_point(self, point) -> None:
         """A point: a diamond at its node, coloured by lock, shaped by position.
 
-        Facing points sit below the line, trailing points above, so which kind is
-        which is readable without a label.
+        Below the line, always - signals own the space above it now, and a
+        trailing point used to be drawn above, which put a diamond on top of a
+        signal lamp at twelve places on `twoway`. Two marks at one spot saying
+        different things is worse than losing the side distinction, and the
+        distinction was the weaker of the two: whether a point is facing or
+        trailing is visible in the geometry it stands at, while a lamp with a
+        diamond over it is unreadable.
         """
         layout = self.layout
         x = layout.x(point.km)
-        y = layout.y(point.y) + (11 if point.kind == "facing" else -11)
+        y = layout.y(point.y) + self.POINT_GAP
         item = self.canvas.create_polygon(
             *self._point_shape(x, y, False),
             fill=PALETTE["point_free"], outline="", tags="static",
@@ -960,17 +971,20 @@ class TkSchematicView(SchematicView):
 
         dark = self._signals_out_of_use()
         for signal_id, item in self._signal_items.items():
-            if signal_id in dark:
+            # A lamp can stand for several signals - the roads at a facing
+            # divergence, the approaches that meet at one point, and where a
+            # stretch is worked both ways the two directions' signals at the
+            # same spot. It is dark only when every one of them is, and
+            # otherwise shows the least restrictive of the ones in force: at
+            # most one route can be set, so the one that is off is the one
+            # being spoken to.
+            members = self._lamp_groups.get(signal_id, (signal_id,))
+            in_force = [sid for sid in members if sid not in dark]
+            if not in_force:
                 self.canvas.itemconfig(item, fill=PALETTE["lamp_dark"])
                 continue
-            shared = self._lamp_groups.get(signal_id)
-            if shared is None:
-                aspect = sim.aspects.get(signal_id, "red")
-            else:
-                # One post reading into several roads: it shows the aspect of
-                # whichever route is set, and only one of them can be.
-                aspect = Aspect.least_restrictive(
-                    [sim.aspects.get(sid, Aspect.RED) for sid in shared])
+            aspect = Aspect.least_restrictive(
+                [sim.aspects.get(sid, Aspect.RED) for sid in in_force])
             self.canvas.itemconfig(
                 item, fill=ASPECT_COLOURS.get(aspect, ASPECT_COLOURS["red"]))
 
