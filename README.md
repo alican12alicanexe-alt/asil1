@@ -1355,8 +1355,8 @@ and crosses back at km 32.0.
 ```
 service   delay      what happened
 U01-U06   on time    815 ticks each on the wrong line, thirteen minutes
-D01       +35:43     queued at Ashdown for a section it could not have
-D06       +14:34     by then the up flight was through
+D01       +35:44     queued at Ashdown for a section it could not have
+D06       +14:35     by then the up flight was through
 ```
 
 Nobody is late by accident there. The diverted direction keeps time because it
@@ -1459,12 +1459,28 @@ tracks:
 
 platforms:
   - {id: BETA_3, station: BETA, track: UP, length_m: 220,
-     max_speed_kmh: 80, y_offset: -0.34}                  # the loop road
+     max_speed_kmh: 80, y_offset: -0.34, berth: centre}   # the loop road
 ```
 
 Parallel platform roads are simply several segments sharing a pair of nodes. No
 switch model is needed for them to be safe: each road is its own block, and the
 single approach block ahead of the divergence can only ever hold one train.
+
+**On berthing.** A train's position is its **front** — `chainage_m` is the
+distance its nose has run, and its rear is that minus its length. So where a
+train stops is where its *nose* stops, and for a train shorter than the platform
+that leaves a choice the platform has to make, not the train:
+
+| `berth` | where a short train stands |
+|---|---|
+| `far` (default) | nose at the far end of the concrete — the stop car marker at the platform end, the usual arrangement where the platform was built for the longest train that calls |
+| `centre` | centred on the concrete, which is what a station does when one set of doors and one set of staff serve trains of several lengths |
+| `near` | rear at the near end, so a following portion can draw up behind |
+
+A 160 m train in a 240 m platform stands 530–690 m along its road under `far`
+and 520–680 under `centre`, with the concrete at 480–720. A train *longer* than its platform overhangs wherever it is put, and
+`--check` says so by service and station rather than quietly letting it hang off
+the end.
 
 **On block lengths.** They are not uniform, because in practice they are not.
 The floor is braking distance — under three aspects a driver passing a yellow

@@ -85,8 +85,23 @@ class Segment:
 class Platform:
     """A platform road: a segment a train may berth in.
 
-    ``stop_offset_m`` is where the train's front comes to a stand, measured from
-    the start of the segment.
+    The concrete is located on the road it is in, rather than a stopping point
+    being located directly: ``near_offset_m`` is where it starts, measured from
+    the start of the segment, and ``length_m`` is how long it is. Where a train
+    stops then follows from the concrete, its own length and ``berth``, which is
+    the only way it can - a train shorter than the platform does not stop where
+    one that fills it stops, and the road is far longer than either because it
+    is sized for braking through at line speed.
+
+    ``berth`` says where a short train stands:
+
+    ``far``     nose at the far end of the concrete. The stop car marker at the
+                platform end, which is the usual arrangement where the platform
+                was built for the longest train that calls.
+    ``centre``  centred on the concrete, which is what a station does when one
+                set of doors and one set of staff serve trains of several
+                lengths.
+    ``near``    rear at the near end, so a following portion can draw up behind.
     """
 
     id: str
@@ -94,7 +109,36 @@ class Platform:
     segment: str
     track: str
     length_m: float
-    stop_offset_m: float
+    near_offset_m: float
+    stop_margin_m: float = 0.0
+    berth: str = "far"
+
+    @property
+    def far_offset_m(self) -> float:
+        """Where the concrete ends, from the start of the segment."""
+        return self.near_offset_m + self.length_m
+
+    @property
+    def stop_offset_m(self) -> float:
+        """Where a train that fills the platform stops."""
+        return self.stop_for(self.length_m)
+
+    def stop_for(self, train_length_m: float) -> float:
+        """Where a train of this length stops, from the start of the segment.
+
+        A train LONGER than the platform overhangs wherever it is put - ``far``
+        hangs it off the back, ``centre`` shares the overhang between the two
+        ends - and the timetable checks report that by service and station
+        rather than letting it pass.
+        """
+        train = max(0.0, float(train_length_m))
+        if self.berth == "centre":
+            nose = self.near_offset_m + (self.length_m + train) / 2.0
+        elif self.berth == "near":
+            nose = self.near_offset_m + train + self.stop_margin_m
+        else:
+            nose = self.far_offset_m - self.stop_margin_m
+        return max(1.0, nose)
 
 
 @dataclass(frozen=True)

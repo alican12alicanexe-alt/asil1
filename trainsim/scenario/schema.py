@@ -55,7 +55,7 @@ JUNCTION = frozenset({"track", "at", "length_m", "max_speed_kmh",
                       "grade_separated", "grade_permille"})
 PLATFORM = frozenset({
     "id", "station", "track", "length_m", "max_speed_kmh", "y_offset",
-    "grade_permille",
+    "grade_permille", "berth",
 })
 #: A connection between two roads. ``id`` is optional - one is derived from the
 #: two ends - and so is ``km``, but only where both ends are platform roads: a

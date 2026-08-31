@@ -723,6 +723,10 @@ class TkSchematicView(SchematicView):
 
         self._draw_trains()
 
+    #: Shortest a train may be drawn. Below this it is a smear rather than a
+    #: shape, and which end is its nose stops being readable.
+    MIN_TRAIN_PX = 12
+
     def _draw_trains(self) -> None:
         layout = self.layout
         tracks = self.scenario.infrastructure.tracks
@@ -735,15 +739,26 @@ class TkSchematicView(SchematicView):
             front_km = train.path.km_at(train.chainage_m)
             rear_km = train.path.km_at(max(0.0, train.rear_m))
             y = layout.y(train.path.y_at(train.chainage_m))
-
-            x_front, x_rear = layout.x(front_km), layout.x(rear_km)
-            if x_front < x_rear:
-                x_front, x_rear = x_rear, x_front
-            if x_front - x_rear < 12:
-                centre = (x_front + x_rear) / 2.0
-                x_rear, x_front = centre - 6, centre + 6
-
             segment = train.path.entry_at(train.chainage_m).segment
+
+            # A train is drawn from its rear to its nose, and where that is too
+            # few pixels to see it is padded BACKWARDS from the nose. Padding
+            # around the centre - which is what this used to do - draws the nose
+            # ahead of where the train actually is, and by a long way: sixty
+            # kilometres across a window is about 24 m to the pixel, so a 160 m
+            # train is three pixels on open line and was being inflated to
+            # twelve about its midpoint. The drawn nose then stood 240 m past
+            # the real one, over-running the signal the train was actually
+            # standing at, and every train looked as though its middle was the
+            # thing being positioned. The kernel never thought so - chainage_m
+            # is the front and always was - so this was the picture lying about
+            # the model, which is the worst way round.
+            x_front, x_rear = layout.x(front_km), layout.x(rear_km)
+            if abs(x_front - x_rear) < self.MIN_TRAIN_PX:
+                ahead = 1.0 if segment.km_end >= segment.km_start else -1.0
+                x_rear = x_front - ahead * self.MIN_TRAIN_PX
+            x_rear, x_front = min(x_rear, x_front), max(x_rear, x_front)
+
             direction = tracks.get(segment.track, {}).get("direction", "up")
             if train.state == "dwelling":
                 colour = PALETTE["train_dwelling"]

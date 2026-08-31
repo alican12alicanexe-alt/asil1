@@ -450,8 +450,16 @@ class _Builder(object):
                         segment=mirror_seg,
                         track=mirror_id,
                         length_m=original.length_m,
-                        stop_offset_m=max(
-                            1.0, source.length_m - original.stop_offset_m),
+                        # The concrete is the same concrete, and it is centred
+                        # in the road, so mirroring the road leaves it exactly
+                        # where it was. Restating the stopping point from the
+                        # other end - which is what this used to do - put a
+                        # 160 m train at 350-510 m in a road whose platform runs
+                        # 480-720: thirty metres of it alongside the platform
+                        # and the rest of it past the end.
+                        near_offset_m=original.near_offset_m,
+                        stop_margin_m=original.stop_margin_m,
+                        berth=original.berth,
                     ))
                 # The two are the same rails. Declaring them as each other's
                 # crossing is what stops the interlocking setting a route over
@@ -1511,14 +1519,26 @@ class _Builder(object):
             # because it is sized for braking through at line speed; only the
             # stopping point belongs to the platform.
             platform_length = float(plat.get("length_m", 200.0))
-            stop = (zone_length + min(platform_length, zone_length)) / 2.0
+            berth = str(plat.get("berth", "far"))
+            if berth not in ("far", "centre", "near"):
+                raise InfrastructureError(
+                    "platform %r: berth %r is not one of far (front at the far "
+                    "end of the concrete), centre or near"
+                    % (platform_id, berth))
+            # The concrete is centred in the road, which is what makes a road
+            # worked in both directions work at all: mirrored, a centred
+            # platform lands on itself, so the twin needs no adjustment.
+            near = max(0.0, (zone_length - min(platform_length, zone_length))
+                       / 2.0)
             self.platforms.append(Platform(
                 id=platform_id,
                 station=station_id,
                 segment=platform_id,
                 track=track_id,
                 length_m=platform_length,
-                stop_offset_m=max(1.0, stop - stop_margin),
+                near_offset_m=near,
+                stop_margin_m=stop_margin,
+                berth=berth,
             ))
             self.station_platforms.setdefault(station_id, []).append(platform_id)
 

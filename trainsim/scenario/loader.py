@@ -384,7 +384,8 @@ def _build_service(entry: dict, stock: Dict[str, RollingStock],
 
     path = Path(network, route, infra.block_of_segment, infra.blocks,
                 infra.signals)
-    stops = _build_stops(service_id, calls, platform_ids, path, network)
+    stops = _build_stops(service_id, calls, platform_ids, path, network,
+                         stock[stock_id].length_m)
 
     departure = entry.get("departure")
     if departure is None:
@@ -432,7 +433,8 @@ def _resolve_platform(service_id: str, call: dict, network: Network) -> str:
 
 
 def _build_stops(service_id: str, calls: List[dict], platform_ids: List[str],
-                 path: Path, network: Network) -> List[Stop]:
+                 path: Path, network: Network,
+                 train_length_m: float) -> List[Stop]:
     """Locate each call along the path and attach its booked times."""
     stops: List[Stop] = []
     cursor = 0
@@ -455,7 +457,7 @@ def _build_stops(service_id: str, calls: List[dict], platform_ids: List[str],
             station=call["station"],
             platform=platform_id,
             segment=platform.segment,
-            stop_chainage_m=entry.start_m + platform.stop_offset_m,
+            stop_chainage_m=entry.start_m + platform.stop_for(train_length_m),
             arrival_s=parse_clock(arrival) if arrival is not None else None,
             departure_s=parse_clock(departure) if departure is not None else None,
             min_dwell_s=float(call.get("dwell_s", 45.0)),
