@@ -214,6 +214,12 @@ class _Builder(object):
                 "y": float(t.get("y", 0.0)),
                 "direction": t.get("direction", "up"),
                 "serves": list(t.get("serves", [])),
+                # The line whose rails this one is laid over, where it is the
+                # road back along a stretch worked both ways. The schematic
+                # needs it: two roads over one rail draw two sets of signals in
+                # the same place, and which set is the wrong-line one has to be
+                # legible or the pair reads as a fault.
+                "mirrors": t.get("mirrors"),
             }
             for tid, t in self.tracks_spec.items()
         }

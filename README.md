@@ -1340,6 +1340,15 @@ purpose. Two things police it, and neither is new:
   right one. The kernel now also reports a violation if two trains are ever in a
   crossing pair at once, under every signalling system: no separation model makes
   it safe to run a train up a line another train is coming down.
+- **the same rails carry two sets of signals.** Each road has its own signals
+  at the same block boundaries, drawn on opposite sides of the rail — which is
+  how a bidirectional line is drawn, and falls out of the twin's direction being
+  reversed. Two identical lamps facing each other at one chainage read as a
+  fault rather than as a signal and its wrong-line counterpart, so the wrong-line
+  one is drawn smaller and on a shorter mast: 4 px against 6, 5.6 px off the
+  rail against 9. On `twoway` that is 26 places, all of them inside the
+  reversible stretch and nowhere else, which is why only the one section between
+  Kingsford and Marlowe looked doubled.
 - **a section worked both ways is worked one way at a time.** Safety is not liveness:
   admit a train at each end and they meet in the middle, each holding what the
   other needs, and neither can be backed out. Every railway that works a section

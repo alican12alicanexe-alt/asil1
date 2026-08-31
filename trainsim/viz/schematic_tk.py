@@ -461,6 +461,16 @@ class TkSchematicView(SchematicView):
         # visually on the side its trains are approaching from.
         up = track.get("direction", "up") == "up"
         mast = -9 if up else 9
+        # A stretch worked both ways carries two roads over one rail, each with
+        # its own signals at the same block boundaries. Putting them on opposite
+        # sides is right - that is how a bidirectional line is drawn, and it is
+        # what the mast sign above already does - but two identical lamps facing
+        # each other at one chainage read as a fault rather than as a signal and
+        # its wrong-line counterpart. So the wrong-line one is drawn smaller, on
+        # a shorter mast: still a signal, visibly the secondary of the pair.
+        wrong_line = bool(track.get("mirrors"))
+        if wrong_line:
+            mast = mast * 0.62
 
         if not self.lineside:
             self.canvas.create_line(
@@ -475,8 +485,9 @@ class TkSchematicView(SchematicView):
         # Lit red until the first refresh says otherwise. A lamp has to be
         # drawn as something before the railway has been asked, and a signal
         # nobody has asked about is at danger.
+        radius = 2 if wrong_line else 3
         lamp = self.canvas.create_oval(
-            x - 3, y + mast - 3, x + 3, y + mast + 3,
+            x - radius, y + mast - radius, x + radius, y + mast + radius,
             fill=ASPECT_COLOURS["red"], outline="", tags="static",
         )
         self._signal_items[signal.id] = lamp
