@@ -260,17 +260,17 @@ class _Builder(object):
     def _declare_reversible(self) -> None:
         """Give a line a twin running the other way, wherever the crossovers do.
 
-        Wrong-line working is what a railway does when something is in the way: a
-        train crosses to the opposite line, runs along it against the normal
-        direction, and crosses back beyond the obstruction. The rails are the
-        same rails - what changes is which way trains are being signalled over
-        them.
+        Working a line both ways is what a railway does when something is in
+        the way: a train crosses to the other line, runs along it against that
+        line's usual direction, and crosses back beyond the obstruction. The
+        rails are the same rails - what changes is which way trains are being
+        signalled over them, and neither way is the wrong one.
 
         That is modelled as a second set of blocks laid over the same alignment,
         running the other way, each of them declared to *cross* the one beneath
         it. Crossing blocks already mean something to the interlocking - it is
-        how a flat junction is policed - so a route over the other direction's road is
-        refused while anything holds or occupies the right one, and a head-on
+        how a flat junction is policed - so a route one way over a stretch is
+        refused while anything holds or occupies it the other way, and a head-on
         movement cannot be set up. Nothing in the kernel, the signalling or the
         driver has to learn about direction at all. The alternative was to teach
         trains to traverse a segment backwards, which touches the path, the
@@ -304,10 +304,10 @@ class _Builder(object):
             if connections[track_id] < 2:
                 raise InfrastructureError(
                     "track %r has one connection to a line running the other "
-                    "way, at km %.3f. One is a way onto the other direction's road and no "
-                    "way off it - a train would be left facing the wrong "
-                    "direction with nothing in front of it. Wrong-line working "
-                    "needs a connection at each end of the stretch to be worked."
+                    "way, at km %.3f. One is a way onto the other line and no "
+                    "way off it - a train would be left on a road with nothing "
+                    "in front of it. Working a line both ways needs a "
+                    "connection at each end of the stretch to be worked."
                     % (track_id, min(kms)))
             self._lay_twin(track_id, min(kms), max(kms))
 

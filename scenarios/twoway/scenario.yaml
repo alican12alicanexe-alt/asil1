@@ -1,5 +1,5 @@
 # twoway - an up line and a down line over depotline's sixty kilometres, and the
-# connections that let a train use the wrong one.
+# connections that let a train work either one.
 #
 #   python run.py scenarios/twoway              (live schematic)
 #   python run.py scenarios/twoway --headless

@@ -86,7 +86,7 @@ run_tests.py                 test runner (no pytest needed)
 scenarios/depotline/         a single line between two depots: 60 km, three
                              stations, and every road used in turn
 scenarios/twoway/            the same railway with a line each way, and the
-                             crossovers that let a train work the wrong one
+                             crossovers that let a train work either one
 trainsim/
   core/
     units.py                 SI conversions and the braking-curve formulae

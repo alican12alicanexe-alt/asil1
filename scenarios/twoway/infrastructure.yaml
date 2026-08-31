@@ -1,5 +1,5 @@
 # twoway - depotline's geography with an up line and a down line, and the
-# crossovers that let a train use the wrong one.
+# crossovers that let a train work either one.
 #
 #                 WEST DEPOT ---- KINGSFORD ---- MARLOWE ---- ASHDOWN ---- EAST DEPOT
 #                   km 0             km 12         km 30        km 48        km 60
@@ -12,13 +12,15 @@
 # with a line each way - and, more to the point, with the connections between
 # them that a railway uses when something is in the way.
 #
-# WRONG-LINE WORKING
+# WORKING A LINE IN BOTH DIRECTIONS
 #
 # A crossover joins two lines that run the same way: up fast to up slow. An up
-# line to a down line is a different thing, because a train taking it is then
-# running against the way that line is signalled. Real railways do it anyway -
+# line to a down line is a different thing, because a train taking it then runs
+# against the direction that line is usually worked in. Real railways do it -
 # it is what single-line working under a pilotman is - and it is what the two
-# connections at the bottom of this file are for.
+# connections at the bottom of this file are for. Neither direction is the
+# wrong one: which way the stretch is set is a state of the railway, like which
+# way a point lies.
 #
 # Nothing here declares which stretch is reversible. A line is worked both ways
 # exactly where a train can get onto the opposite line AND off it again, so the
