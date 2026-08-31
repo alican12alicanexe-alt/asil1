@@ -70,39 +70,45 @@ tracks:
 
   - id: DN
     direction: down
-    y: 2.0
+    y: 0.4
     max_speed_kmh: 100
     block_length_m: 1500
     serves: [EDEPOT, ASHDOWN, MARLOWE, KINGSFORD, WDEPOT]
 
 platforms:
+  # The two main roads sit next to each other at y 0.0 and y 0.4, and the loops
+  # fan OUTWARD from them - the up loops negative, the down loops positive - so
+  # the drawing reads the way a track diagram does, with the through roads in the
+  # middle and the platform roads either side. The negative offsets on the up
+  # roads are deliberate, not a sign error.
+  #
   # Two roads at each depot on each line: a depot road is held for four minutes
   # and one of them would set the headway on its own.
   - {id: WDEPOT_UP_1, station: WDEPOT, track: UP, length_m: 240, max_speed_kmh: 40, y_offset: 0.0}
-  - {id: WDEPOT_UP_2, station: WDEPOT, track: UP, length_m: 240, max_speed_kmh: 40, y_offset: 0.4}
+  - {id: WDEPOT_UP_2, station: WDEPOT, track: UP, length_m: 240, max_speed_kmh: 40, y_offset: -0.4}
   - {id: WDEPOT_DN_1, station: WDEPOT, track: DN, length_m: 240, max_speed_kmh: 40, y_offset: 0.0}
   - {id: WDEPOT_DN_2, station: WDEPOT, track: DN, length_m: 240, max_speed_kmh: 40, y_offset: 0.4}
   - {id: EDEPOT_UP_1, station: EDEPOT, track: UP, length_m: 240, max_speed_kmh: 40, y_offset: 0.0}
-  - {id: EDEPOT_UP_2, station: EDEPOT, track: UP, length_m: 240, max_speed_kmh: 40, y_offset: 0.4}
+  - {id: EDEPOT_UP_2, station: EDEPOT, track: UP, length_m: 240, max_speed_kmh: 40, y_offset: -0.4}
   - {id: EDEPOT_DN_1, station: EDEPOT, track: DN, length_m: 240, max_speed_kmh: 40, y_offset: 0.0}
   - {id: EDEPOT_DN_2, station: EDEPOT, track: DN, length_m: 240, max_speed_kmh: 40, y_offset: 0.4}
 
   # The intermediate stations. Road 1 is the main road at 60 km/h, the loops 40,
   # as on depotline.
   - {id: KINGSFORD_UP_1, station: KINGSFORD, track: UP, length_m: 220, max_speed_kmh: 60, y_offset: 0.0}
-  - {id: KINGSFORD_UP_2, station: KINGSFORD, track: UP, length_m: 220, max_speed_kmh: 40, y_offset: 0.4}
+  - {id: KINGSFORD_UP_2, station: KINGSFORD, track: UP, length_m: 220, max_speed_kmh: 40, y_offset: -0.4}
   - {id: KINGSFORD_DN_1, station: KINGSFORD, track: DN, length_m: 220, max_speed_kmh: 60, y_offset: 0.0}
   - {id: KINGSFORD_DN_2, station: KINGSFORD, track: DN, length_m: 220, max_speed_kmh: 40, y_offset: 0.4}
 
   - {id: MARLOWE_UP_1, station: MARLOWE, track: UP, length_m: 240, max_speed_kmh: 60, y_offset: 0.0}
-  - {id: MARLOWE_UP_2, station: MARLOWE, track: UP, length_m: 240, max_speed_kmh: 40, y_offset: 0.4}
-  - {id: MARLOWE_UP_3, station: MARLOWE, track: UP, length_m: 240, max_speed_kmh: 40, y_offset: 0.8}
+  - {id: MARLOWE_UP_2, station: MARLOWE, track: UP, length_m: 240, max_speed_kmh: 40, y_offset: -0.4}
+  - {id: MARLOWE_UP_3, station: MARLOWE, track: UP, length_m: 240, max_speed_kmh: 40, y_offset: -0.8}
   - {id: MARLOWE_DN_1, station: MARLOWE, track: DN, length_m: 240, max_speed_kmh: 60, y_offset: 0.0}
   - {id: MARLOWE_DN_2, station: MARLOWE, track: DN, length_m: 240, max_speed_kmh: 40, y_offset: 0.4}
   - {id: MARLOWE_DN_3, station: MARLOWE, track: DN, length_m: 240, max_speed_kmh: 40, y_offset: 0.8}
 
   - {id: ASHDOWN_UP_1, station: ASHDOWN, track: UP, length_m: 220, max_speed_kmh: 60, y_offset: 0.0}
-  - {id: ASHDOWN_UP_2, station: ASHDOWN, track: UP, length_m: 220, max_speed_kmh: 40, y_offset: 0.4}
+  - {id: ASHDOWN_UP_2, station: ASHDOWN, track: UP, length_m: 220, max_speed_kmh: 40, y_offset: -0.4}
   - {id: ASHDOWN_DN_1, station: ASHDOWN, track: DN, length_m: 220, max_speed_kmh: 60, y_offset: 0.0}
   - {id: ASHDOWN_DN_2, station: ASHDOWN, track: DN, length_m: 220, max_speed_kmh: 40, y_offset: 0.4}
 
