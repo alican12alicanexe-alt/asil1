@@ -383,7 +383,7 @@ set, and a proceed aspect for a route nobody set is precisely what
 The fourth row is not special-cased — it falls out of the rule, and it is worth
 having. "You are going that way, and you are not going yet" is a different
 picture from "you are stopped and nobody has decided", and until now they looked
-identical. Measured on `twoway`: 4314 ticks of both-red against 166174 of
+identical. Measured on `twoway`: 4314 ticks of both-red against 114003 of
 inner-red-outer-dark.
 
 **A dark head is not a red one.** Two reds on a post leave a driver working out
@@ -414,8 +414,7 @@ second head on it carrying which road. So the alternatives at a facing
 divergence share a post, and its inner head shows the least restrictive aspect
 of the group — which is not a fudge, because only one route can be set at a
 time, so at most one of them is off and the one that is off is the one being
-shown to the driver. `twoway` draws 104 posts for 158 signals, `depotline` 49
-for 57.
+shown to the driver.
 
 The signals at the **departure** end of a station are the opposite case and stay
 separate. Three roads converging on one block is three starting signals, one per
@@ -429,7 +428,30 @@ with the others. That is where a real starter stands, just ahead of the nose of
 the train at the platform: a 240 m platform sits in the middle of a 1200 m
 block, so the lamp moves 480 m back from the block boundary — the rearward
 slide the positioning pass already allows, since showing a driver a signal
-sooner than it stands costs nothing and showing it later would lie.
+sooner than it stands costs nothing and showing it later would lie. A road
+worked the other way gets the same treatment at its own departure end, which is
+the other end of the same concrete — so each platform road carries a signal at
+each end, one per direction, and the throats carry the two-head posts:
+
+```
+  platform 3      ── ○ ─────────── ○ ──
+  platform 2      ── ○ ─────────── ○ ──
+                 /                      \
+  platform 1  ═ ○○ ─○ ─────────── ○─ ○○ ═
+                 throat            throat
+```
+
+**But two approaches can meet at one point,** and then there is one lamp on the
+ground, not two. The up line and a crossover joining it are the same alignment
+by the time they reach the block boundary; the model makes a signal per
+approach, so those become one lamp showing the least restrictive of them. That
+is what makes **one lamp per place** an invariant of the drawing — worth more
+than it sounds, because two lamps at one spot showing different things is the
+picture of a failed signal. It also fixed the last four places on `twoway` that
+held two, all of them at the crossovers, where a signal for a train arriving
+over the connection had been drawn on the line it came from rather than the
+line it joins. `twoway` draws 128 lamps for 158 signals, `depotline` 49 for 57,
+and no place on either holds more than one.
 
 ### The all-green headway
 
@@ -1381,17 +1403,19 @@ purpose. Two things police it, and neither is new:
   the other's. The kernel now also reports a violation if two trains are ever in a
   crossing pair at once, under every signalling system: no separation model makes
   it safe to run a train up a line another train is coming down.
-- **the two directions share a lamp.** Each road has its own signals at the
-  same block boundaries, and drawing both put two lamps at one chainage facing
-  each other, which reads as a fault rather than as a pair. Neither is the
-  *wrong* one — a line signalled in both directions is signalled in both
-  directions, and which way it is set is a state of the railway, the same kind
-  of fact as which way a point lies. There is only ever one answer to show,
-  because the section is worked one direction at a time, so the pair share a
-  lamp and it stands on the side of the direction in force. The side is the
-  indication. On `twoway` that turns 158 signals into 112 lamps, and it is why
-  only the section between Kingsford and Marlowe looked doubled: that is the
-  only station-to-station run inside the two-way stretch.
+- **the direction not in force is dark.** Each road has its own signals at the
+  same block boundaries. Neither direction is the *wrong* one — a line signalled
+  in both directions is signalled in both directions, and which way it is set is
+  a state of the railway, the same kind of fact as which way a point lies. But
+  only one of them is in force at a time, so half the lamps on the stretch are
+  lamps nothing can be approaching. They are drawn, because a signal that exists
+  is on the ground whether or not it is in use and hiding it hides the layout —
+  and they are drawn **dark**. That is the same word it is on a second head:
+  *not this way*. Nobody has to work out which of two lamps at a boundary
+  applies to them, because only one is lit, and which way the stretch is set is
+  readable at a glance from which line's signals are alight. On `twoway`, 38 of
+  128 lamps are dark at any moment; the set flips twice on the diverted run, and
+  is empty on `depotline`, which has no two-way stretch.
 - **a section worked both ways is worked one way at a time.** Safety is not liveness:
   admit a train at each end and they meet in the middle, each holding what the
   other needs, and neither can be backed out. Every railway that works a section

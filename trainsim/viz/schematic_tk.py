@@ -37,7 +37,6 @@ class TkSchematicView(SchematicView):
         self._single_step = False
         self._block_items = {}
         self._signal_items = {}
-        self._two_way_groups = {}
         self._branch_heads = {}
         self._lamp_groups = {}
         self._sharing_lamp = set()
@@ -198,7 +197,6 @@ class TkSchematicView(SchematicView):
         canvas.delete("static")
         self._block_items.clear()
         self._signal_items.clear()
-        self._two_way_groups.clear()
         self._branch_heads.clear()
         self._lamp_groups.clear()
         self._sharing_lamp.clear()
@@ -247,11 +245,10 @@ class TkSchematicView(SchematicView):
                 )
 
         signal_x = self._signal_positions(infra, tracks)
-        self._plan_shared_lamps(infra, tracks)
+        self._plan_shared_lamps(infra, tracks, signal_x)
         for signal in infra.signals.values():
             self._draw_signal(signal, tracks, signal_x)
 
-        self._draw_two_way_signals(infra, tracks, signal_x)
         self._draw_branch_heads(infra, tracks, signal_x)
 
         for point in infra.points.values():
@@ -334,6 +331,20 @@ class TkSchematicView(SchematicView):
         # it or it blanks that out for exactly the stretch where trains stand.
         self.canvas.tag_lower(slab, road_item)
 
+    def _platform_on(self, segment):
+        """The platform served by a road, including one worked the other way.
+
+        A mirrored road carries no ``platform`` on the segment - the station has
+        the roads it has, and a twin is one of them being used backwards rather
+        than a second platform that would show up in every count - but there IS
+        a platform record whose ``segment`` is that twin, because a diverted
+        train calls at the same concrete. The drawing wants the concrete, so it
+        asks by segment and takes either answer.
+        """
+        platforms = self.scenario.infrastructure.network.platforms
+        found = platforms.get(segment.platform) if segment.platform else None
+        return found if found is not None else platforms.get(segment.id)
+
     def _platform_face_span(self, segment, track_y):
         """The x range of the concrete on a platform road, or ``None``.
 
@@ -342,8 +353,7 @@ class TkSchematicView(SchematicView):
         the lamp ends up standing on the ballast beyond the platform it belongs
         to.
         """
-        platform = self.scenario.infrastructure.network.platforms.get(
-            segment.platform)
+        platform = self._platform_on(segment)
         if platform is None or platform.length_m <= 0:
             return None
         layout = self.layout
@@ -474,7 +484,7 @@ class TkSchematicView(SchematicView):
         are the signals a train at a platform is waiting for, and they belong at
         the end of the concrete it is standing on.
         """
-        if road.id != signal.from_segment or not road.platform:
+        if road.id != signal.from_segment or self._platform_on(road) is None:
             return None
         face = self._platform_face_span(road, track_y)
         if face is None:
@@ -500,6 +510,23 @@ class TkSchematicView(SchematicView):
                 return segment
         return None
 
+    def _signal_y(self, signal):
+        """The schematic y a signal is drawn at.
+
+        Normally its own, but a junction link is the one thing here that is not
+        parallel to the rest of the railway: it ramps from one line's alignment
+        to the other's, and a signal at the far end of one stands on the line it
+        JOINS, not the one it left. Taking the link's starting y put the signal
+        for a train arriving over a crossover on the line it came from, on top
+        of that line's own signal.
+        """
+        road = self._signal_road(signal)
+        if (road is not None and road.y_end is not None
+                and abs(road.y_end - road.y) > 1e-6
+                and signal.node_id == road.end_node):
+            return self.layout.y(road.y_end)
+        return self.layout.y(signal.y)
+
     def _draw_signal(self, signal, tracks, signal_x) -> None:
         """A signal lamp, or an unlit marker board where the level has no signals.
 
@@ -509,19 +536,24 @@ class TkSchematicView(SchematicView):
         the block boundaries are still there, they just no longer tell anyone
         anything.
 
-        Signals on a stretch signalled both ways are not drawn here at all -
-        they share a lamp, and :meth:`_draw_two_way_signals` draws it. Nor are
-        the alternatives at a facing divergence: they are one post on the
-        ground, and :meth:`_plan_shared_lamps` has already picked which of them
-        carries it.
+        The alternatives at a facing divergence are not drawn here: they are
+        one post on the ground, and :meth:`_plan_shared_lamps` has already
+        picked which of them carries it.
+
+        Every signal on a stretch worked both ways IS drawn, each on its own
+        road at its own end. They used to share one lamp per boundary that moved
+        to whichever side was in force, which was true but hid the layout: a
+        three-platform station came out as one lamp instead of a signal at each
+        end of each road. The two directions' signals do not collide, because
+        each stands at the departure end of its own road and those are opposite
+        ends. Which of them is in force is carried by
+        :meth:`_signals_out_of_use` darkening the rest.
         """
-        if self._two_way_section(signal) is not None:
-            return
         if signal.id in self._sharing_lamp:
             return
         layout = self.layout
         x = signal_x.get(signal.id, layout.x(signal.km))
-        y = layout.y(signal.y)
+        y = self._signal_y(signal)
         track = tracks.get(signal.track, {})
         # Down-line signals sit below their track, up-line above, so a signal is
         # visually on the side its trains are approaching from.
@@ -547,7 +579,7 @@ class TkSchematicView(SchematicView):
         )
         self._signal_items[signal.id] = lamp
 
-    def _plan_shared_lamps(self, infra, tracks) -> None:
+    def _plan_shared_lamps(self, infra, tracks, signal_x) -> None:
         """One lamp for the alternatives at a facing divergence.
 
         Three roads at Marlowe had three lamps at one place, one per road, and a
@@ -564,15 +596,53 @@ class TkSchematicView(SchematicView):
         word, because a lamp that is off for a DIVERGING road belongs on the
         second head and this one goes back to red.
 
-        Signals on a stretch signalled both ways are left alone. They already
-        share a lamp per boundary, by direction, which subsumes this.
+        A divergence on a stretch worked both ways is no different: it is a
+        divergence in one direction, and the signals for the other direction are
+        a group of their own at the other end of the same roads.
         """
         for members in self._junction_groups(infra).values():
-            if any(self._two_way_section(signal) is not None
-                   for signal in members):
-                continue
             anchor = self._through_signal(infra, members, tracks) or members[0]
             self._lamp_groups[anchor.id] = [signal.id for signal in members]
+            self._sharing_lamp.update(
+                signal.id for signal in members if signal.id != anchor.id)
+        self._merge_co_located(infra, tracks, signal_x)
+
+    def _merge_co_located(self, infra, tracks, signal_x) -> None:
+        """One lamp per place, for the signals that converge on one.
+
+        The other half of a throat. Where several roads MEET, each approach gets
+        its own signal into the block beyond, and where those roads are distinct
+        - three platforms at Marlowe - each of them keeps its own post at the end
+        of its own concrete, because a train at platform 3 must not be released
+        by platform 1's lamp.
+
+        But two approaches can meet on the same rail at the same point: the up
+        line and a crossover joining it are one alignment by the time they reach
+        the block boundary. The model makes a signal per approach; the ground has
+        one lamp there. So any that come out at the same place become one, and it
+        shows the least restrictive of them - only one route can be set at a
+        time, so the one that is off is the one being shown to the driver.
+
+        This is what leaves one lamp per place as an invariant of the drawing,
+        which matters more than it sounds: two lamps at one spot showing
+        different things is the picture of a failed signal.
+        """
+        places = {}
+        for signal in infra.signals.values():
+            if signal.id in self._sharing_lamp:
+                continue
+            up = tracks.get(signal.track, {}).get("direction", "up") == "up"
+            key = (round(signal_x.get(signal.id, 0.0), 1),
+                   round(self._signal_y(signal), 1), up)
+            places.setdefault(key, []).append(signal)
+        for members in places.values():
+            if len(members) < 2:
+                continue
+            anchor = members[0]
+            merged = []
+            for signal in members:
+                merged.extend(self._lamp_groups.pop(signal.id, [signal.id]))
+            self._lamp_groups[anchor.id] = merged
             self._sharing_lamp.update(
                 signal.id for signal in members if signal.id != anchor.id)
 
@@ -591,96 +661,45 @@ class TkSchematicView(SchematicView):
         return self.scenario.infrastructure.direction_sections.get(
             signal.block_id)
 
-    #: How far a two-way lamp stands off the rail, and how far its mast reaches.
+    #: How far a lamp stands off the rail, and how far its mast reaches.
     TWO_WAY_MAST = 9
 
-    def _draw_two_way_signals(self, infra, tracks, signal_x) -> None:
-        """One lamp per boundary on a stretch signalled both ways.
+    def _signals_out_of_use(self):
+        """The signals for the direction a two-way stretch is NOT being worked.
 
-        The two roads over one rail have their own signals at the same
-        boundaries, and drawing both put two lamps at one chainage facing each
-        other - which reads as a fault, not as a pair. There is only ever one
-        answer to show anyway: a section signalled both ways is worked one
-        direction at a time, so at any moment one of the two is the signal that
-        governs and the other is a lamp nothing can be approaching.
+        A stretch worked in both directions is worked one direction at a time,
+        so at any moment half the lamps on it are lamps nothing can be
+        approaching. They are drawn - a signal that exists is on the ground
+        whether or not it is in use, and hiding it hides the layout - but they
+        are drawn DARK.
 
-        So they share a lamp, and it stands on the side of the direction the
-        section is being worked in. The side is the indication: which way this
-        stretch is set is exactly what somebody looks at it to find out.
+        Dark is the same word it is on a second head: not this way. A driver
+        does not have to work out which of two lamps at a boundary applies to
+        them, because only one of them is lit; and the stretch's direction is
+        readable at a glance, from which line's signals are alight.
 
-        They are paired by NODE, not by where they were drawn. A boundary is a
-        node; the positioning pass slides each road's signals to the rearmost of
-        its own group, and a road worked the other way has the other end of the
-        pair as its rearmost, so pairing by x split half of them apart.
+        A section nobody is using rests in its normal direction. It is
+        available to either, and lighting neither would say the railway had
+        stopped rather than that nothing is on it.
         """
-        if not self.lineside:
-            return
-        layout = self.layout
+        sim = self.sim
+        interlocking = sim.interlocking
+        infra = self.scenario.infrastructure
+        in_force = {}
+        dark = set()
         for signal in infra.signals.values():
             here = self._two_way_section(signal)
             if here is None:
                 continue
             section, way = here
-            key = (signal.node_id, section)
-            group = self._two_way_groups.get(key)
-            if group is None:
-                group = {
-                    "x": None, "y": layout.y(signal.y), "section": section,
-                    "ways": {}, "normal_up": True,
-                    "mast": self.canvas.create_line(
-                        0, 0, 0, 0, fill=PALETTE["track"], width=1,
-                        tags="static"),
-                    "lamp": self.canvas.create_oval(
-                        0, 0, 0, 0, fill=ASPECT_COLOURS["red"], outline="",
-                        tags="static"),
-                }
-                self._two_way_groups[key] = group
-            group["ways"].setdefault(way, []).append(signal.id)
-            if way == "normal" or group["x"] is None:
-                # The lamp stands where the normal direction's signal stands,
-                # and takes its alignment: that is the road the line is for.
-                group["x"] = signal_x.get(signal.id, layout.x(signal.km))
-                group["y"] = layout.y(signal.y)
-                group["normal_up"] = tracks.get(
-                    signal.track, {}).get("direction", "up") == "up"
-                if way != "normal":
-                    # Seen from the twin, whose direction is the opposite one.
-                    group["normal_up"] = not group["normal_up"]
-
-    def _refresh_two_way_signals(self) -> None:
-        """Put each shared lamp on the side being worked, showing its aspect."""
-        sim = self.sim
-        interlocking = sim.interlocking
-        for group in self._two_way_groups.values():
-            way = None
-            if interlocking is not None:
-                way = interlocking.section_direction(group["section"], sim)
-            if way not in group["ways"]:
-                # Clear, or being worked the way this boundary has no signal
-                # for. Show the normal direction: a section nobody is using is
-                # available to either, and the normal way is the one to rest at.
-                way = ("normal" if "normal" in group["ways"]
-                       else next(iter(group["ways"])))
-            # The least restrictive of the signals for that direction. Several
-            # of them means several approaches to one block, and the driver
-            # whose route is set is the one being spoken to.
-            aspect = Aspect.least_restrictive(
-                [sim.aspects.get(sid, Aspect.RED)
-                 for sid in group["ways"][way]] or [Aspect.RED])
-            # Up-worked signals stand above their line and down-worked below, as
-            # everywhere else here, so the side is read the same way whether the
-            # line has one direction or two.
-            up = group["normal_up"] if way == "normal" else not group["normal_up"]
-            # Recorded so the second head on this post can follow it.
-            group["up"] = up
-            mast = -self.TWO_WAY_MAST if up else self.TWO_WAY_MAST
-            x, y = group["x"], group["y"]
-            self.canvas.coords(group["mast"], x, y, x, y + mast)
-            self.canvas.coords(group["lamp"],
-                               x - 3, y + mast - 3, x + 3, y + mast + 3)
-            self.canvas.itemconfig(
-                group["lamp"],
-                fill=ASPECT_COLOURS.get(aspect, ASPECT_COLOURS["red"]))
+            if section not in in_force:
+                working = None
+                if interlocking is not None:
+                    working = interlocking.section_direction(section, sim)
+                in_force[section] = working or "normal"
+            if way != in_force[section]:
+                dark.add(signal.id)
+        return dark
 
     #: The second head, in pixels: how far its centre stands beyond the main
     #: lamp's, and the radius both are drawn at.
@@ -762,34 +781,20 @@ class TkSchematicView(SchematicView):
         for key, members in self._junction_groups(infra).items():
             through = self._through_signal(infra, members, tracks)
             anchor = through or members[0]
-            here = self._two_way_section(anchor)
-            two_way_key = None
-            if here is None:
-                x = signal_x.get(anchor.id, layout.x(anchor.km))
-                y = layout.y(anchor.y)
-                up = tracks.get(anchor.track, {}).get("direction", "up") == "up"
-                main = self._signal_items.get(anchor.id)
-                if main is None:
-                    continue
-            else:
-                # The head this stands beyond is the shared one, which moves to
-                # whichever side the section is being worked from. The second
-                # head goes with it, so its coordinates are settled at refresh.
-                two_way_key = (anchor.node_id, here[0])
-                group = self._two_way_groups.get(two_way_key)
-                if group is None:
-                    continue
-                x, y, up = group["x"], group["y"], group["normal_up"]
-                main = group["lamp"]
+            main = self._signal_items.get(anchor.id)
+            if main is None:
+                continue
+            x = signal_x.get(anchor.id, layout.x(anchor.km))
+            y = self._signal_y(anchor)
+            up = tracks.get(anchor.track, {}).get("direction", "up") == "up"
+            mast, box = self._branch_coords(x, y, up)
 
             self._branch_heads[key] = {
-                "main": main,
+                "main": main, "anchor": anchor.id,
                 "mast": self.canvas.create_line(
-                    0, 0, 0, 0, fill=PALETTE["track"], width=1, tags="static"),
+                    *mast, fill=PALETTE["track"], width=1, tags="static"),
                 "lamp": self.canvas.create_oval(
-                    0, 0, 0, 0, fill=PALETTE["lamp_dark"], outline="",
-                    tags="static"),
-                "x": x, "y": y, "up": up, "two_way": two_way_key,
+                    *box, fill=PALETTE["lamp_dark"], outline="", tags="static"),
                 "signals": tuple(signal.id for signal in members),
                 "through": through.id if through is not None else None,
             }
@@ -802,7 +807,7 @@ class TkSchematicView(SchematicView):
         r = self.LAMP_RADIUS
         return (x, inner, x, outer), (x - r, outer - r, x + r, outer + r)
 
-    def _refresh_branch_heads(self) -> None:
+    def _refresh_branch_heads(self, dark) -> None:
         """Light the head for the road that is set, and darken the other.
 
         One rule: the head for the road that is set carries the aspect, and the
@@ -822,7 +827,7 @@ class TkSchematicView(SchematicView):
           is a real and useful thing to be able to see: "you are going that way,
           and you are not going yet" is not the same picture as "you are stopped
           and nobody has decided". Measured on twoway: 4314 ticks of it, against
-          166174 of inner-red-outer-dark.
+          114003 of inner-red-outer-dark.
 
         Nothing here special-cases that fourth state. It falls out of the rule.
         """
@@ -837,14 +842,12 @@ class TkSchematicView(SchematicView):
                         set_from = signal_id
                         break
 
-            x, y, up = entry["x"], entry["y"], entry["up"]
-            if entry["two_way"] is not None:
-                group = self._two_way_groups.get(entry["two_way"])
-                if group is not None:
-                    x, y, up = group["x"], group["y"], group.get("up", up)
-            mast, box = self._branch_coords(x, y, up)
-            canvas.coords(entry["mast"], *mast)
-            canvas.coords(entry["lamp"], *box)
+            if entry["anchor"] in dark:
+                # The whole post is for the direction not in force. Both heads
+                # go out with it - a second head on a dark signal would be the
+                # one lamp lit at a boundary nothing can be approaching.
+                canvas.itemconfig(entry["lamp"], fill=PALETTE["lamp_dark"])
+                continue
 
             diverging = set_from is not None and set_from != entry["through"]
             if diverging:
@@ -955,7 +958,11 @@ class TkSchematicView(SchematicView):
                           else PALETTE["point_free"]),
                 )
 
+        dark = self._signals_out_of_use()
         for signal_id, item in self._signal_items.items():
+            if signal_id in dark:
+                self.canvas.itemconfig(item, fill=PALETTE["lamp_dark"])
+                continue
             shared = self._lamp_groups.get(signal_id)
             if shared is None:
                 aspect = sim.aspects.get(signal_id, "red")
@@ -967,8 +974,7 @@ class TkSchematicView(SchematicView):
             self.canvas.itemconfig(
                 item, fill=ASPECT_COLOURS.get(aspect, ASPECT_COLOURS["red"]))
 
-        self._refresh_two_way_signals()
-        self._refresh_branch_heads()
+        self._refresh_branch_heads(dark)
 
         self._draw_trains()
 
