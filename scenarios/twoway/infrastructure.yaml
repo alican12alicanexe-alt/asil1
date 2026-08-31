@@ -4,8 +4,11 @@
 #                 WEST DEPOT ---- KINGSFORD ---- MARLOWE ---- ASHDOWN ---- EAST DEPOT
 #                   km 0             km 12         km 30        km 48        km 60
 #
-#   UP   >           2 roads        2 plat        3 plat       2 plat        2 roads
-#   DN   <           2 roads        2 plat        3 plat       2 plat        2 roads
+#   UP  <>           2 roads        2 plat        3 plat       2 plat        2 roads
+#   DN  <>           2 roads        2 plat        3 plat       2 plat        2 roads
+#
+# Both lines are signalled both ways end to end - <> is the direction of travel
+# each is normally worked in, not the only one it can be.
 #
 # depotline is one line, so every train is in front of or behind every other one
 # and the only way past is through a station. This is the same sixty kilometres
@@ -17,7 +20,7 @@
 # A crossover joins two lines that run the same way: up fast to up slow. An up
 # line to a down line is a different thing, because a train taking it then runs
 # against the direction that line is usually worked in. Real railways do it -
-# it is what single-line working under a pilotman is - and it is what the two
+# it is what single-line working under a pilotman is - and it is what the four
 # connections at the bottom of this file are for - one either side of each
 # station, so every platform has a road both ways. Neither direction is the
 # wrong one: which way the stretch is set is a state of the railway, like which
@@ -27,9 +30,14 @@
 # exactly where a train can get onto the opposite line AND off it again, so the
 # stretch is whatever the crossovers bracket - and each NEIGHBOURING PAIR of
 # them brackets its own, here km 9.0-13.9, 13.5-32.4 and 32.0-51.4, which puts
-# each of the three stations inside one. That is how a real railway reads too:
-# bidirectional signalling is provided between the crossovers, because between
-# them is the only place it is any use - and each stretch is its own section,
+# each of the three intermediate stations inside one. The end of the line
+# brackets a stretch as well, because it is a way off the other line: a train
+# stops there, and whatever it does next it does in the other direction, on its
+# own line's road. So km 0.0-9.4 and 51.0-60.0 are worked both ways too, and
+# that is what gives the two depots a road each way. That is how a real railway
+# reads too: bidirectional signalling is provided between the crossovers, and
+# between the outermost crossover and the buffer stops, because those are the
+# only places it is any use - and each stretch is its own section,
 # because giving the whole line to one direction at a time is a working method
 # for a branch, not for this.
 #
@@ -154,10 +162,16 @@ crossovers:
   #   13.5 .. 32.4  brackets Marlowe
   #   32.0 .. 51.4  brackets Ashdown
   #
-  # The two depots are the exception, and it is geometry rather than choice: a
-  # depot sits at the end of the line, and there is no "beyond it" to put the
-  # second connection at. Nothing can be worked the other way through a place
-  # nothing runs past.
+  #   0.0 .. 9.4    brackets West Depot, against the end of the line
+  #   51.0 .. 60.0  brackets East Depot, against the end of the line
+  #
+  # The depots need no connection beyond them, and by geometry could not have
+  # one: a depot sits at the end of the line. The buffer stops do that
+  # connection's job, since a train that has run to the end of the line leaves
+  # in the other direction whatever it does next - so km 0.0-9.4 and 51.0-60.0
+  # are worked both ways as well, bracketed by the outermost crossover at one
+  # end and by the end of the line at the other, and every depot road has a
+  # signal each way.
   - {id: XO_KINGSFORD_W, from: UP, to: DN, km: 9.0,  length_m: 400, max_speed_kmh: 60, type: scissors}
   - {id: XO_WEST,        from: UP, to: DN, km: 13.5, length_m: 400, max_speed_kmh: 60, type: scissors}
   - {id: XO_EAST,        from: DN, to: UP, km: 32.0, length_m: 400, max_speed_kmh: 60, type: scissors}

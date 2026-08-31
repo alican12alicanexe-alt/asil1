@@ -285,9 +285,17 @@ class _Builder(object):
         crossovers, because between them is the only place it is any use. So the
         scenario draws its connections and the reversible stretch falls out of
         them. Declaring it separately meant saying the same thing twice, in two
-        places that could disagree; making every line reversible end to end
-        meant signalling twice the railway to no purpose, since a train that
-        cannot get back off the other direction's road is not going anywhere.
+        places that could disagree - and it settled only how much of the line
+        was reversible, when the connections also settle where each section
+        ends.
+
+        The end of a line counts as a bracket too. What a train needs is a way
+        onto the other line and a way off it again, and the end of the line is a
+        way off: it stops there, and whatever it does next it does in the other
+        direction, on its own line's road. That is what gives a terminal
+        station's platforms a road each way, and it is why a terminus is one of
+        the places a real railway signals bidirectionally with no crossover
+        beyond it - there is no beyond.
         """
         connections: Dict[str, List[Tuple[float, float]]] = {}
         for crossover_id, spec in self.crossovers_spec.items():
@@ -300,14 +308,6 @@ class _Builder(object):
                 connections.setdefault(track_id, []).append(
                     (km, km + length / 1000.0))
         for track_id, places in sorted(connections.items()):
-            if len(places) < 2:
-                raise InfrastructureError(
-                    "track %r has one connection to a line running the other "
-                    "way, at km %.3f. One is a way onto the other line and no "
-                    "way off it - a train would be left on a road with nothing "
-                    "in front of it. Working a line both ways needs a "
-                    "connection at each end of the stretch to be worked."
-                    % (track_id, places[0][0]))
             # One span between each neighbouring pair of connections, not one
             # span from the first to the last. The stretch a train can be worked
             # the other way over is the stretch between the crossover it gets on
@@ -317,8 +317,40 @@ class _Builder(object):
             # the lot would make a sixty-kilometre railway one-direction-at-a-
             # time, which is a working method for a branch, not for this.
             places.sort()
-            self._lay_twin(track_id, [(low[0], high[1])
-                                      for low, high in zip(places, places[1:])])
+            spans = [(low[0], high[1])
+                     for low, high in zip(places, places[1:])]
+            # The end of a line brackets a stretch exactly as a crossover does.
+            # What a train needs is a way onto the other line and a way off it
+            # again, and the end of the line is a way off: it stops there, and
+            # whatever it does next it does in the other direction, on its own
+            # line's road. So the stretch from the outermost connection to the
+            # buffer stops is worked both ways too - which is what gives a
+            # terminal station's platforms a road in each direction, and it is
+            # why a terminus is one of the places a real railway signals
+            # bidirectionally without a crossover beyond it.
+            ends = self._track_km_range(track_id)
+            if ends is not None:
+                low_end, high_end = ends
+                if places[0][0] > low_end + 1e-6:
+                    spans.insert(0, (low_end, places[0][1]))
+                if places[-1][1] < high_end - 1e-6:
+                    spans.append((places[-1][0], high_end))
+            self._lay_twin(track_id, spans)
+
+    def _track_km_range(self, track_id: str) -> Optional[Tuple[float, float]]:
+        """Where a track begins and ends, in the scenario's own chainage.
+
+        ``None`` when the spec is not yet complete enough to say. This runs
+        before validation and must not pre-empt its error messages.
+        """
+        serves = list(self.tracks_spec[track_id].get("serves") or [])
+        if len(serves) < 2:
+            return None
+        try:
+            kms = [float(self.stations_spec[s]["km"]) for s in serves]
+        except (KeyError, TypeError, ValueError):
+            return None
+        return min(kms), max(kms)
 
     def _opposite_direction_pair(self, crossover_id: str,
                          spec: dict) -> Optional[Tuple[str, str]]:

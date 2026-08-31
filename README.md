@@ -450,7 +450,7 @@ than it sounds, because two lamps at one spot showing different things is the
 picture of a failed signal. It also fixed the last four places on `twoway` that
 held two, all of them at the crossovers, where a signal for a train arriving
 over the connection had been drawn on the line it came from rather than the
-line it joins. `twoway` draws 118 lamps for 220 signals, `depotline` 49 for 57,
+line it joins. `twoway` draws 126 lamps for 252 signals, `depotline` 49 for 57,
 and no place on either holds more than one.
 
 **Every lamp stands above its line**, whichever way its trains run. Hanging the
@@ -1377,9 +1377,22 @@ crossover it gets on at and the one it gets off at, and those are neighbours;
 one section for the lot would make a sixty-kilometre railway
 one-direction-at-a-time, which is a working method for a branch and not for
 this. One either side of each station is what gives every platform a road in
-both directions — Kingsford 4, Marlowe 6, Ashdown 4. The two depots are the
-exception, and it is geometry rather than choice: a depot is the end of the
-line, and there is no *beyond it* to put the second connection at. Every movement over the pointwork then joins two roads that run
+both directions — Kingsford 4, Marlowe 6, Ashdown 4.
+
+The end of a line brackets a stretch exactly as a crossover does, which is what
+gives the depots theirs. What a train needs is a way onto the other line and a
+way off it again, and the end of the line is a way off: it stops there, and
+whatever it does next it does in the other direction, on its own line's road. So
+the stretch from the outermost connection to the buffer stops is worked both
+ways too — km 0.0–9.4 and 51.0–60.0, each its own section — and West Depot and
+East Depot have four platforms apiece with a road each way, the same as the
+intermediate stations. That is a real railway's reading as well: a terminus is
+one of the few places bidirectional signalling is provided with no crossover
+beyond it, because there is no beyond. The one lamp it does not produce is at
+the buffer stops, and that is correct — nothing is signalled towards the end of
+the line.
+
+Every movement over the pointwork joins two roads that run
 the same way, so the rule that a crossover joins lines running the same way is
 not being bent.
 
@@ -1421,10 +1434,13 @@ Where the reversible stretch is is not declared, because it is not a free
 choice: a line is worked both ways exactly where a train can get onto the
 opposite line *and off it again*, which is decided by the crossovers. That is
 how a real railway reads too — bidirectional signalling is provided between the
-crossovers, because between them is the only place it is any use. Declaring it
-separately meant saying the same thing twice in two places that could disagree;
-making every line reversible end to end meant signalling twice the railway to no
-purpose. Two things police it, and neither is new:
+crossovers, and between a crossover and the buffer stops, because those are the
+only places it is any use. Declaring it separately meant saying the same thing
+twice in two places that could disagree. Here the connections happen to bracket
+the whole sixty kilometres, so the whole of it is worked both ways; move one and
+the stretch moves with it, which is the point. What the crossovers settle is not
+only how much is reversible but where each **section** ends, and that is the
+part a declaration got wrong. Two things police it, and neither is new:
 
 - **each twin block crosses the block underneath it.** Crossing blocks already
   meant something — it is how a flat junction is policed — so the interlocking
@@ -1455,11 +1471,12 @@ purpose. Two things police it, and neither is new:
   flat junction is a crossing too, and a train on the other line there does not
   mean this line has changed direction; it means wait, which is what red is for.
 
-  On `twoway` that is 1.81 lamps dark per tick through the booked service, in
-  44 different arrangements — Marlowe's reverse-direction platform lamps go out
-  for the 1106 ticks a train is standing on the road and are lit the rest of the
-  time — and 2.81 per tick in 160 arrangements on the diverted run, which is the
-  down line actually changing hands. `depotline` has no two-way stretch and
+  On `twoway` that is 1.89 lamps dark per tick through the booked service, in
+  25 different arrangements — the lamp for Marlowe's up platform road taken the
+  other way goes out for the 1106 ticks a train is standing on that road, and
+  West Depot's for the 1125 a train is standing in the depot; both are lit the
+  rest of the time — and 1.85 per tick in 34 arrangements on the diverted run,
+  which is the down line actually changing hands. `depotline` has no two-way stretch and
   nothing on it is ever dark.
 - **a section worked both ways is worked one way at a time.** Safety is not liveness:
   admit a train at each end and they meet in the middle, each holding what the

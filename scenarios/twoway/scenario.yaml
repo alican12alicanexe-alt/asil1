@@ -20,17 +20,19 @@
 #     below. Neither direction is the wrong one: a line signalled both ways is
 #     signalled both ways, and which way it is set is a state of the railway.
 #
-# WRONG-LINE WORKING, AND HOW IT IS MODELLED
+# WORKING A LINE THE OTHER WAY, AND HOW IT IS MODELLED
 #
 # A crossover joins two lines that run the same way. An up-to-down connection is
 # a different thing: a train taking it runs against the way that line is
 # signalled. Railways do it anyway when something is in the way, and here the
-# infrastructure draws two crossovers, one each side of Marlowe, each of them a
-# scissors so that either direction can be diverted (a `single` lays one
-# diagonal, and its hand decides who can use it). The stretch between
-# them - the only stretch a train can get onto the other line and off it again -
-# gets a second set of block sections over the same rails running the other way:
-# DN_012_R is the road up the down line where DN_012 is the road down it.
+# infrastructure draws four crossovers, one either side of each station, each of
+# them a scissors so that either direction can be diverted (a `single` lays one
+# diagonal, and its hand decides who can use it). Each stretch a train can get
+# onto the other line over and off it again - between one crossover and the next,
+# or between the outermost crossover and the end of the line - gets a second set
+# of block sections over the same rails running the other way: DN_012_R is the
+# road up the down line where DN_012 is the road down it. That is every platform
+# road at all five stations, the depots included.
 #
 # Every one of those twin blocks is declared to CROSS the block underneath it.
 # Crossing blocks already meant something here - it is how a flat junction is
@@ -55,7 +57,7 @@
 # the up trains are booked round the back of it on the down line.
 
 name: twoway
-description: "Sixty kilometres with a line each way and a crossover between them each side of Marlowe - the railway where a stretch can be signalled in both directions."
+description: "Sixty kilometres with a line each way and a crossover between them either side of each station - the railway where a stretch can be signalled in both directions."
 
 infrastructure: infrastructure.yaml
 timetable: timetable.yaml
