@@ -1179,6 +1179,63 @@ each end and a route must be able to finish there, so the builder splits each
 stretch at any crossover before dividing it into blocks. That is the order it is
 done in on the ground too.
 
+#### Or between two roads, anywhere on the railway
+
+The same list takes platform roads as ends, and then neither the id nor the km is
+needed:
+
+```yaml
+crossovers:
+  - {from: KINGSFORD_2, to: MARLOWE_3, max_speed_kmh: 80}
+```
+
+That is a piece of railway from Kingsford's loop to Marlowe's third road, and
+`--check` names it back before anything runs:
+
+```
+connections
+  X_KINGSFORD_2_MARLOWE_3      KINGSFORD_2 -> MARLOWE_3   km 12.600-29.400  16800 m at 80 km/h
+                               11 block(s), 12 signal(s), 12 route(s) into them
+```
+
+Three things are being decided there, and each of them can bite:
+
+- **the id is derived from the ends**, because that is the only thing anyone
+  wants to look it up by. Give an `id` and yours is used instead.
+- **the length comes off the ground** when it is not given: the two ends are real
+  places with real chainages, and the railway between them is as long as the gap.
+- **it is divided into blocks like any line**, to the block length of the line it
+  leaves. One 17 km block section would hold one train at a time; left like that
+  a connection quietly costs more capacity than it adds, which is worse than
+  failing.
+
+**A road end is a throat, not a road.** Every road at a station shares its throat
+nodes with the others — that sharing is where the points come from — so a
+connection declared from `KINGSFORD_2` leaves the Kingsford throat and a train
+off either Kingsford road can take it. Naming the road says *where* the
+connection is, not *who* may use it. Joining two roads at one station is refused
+for the same reason: they already meet, at the points.
+
+```
+crossover 'X_MARLOWE_2_MARLOWE_3' runs backwards: MARLOWE_2 ends at km 30.600
+and MARLOWE_3 begins at km 29.400, which is behind it. Two roads at one station
+already meet at their throats - the points join them - so a connection between
+them has nothing to connect.
+```
+
+#### Adding one changes which way the trains go
+
+Building a connection was only half of it. The route finder used to take the way
+with the fewest block sections, which is the same answer on a railway with one
+way through and the wrong one the moment there are two: an 80 km/h connection of
+11 blocks beat the 100 km/h main line of 14, so **every train in the timetable
+silently moved onto a road nobody had booked it over**, and the flight went from
+on time to half an hour late.
+
+It now takes the way that takes least *time*, which is the road a planner would
+pick. On depotline with the connection above, no train uses it — it is slower —
+and the comparison table is unchanged to the second from before there was one.
+
 #### Only between lines that run the same way
 
 ```
@@ -1380,6 +1437,12 @@ PyYAML on every shipped file. `.json` scenario files work too.
   impossible, or the check becomes a false alarm nobody reads
 - **a booked platform clash is a conflict, not a fault** — the junction scenario
   is built around one, so it is reported separately and does not warn
+- **a connection between roads is divided into blocks** — one 17 km block would
+  hold one train, and a connection that costs capacity is worse than one that
+  fails
+- **the route finder picks by running time, not by block count** — or an 80 km/h
+  chord of 11 sections beats a 100 km/h main line of 14 and quietly reroutes a
+  whole timetable
 - **a crossover forces a block boundary at each end** — or the connection would
   land mid-block with nowhere for its signal to stand
 - **the running line stays the normal position** through both of its points

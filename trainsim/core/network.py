@@ -11,7 +11,7 @@ schematics are hand-laid, not auto-routed, so the scenario file decides the draw
 and the renderer just maps those coordinates to pixels.
 """
 
-from collections import deque
+import heapq
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
@@ -161,7 +161,7 @@ class Network:
         for start, goal in zip(waypoints, waypoints[1:]):
             if start == goal:
                 continue
-            leg = self._bfs(start, goal)
+            leg = self._quickest(start, goal)
             if leg is None:
                 raise ValueError(
                     "no route from segment %r to %r - check the scenario's "
@@ -170,15 +170,35 @@ class Network:
             path.extend(leg[1:])
         return path
 
-    def _bfs(self, start: str, goal: str) -> Optional[List[str]]:
+    def _quickest(self, start: str, goal: str) -> Optional[List[str]]:
+        """The way round that takes least time, not fewest block sections.
+
+        Counting sections was the same answer on a railway with one way through,
+        and the wrong one the moment there are two. A connection between roads at
+        different stations is one long block or a few, against a dozen on the
+        line it parallels, so fewest-sections routes every train down it however
+        slow it is - the timetable silently moves onto a road nobody booked it
+        over. Least *time* picks the road a planner would.
+        """
         if start not in self.segments:
             raise KeyError("unknown segment %r" % (start,))
         if goal not in self.segments:
             raise KeyError("unknown segment %r" % (goal,))
-        queue = deque([start])
+
+        def cost(segment_id: str) -> float:
+            segment = self.segments[segment_id]
+            speed = segment.max_speed_ms
+            return segment.length_m / speed if speed > 0 else segment.length_m
+
+        best: Dict[str, float] = {start: 0.0}
         came_from: Dict[str, Optional[str]] = {start: None}
+        queue = [(0.0, start)]
+        settled = set()
         while queue:
-            current = queue.popleft()
+            spent, current = heapq.heappop(queue)
+            if current in settled:
+                continue
+            settled.add(current)
             if current == goal:
                 chain = []
                 node: Optional[str] = current
@@ -187,9 +207,11 @@ class Network:
                     node = came_from[node]
                 return list(reversed(chain))
             for nxt in self.successors(current):
-                if nxt not in came_from:
+                through = spent + cost(nxt)
+                if through < best.get(nxt, float("inf")) - 1e-9:
+                    best[nxt] = through
                     came_from[nxt] = current
-                    queue.append(nxt)
+                    heapq.heappush(queue, (through, nxt))
         return None
 
     def platforms_at(self, station_id: str, track: Optional[str] = None) -> List[Platform]:

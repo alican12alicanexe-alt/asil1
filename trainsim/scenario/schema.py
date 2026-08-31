@@ -57,6 +57,10 @@ PLATFORM = frozenset({
     "id", "station", "track", "length_m", "max_speed_kmh", "y_offset",
     "grade_permille",
 })
+#: A connection between two roads. ``id`` is optional - one is derived from the
+#: two ends - and so is ``km``, but only where both ends are platform roads: a
+#: road already ends somewhere, while a running line has to be told where the
+#: connection meets it.
 CROSSOVER = frozenset({
     "id", "from", "to", "km", "length_m", "max_speed_kmh", "bidirectional",
 })

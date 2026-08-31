@@ -32,6 +32,25 @@ class InfrastructureError(ValueError):
     """Raised when an infrastructure description cannot be expanded."""
 
 
+@dataclass(frozen=True)
+class Connection:
+    """A piece of railway built to join two roads, and where it came from.
+
+    Kept so that the connections a scenario asked for can be named back to it
+    before anything runs - a generated id is only useful if you can find out what
+    it was generated from.
+    """
+
+    id: str
+    from_road: str
+    to_road: str
+    km_start: float
+    km_end: float
+    length_m: float
+    max_speed_ms: float
+    between_roads: bool
+
+
 @dataclass
 class Infrastructure:
     """Everything the kernel and the renderer need about the railway."""
@@ -46,6 +65,8 @@ class Infrastructure:
     #: Block -> the blocks it crosses on the level. Symmetric. Empty unless a
     #: junction link has to get past a running line to reach the one it joins.
     crossings: Dict[str, Tuple[str, ...]] = field(default_factory=dict)
+    #: Connections built from the ``crossovers:`` list, in the order declared.
+    connections: Tuple["Connection", ...] = ()
 
     def platform_segment(self, platform_id: str) -> str:
         return self.network.platforms[platform_id].segment
@@ -85,7 +106,8 @@ class _Builder(object):
         self.stations_spec = _index(spec.get("stations"), "stations")
         self.tracks_spec = _index(spec.get("tracks"), "tracks")
         self.platforms_spec = _index(spec.get("platforms"), "platforms")
-        self.crossovers_spec = _index(spec.get("crossovers"), "crossovers")
+        self.crossovers_spec = _index(spec.get("crossovers"), "crossovers",
+                                      name_from=_crossover_name)
         for station_id, station in self.stations_spec.items():
             _check("station %r" % station_id, station, schema.STATION)
         for track_id, track in self.tracks_spec.items():
@@ -181,6 +203,16 @@ class _Builder(object):
 
         return Infrastructure(
             crossings=crossings,
+            connections=tuple(
+                Connection(
+                    id=c["id"], from_road=c["from"], to_road=c["to"],
+                    km_start=self.nodes[self._crossover_ends(c)[0]].km,
+                    km_end=self.nodes[self._crossover_ends(c)[1]].km,
+                    length_m=c["length_m"], max_speed_ms=c["max_speed_ms"],
+                    between_roads=bool(c.get("roads")),
+                )
+                for c in self.crossovers
+            ),
             network=network,
             blocks=self.blocks,
             signals=self.signals,
@@ -221,15 +253,34 @@ class _Builder(object):
         for crossover_id, spec in self.crossovers_spec.items():
             try:
                 from_id, to_id = str(spec["from"]), str(spec["to"])
-                km = float(spec["km"])
             except KeyError as exc:
                 raise InfrastructureError(
                     "crossover %r: missing %s" % (crossover_id, exc))
+
+            # Two kinds of end, and which one this is decides everything that
+            # follows. A running line has to be *told* where the connection
+            # meets it, and the block plan is then bent to put a boundary there.
+            # A platform road already ends where it ends: the throat node it
+            # shares with the other roads at that station, which is where a
+            # connection would leave from in the first place.
+            if from_id in self.platforms_spec or to_id in self.platforms_spec:
+                self._plan_road_crossover(crossover_id, spec, from_id, to_id)
+                continue
+
+            if "km" not in spec:
+                raise InfrastructureError(
+                    "crossover %r joins two running lines, so it needs a km to "
+                    "say where. Only a connection between platform roads can "
+                    "leave that out - a road already ends somewhere."
+                    % (crossover_id,))
+            km = float(spec["km"])
             for track_id in (from_id, to_id):
                 if track_id not in self.tracks_spec:
                     raise InfrastructureError(
-                        "crossover %r: unknown track %r"
-                        % (crossover_id, track_id))
+                        "crossover %r: %r is neither a track nor a platform "
+                        "road. Tracks here: %s. "
+                        % (crossover_id, track_id,
+                           ", ".join(sorted(self.tracks_spec))))
             if from_id == to_id:
                 raise InfrastructureError(
                     "crossover %r: from and to are the same track"
@@ -271,38 +322,149 @@ class _Builder(object):
                     spec.get("max_speed_kmh", 60.0))),
             })
 
+    def _plan_road_crossover(self, crossover_id, spec, from_id, to_id) -> None:
+        """A connection whose ends are platform roads rather than running lines.
+
+        Nothing is reserved in the block plan for these, because nothing needs to
+        be: a platform road already has a node at each end. What is worth being
+        plain about is *which* node. Every road at a station shares its throat
+        nodes with the others - that sharing is where the points come from - so a
+        connection declared from ASHDOWN_1 leaves the Ashdown throat, and a train
+        off any Ashdown road can take it. Naming the road says where the
+        connection is, not who may use it. A road that is to have an approach of
+        its own is a road, not a connection.
+        """
+        for road_id in (from_id, to_id):
+            if road_id not in self.platforms_spec:
+                raise InfrastructureError(
+                    "crossover %r: %r is not a platform road, and the other end "
+                    "is. Both ends have to be the same kind of thing - two "
+                    "running lines at a km, or two roads."
+                    % (crossover_id, road_id))
+        if from_id == to_id:
+            raise InfrastructureError(
+                "crossover %r: from and to are the same road" % (crossover_id,))
+        self.crossovers.append({
+            "id": crossover_id,
+            "from": from_id,
+            "to": to_id,
+            "roads": True,
+            "length_m": (float(spec["length_m"])
+                         if spec.get("length_m") is not None else None),
+            "max_speed_ms": kmh_to_ms(float(spec.get("max_speed_kmh", 60.0))),
+        })
+
+    def _crossover_ends(self, crossover) -> Tuple[str, str]:
+        """The two nodes a connection runs between.
+
+        A road hands over the node it already has: the far end of the road it
+        leaves, the near end of the road it joins. A running line is asked for
+        the block boundary the plan was bent to provide.
+        """
+        from_id, to_id = crossover["from"], crossover["to"]
+        if crossover.get("roads"):
+            leaving, joining = self.blocks.get(from_id), self.blocks.get(to_id)
+            for road_id, block in ((from_id, leaving), (to_id, joining)):
+                if block is None:
+                    raise InfrastructureError(
+                        "crossover %r: road %r was never laid out - is its "
+                        "station on a track that serves it?"
+                        % (crossover["id"], road_id))
+            return leaving.exit_node, joining.entry_node
+
+        start = self._node_id(from_id, crossover["leave_ch"])
+        end = self._node_id(to_id, crossover["join_ch"])
+        for node_id, track_id in ((start, from_id), (end, to_id)):
+            if node_id not in self.nodes:
+                raise InfrastructureError(
+                    "crossover %r: no block boundary at km %.3f on %s - the "
+                    "connection would have nowhere to start or finish"
+                    % (crossover["id"], crossover["km"], track_id))
+        return start, end
+
     def _emit_crossovers(self) -> None:
         """One segment, one block and one signal per connection."""
         for crossover in self.crossovers:
             from_id, to_id = crossover["from"], crossover["to"]
-            start = self._node_id(from_id, crossover["leave_ch"])
-            end = self._node_id(to_id, crossover["join_ch"])
-            for node_id, track_id in ((start, from_id), (end, to_id)):
-                if node_id not in self.nodes:
-                    raise InfrastructureError(
-                        "crossover %r: no block boundary at km %.3f on %s - the "
-                        "connection would have nowhere to start or finish"
-                        % (crossover["id"], crossover["km"], track_id))
+            start, end = self._crossover_ends(crossover)
+            if start == end:
+                raise InfrastructureError(
+                    "crossover %r would start and finish at the same place (%s). "
+                    "Roads at one station already meet at their throat - the "
+                    "points join them, and a connection between them would be a "
+                    "second way of saying so."
+                    % (crossover["id"], start))
 
-            from_y = float(self.tracks_spec[from_id].get("y", 0.0))
-            to_y = float(self.tracks_spec[to_id].get("y", 0.0))
-            seg_id = crossover["id"]
+            if crossover.get("roads"):
+                self._check_road_crossover_runs_forward(crossover, start, end)
+                from_y = self._road_y(from_id)
+                to_y = self._road_y(to_id)
+                if crossover["length_m"] is None:
+                    # Not given: take it from the ground. The two ends are real
+                    # places with real chainages, and the railway between them is
+                    # as long as the gap it has to cover.
+                    crossover["length_m"] = max(
+                        50.0,
+                        abs(self.nodes[end].km - self.nodes[start].km) * 1000.0)
+                crossover["km"] = self.nodes[start].km
+            else:
+                from_y = float(self.tracks_spec[from_id].get("y", 0.0))
+                to_y = float(self.tracks_spec[to_id].get("y", 0.0))
+            track_id = (self._road_track(from_id) if crossover.get("roads")
+                        else from_id)
+            grade = float(self.tracks_spec[track_id].get(
+                "grade_permille", self.defaults["grade_permille"]))
+            self._emit_connection(crossover, start, end, track_id,
+                                  from_y, to_y, grade)
+
+    def _emit_connection(self, crossover, start, end, track_id,
+                         from_y, to_y, grade) -> None:
+        """Lay the connection itself: one block, or a line's worth of them.
+
+        A crossover between parallel lines is one block and always was - it is a
+        few hundred metres of pointwork and there is nowhere inside it for a
+        signal to stand. A connection between roads at different places is a
+        different animal: it is a piece of running line, and a piece of running
+        line 17 km long that is one block section can hold one train at a time.
+        Left like that it does not fail, which is worse - it quietly costs more
+        capacity than it adds, and the flight that used to work stops working.
+
+        So a connection is divided the way a track is, to the block length of the
+        line it leaves, and gets a signal at every boundary like anything else.
+        """
+        conn_id = crossover["id"]
+        total = float(crossover["length_m"])
+        block_length = float(self.tracks_spec[track_id].get(
+            "block_length_m", self.defaults["block_length_m"]))
+        count = max(1, int(round(total / block_length))) if block_length > 0 else 1
+        if not crossover.get("roads"):
+            count = 1                      # pointwork, not a line
+
+        km_a, km_b = self.nodes[start].km, self.nodes[end].km
+        for index in range(count):
+            first, last = index == 0, index == count - 1
+            a, b = index / float(count), (index + 1) / float(count)
+            seg_id = conn_id if count == 1 else "%s_%d" % (conn_id, index + 1)
+            node_a = start if first else self._connection_node(
+                conn_id, index, km_a + (km_b - km_a) * a,
+                from_y + (to_y - from_y) * a)
+            node_b = end if last else self._connection_node(
+                conn_id, index + 1, km_a + (km_b - km_a) * b,
+                from_y + (to_y - from_y) * b)
             segment = Segment(
                 id=seg_id,
-                start_node=start,
-                end_node=end,
-                length_m=crossover["length_m"],
+                start_node=node_a,
+                end_node=node_b,
+                length_m=total / count,
                 max_speed_ms=crossover["max_speed_ms"],
-                track=from_id,
-                km_start=self.nodes[start].km,
-                km_end=self.nodes[end].km,
-                y=from_y,
-                y_end=to_y,
+                track=track_id,
+                km_start=self.nodes[node_a].km,
+                km_end=self.nodes[node_b].km,
+                y=from_y + (to_y - from_y) * a,
+                y_end=from_y + (to_y - from_y) * b,
                 # A crossover lies between two parallel lines at the same
                 # place, so it is on whatever gradient the line it leaves is on.
-                grade_permille=float(
-                    self.tracks_spec[from_id].get(
-                        "grade_permille", self.defaults["grade_permille"])),
+                grade_permille=grade,
             )
             self.segments.append(segment)
             # Registered as a ramp so that a connection reaching across an
@@ -312,14 +474,66 @@ class _Builder(object):
             self.blocks[seg_id] = BlockSection(
                 id=seg_id,
                 segment_ids=(seg_id,),
-                track=from_id,
-                entry_node=start,
-                exit_node=end,
+                track=track_id,
+                entry_node=node_a,
+                exit_node=node_b,
                 length_m=segment.length_m,
                 km_start=segment.km_start,
                 km_end=segment.km_end,
             )
             self.block_of_segment[seg_id] = seg_id
+
+    def _connection_node(self, conn_id: str, index: int, km: float,
+                         y: float) -> str:
+        """A block boundary inside a connection, which belongs to it alone."""
+        node_id = "%s@%d" % (conn_id, index)
+        if node_id not in self.nodes:
+            self.nodes[node_id] = Node(id=node_id, km=km, y=y, kind="block")
+        return node_id
+
+    def _check_road_crossover_runs_forward(self, crossover, start, end) -> None:
+        """Refuse a connection that would run against the way its line is signalled.
+
+        The commonest way to write one by accident is to join two roads at the
+        same station: the road it leaves ends at the far throat and the road it
+        joins begins at the near one, so the connection runs backwards down the
+        railway. Those two roads already meet - the points at each throat are
+        exactly that - and there is nothing for a connection to add.
+        """
+        from_track = self._road_track(crossover["from"])
+        to_track = self._road_track(crossover["to"])
+        from_dir = self.tracks_spec[from_track].get("direction", "up")
+        to_dir = self.tracks_spec[to_track].get("direction", "up")
+        if from_dir != to_dir:
+            raise InfrastructureError(
+                "crossover %r joins %s on %s (%s) to %s on %s (%s), which run in "
+                "opposite directions. A train taking it would be running against "
+                "the way %s is signalled - wrong-line working, which needs "
+                "bidirectional signalling and is not modelled."
+                % (crossover["id"], crossover["from"], from_track, from_dir,
+                   crossover["to"], to_track, to_dir, to_track))
+
+        sign = -1.0 if from_dir == "down" else 1.0
+        ahead = (self.nodes[end].km - self.nodes[start].km) * sign
+        if ahead <= 0:
+            raise InfrastructureError(
+                "crossover %r runs backwards: %s ends at km %.3f and %s begins "
+                "at km %.3f, which is behind it. Two roads at one station "
+                "already meet at their throats - the points join them - so a "
+                "connection between them has nothing to connect. A connection "
+                "goes from a road at one place to a road further along the line."
+                % (crossover["id"], crossover["from"], self.nodes[start].km,
+                   crossover["to"], self.nodes[end].km))
+
+    def _road_track(self, road_id: str) -> str:
+        return str(self.platforms_spec[road_id]["track"])
+
+    def _road_y(self, road_id: str) -> float:
+        """Where a road sits, so a connection can be drawn leaving it."""
+        segment = next((s for s in self.segments if s.id == road_id), None)
+        if segment is not None:
+            return segment.y
+        return float(self.tracks_spec[self._road_track(road_id)].get("y", 0.0))
 
     # -------------------------------------------------------------- crossings
 
@@ -975,14 +1189,31 @@ def _check(where: str, mapping, allowed) -> None:
     schema.check_keys(where, mapping, allowed, error=InfrastructureError)
 
 
-def _index(items, what: str) -> Dict[str, dict]:
-    """Turn a list of ``{id: ..., ...}`` mappings into an ordered id -> spec dict."""
+def _crossover_name(entry: dict) -> str:
+    """The name a connection gets when the scenario does not give it one.
+
+    Named for what it joins, because that is the only thing about it anyone will
+    want to look up in the route table or in an event log: ``X_ASHDOWN_1_KINGSFORD_2``
+    is a connection, and it is obvious which one.
+    """
+    ends = (str(entry.get("from", "?")), str(entry.get("to", "?")))
+    return "X_%s_%s" % ends
+
+
+def _index(items, what: str, name_from=None) -> Dict[str, dict]:
+    """Turn a list of ``{id: ..., ...}`` mappings into an ordered id -> spec dict.
+
+    ``name_from`` makes the id optional: a connection between two roads has an
+    obvious name, and writing it out by hand is a chance to write it wrong.
+    """
     if items is None:
         return {}
     if not isinstance(items, list):
         raise InfrastructureError("%s must be a list" % (what,))
     indexed: Dict[str, dict] = {}
     for entry in items:
+        if isinstance(entry, dict) and "id" not in entry and name_from is not None:
+            entry = dict(entry, id=name_from(entry))
         if not isinstance(entry, dict) or "id" not in entry:
             raise InfrastructureError(
                 "each entry in %s must be a mapping with an 'id'" % (what,)

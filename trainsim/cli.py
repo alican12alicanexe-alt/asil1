@@ -6,7 +6,7 @@ import sys
 
 from .analysis import kpi, propagation
 from .core import signalling
-from .core.units import format_clock, format_delay
+from .core.units import format_clock, format_delay, ms_to_kmh
 from .scenario import checks
 from .scenario.loader import ScenarioError, build_simulation, load_scenario
 
@@ -281,6 +281,40 @@ def _describe(scenario, sim) -> str:
         "",
         _interlocking_report(scenario, sim),
     ]
+    connections = _connection_report(scenario)
+    if connections:
+        lines[-1:-1] = [connections, ""]
+    return "\n".join(lines)
+
+
+def _connection_report(scenario) -> str:
+    """The connections this scenario asked for, and what they were built as.
+
+    Printed before anything runs, because most of them are not named in the file:
+    a connection between two roads is named after the roads, and the name is what
+    will turn up in the route table and the event log.
+    """
+    infra = scenario.infrastructure
+    if not infra.connections:
+        return ""
+    lines = ["connections"]
+    for c in infra.connections:
+        # A connection long enough to be a line is divided into blocks, and those
+        # blocks carry its name with a number on the end. Counted by that prefix,
+        # so the report says what was actually built rather than what was asked
+        # for.
+        mine = [b for b in infra.blocks
+                if b == c.id or b.startswith(c.id + "_")]
+        owned = set(mine)
+        signals = sum(1 for s in infra.signals.values() if s.block_id in owned)
+        routes = sum(1 for r in infra.routes.values() if r.block_id in owned)
+        lines.append(
+            "  %-28s %s -> %s   km %.3f-%.3f  %.0f m at %.0f km/h"
+            % (c.id, c.from_road, c.to_road, c.km_start, c.km_end,
+               c.length_m, ms_to_kmh(c.max_speed_ms)))
+        lines.append(
+            "  %-28s %d block(s), %d signal(s), %d route(s) into them"
+            % ("", len(mine), signals, routes))
     return "\n".join(lines)
 
 
