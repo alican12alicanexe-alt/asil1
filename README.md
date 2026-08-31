@@ -399,7 +399,7 @@ head cannot carry a road number and this one does not pretend to.
 **It changes nothing.** A train is given its path at dispatch and the
 interlocking guarantees the points agree with it, so nothing chooses at the
 junction and nothing needs telling. This is a display of a fact the simulator
-already knew and could not show. Measured: 20 posts on `twoway` carry a second
+already knew and could not show. Measured: 32 posts on `twoway` carry a second
 head and 5 on `depotline`; the outer head lights at 8 places on the booked
 twoway service and 9 on the diverted one — the extra two being `UP@13500` and
 `DN@28000`, a train turned off its own line and put back beyond the
@@ -450,7 +450,7 @@ than it sounds, because two lamps at one spot showing different things is the
 picture of a failed signal. It also fixed the last four places on `twoway` that
 held two, all of them at the crossovers, where a signal for a train arriving
 over the connection had been drawn on the line it came from rather than the
-line it joins. `twoway` draws 104 lamps for 158 signals, `depotline` 49 for 57,
+line it joins. `twoway` draws 118 lamps for 220 signals, `depotline` 49 for 57,
 and no place on either holds more than one.
 
 **Every lamp stands above its line**, whichever way its trains run. Hanging the
@@ -459,16 +459,16 @@ approach from, but on a schematic it just reads as an upside-down signal, and it
 made the same boundary look like two different things depending on which
 direction you were following. One side for everything, and the two directions at
 a plain-line boundary — which are at the same point, unlike a platform's, which
-are at opposite ends of the road — then share that one lamp. 26 lamps on
-`twoway` stand for signals both ways.
+are at opposite ends of the road — then share that one lamp.
 
-Point diamonds moved below the line to make room. They used to be drawn below
-for a facing point and above for a trailing one, so the kind was readable
-without a label, but signals own the space above the line now and that put a
-diamond on top of a lamp at twelve places on `twoway`. Two marks at one spot
-saying different things is worse than losing the side distinction — and it was
-the weaker of the two, since whether a point is facing or trailing is visible in
-the geometry it stands at, while a lamp with a diamond over it is unreadable.
+**Points are not drawn.** They used to get a diamond apiece, coloured by whether
+the interlocking held them and shaped by which way they lay. Signals own the
+space beside the line now, and a diamond next to a lamp reads as part of the
+signal rather than as a separate thing — which is worse than not drawing it,
+because a mark that is misread costs more than a mark that is absent. The points
+are still there, still locked and still reported by `--check` and the event log;
+what they are doing is visible in the roads, since a route set over a point
+lights the road it has been set for.
 
 ### The all-green headway
 
@@ -1360,14 +1360,26 @@ and the down line, and says nothing else:
 
 ```yaml
 crossovers:
-  - {id: XO_WEST, from: UP, to: DN, km: 13.5, length_m: 400, type: scissors}
-  - {id: XO_EAST, from: DN, to: UP, km: 32.0, length_m: 400, type: scissors}
+  - {id: XO_KINGSFORD_W, from: UP, to: DN, km: 9.0,  length_m: 400, type: scissors}
+  - {id: XO_WEST,        from: UP, to: DN, km: 13.5, length_m: 400, type: scissors}
+  - {id: XO_EAST,        from: DN, to: UP, km: 32.0, length_m: 400, type: scissors}
+  - {id: XO_ASHDOWN_E,   from: DN, to: UP, km: 51.0, length_m: 400, type: scissors}
 ```
 
-Everything else falls out of those two lines. The stretch **between** them,
-km 13.5 to km 32.4, gets **a second set of block sections over the same rails**,
-running the other way: `DN_019_R` is the road up the down line where `DN_019` is
-the road down it. Every movement over the pointwork then joins two roads that run
+Everything else falls out of those four lines. The stretch between each
+**neighbouring pair** — km 9.0–13.9, 13.5–32.4 and 32.0–51.4 — gets **a second
+set of block sections over the same rails**, running the other way: `DN_019_R`
+is the road up the down line where `DN_019` is the road down it.
+
+Neighbouring pairs, not first-to-last, and each pair is its own **section**. The
+stretch a train can be worked the other way over is the one between the
+crossover it gets on at and the one it gets off at, and those are neighbours;
+one section for the lot would make a sixty-kilometre railway
+one-direction-at-a-time, which is a working method for a branch and not for
+this. One either side of each station is what gives every platform a road in
+both directions — Kingsford 4, Marlowe 6, Ashdown 4. The two depots are the
+exception, and it is geometry rather than choice: a depot is the end of the
+line, and there is no *beyond it* to put the second connection at. Every movement over the pointwork then joins two roads that run
 the same way, so the rule that a crossover joins lines running the same way is
 not being bent.
 
@@ -1443,10 +1455,10 @@ purpose. Two things police it, and neither is new:
   flat junction is a crossing too, and a train on the other line there does not
   mean this line has changed direction; it means wait, which is what red is for.
 
-  On `twoway` that is 0.74 lamps dark per tick through the booked service, in
-  six different arrangements — Marlowe's reverse-direction platform lamps go out
+  On `twoway` that is 1.81 lamps dark per tick through the booked service, in
+  44 different arrangements — Marlowe's reverse-direction platform lamps go out
   for the 1106 ticks a train is standing on the road and are lit the rest of the
-  time — and 1.75 per tick in 69 arrangements on the diverted run, which is the
+  time — and 2.81 per tick in 160 arrangements on the diverted run, which is the
   down line actually changing hands. `depotline` has no two-way stretch and
   nothing on it is ever dark.
 - **a section worked both ways is worked one way at a time.** Safety is not liveness:
@@ -1463,9 +1475,9 @@ and crosses back at km 32.0.
 
 ```
 service   delay      what happened
-U01-U06   on time    815 ticks each on the down line, thirteen minutes
+U01-U06   on time    840 ticks each on the down line, fourteen minutes
 D01       +35:44     queued at Ashdown for a section it could not have
-D06       +14:35     by then the up flight was through
+D06       +14:44     by then the up flight was through
 ```
 
 Nobody is late by accident there. The diverted direction keeps time because it

@@ -18,16 +18,20 @@
 # line to a down line is a different thing, because a train taking it then runs
 # against the direction that line is usually worked in. Real railways do it -
 # it is what single-line working under a pilotman is - and it is what the two
-# connections at the bottom of this file are for. Neither direction is the
+# connections at the bottom of this file are for - one either side of each
+# station, so every platform has a road both ways. Neither direction is the
 # wrong one: which way the stretch is set is a state of the railway, like which
 # way a point lies.
 #
 # Nothing here declares which stretch is reversible. A line is worked both ways
 # exactly where a train can get onto the opposite line AND off it again, so the
-# stretch is whatever the crossovers bracket - here km 13.5 to km 32.4, which
-# puts Marlowe in the middle of it. That is how a real railway reads too:
+# stretch is whatever the crossovers bracket - and each NEIGHBOURING PAIR of
+# them brackets its own, here km 9.0-13.9, 13.5-32.4 and 32.0-51.4, which puts
+# each of the three stations inside one. That is how a real railway reads too:
 # bidirectional signalling is provided between the crossovers, because between
-# them is the only place it is any use.
+# them is the only place it is any use - and each stretch is its own section,
+# because giving the whole line to one direction at a time is a working method
+# for a branch, not for this.
 #
 # Over that stretch each line gets a second set of block sections laid over the
 # same rails, running the other way, named after the originals with `_R` on the
@@ -115,10 +119,11 @@ platforms:
   - {id: ASHDOWN_DN_2, station: ASHDOWN, track: DN, length_m: 220, max_speed_kmh: 40, y_offset: 0.4}
 
 crossovers:
-  # Two crossovers between the up line and the down line, one each side of
-  # Marlowe. Each is usable in all four ways - a train off either line onto the
-  # other, and back - so these two are what let a train be worked round the far
-  # side of Marlowe on the opposite line and put back on its own beyond.
+  # Four crossovers between the up line and the down line, one either side of
+  # each station. Each is usable in all four ways - a train off either line onto
+  # the other, and back - so these are what let a train be worked round the far
+  # side of a station on the opposite line and put back on its own beyond, and
+  # what gives every platform a road in both directions.
   #
   # Both ends of a connection have to be clear of a platform zone: a zone is one
   # block section from throat to throat, and a connection cannot land in the
@@ -136,8 +141,24 @@ crossovers:
   #             changes lines; what it costs is that two trains cannot be on it
   #             at once.
   #
-  # Scissors at both ends here, so BOTH directions can be diverted. Make either
-  # of them `type: single` and it becomes one hand: with UP -> DN at the west
-  # and DN -> UP at the east, up trains get a diversion and down trains do not.
-  - {id: XO_WEST, from: UP, to: DN, km: 13.5, length_m: 400, max_speed_kmh: 60, type: scissors}
-  - {id: XO_EAST, from: DN, to: UP, km: 32.0, length_m: 400, max_speed_kmh: 60, type: scissors}
+  # Scissors everywhere here, so BOTH directions can be diverted. Make any of
+  # them `type: single` and it becomes one hand: with UP -> DN at the west and
+  # DN -> UP at the east, up trains get a diversion and down trains do not.
+  #
+  # Four of them, one either side of each station, because a platform is only
+  # workable in both directions if a train can get onto that road AND off it
+  # again. Each neighbouring PAIR is its own section, so a train being worked
+  # the other way past Kingsford does not shut the line at Ashdown:
+  #
+  #   9.0 .. 13.9   brackets Kingsford
+  #   13.5 .. 32.4  brackets Marlowe
+  #   32.0 .. 51.4  brackets Ashdown
+  #
+  # The two depots are the exception, and it is geometry rather than choice: a
+  # depot sits at the end of the line, and there is no "beyond it" to put the
+  # second connection at. Nothing can be worked the other way through a place
+  # nothing runs past.
+  - {id: XO_KINGSFORD_W, from: UP, to: DN, km: 9.0,  length_m: 400, max_speed_kmh: 60, type: scissors}
+  - {id: XO_WEST,        from: UP, to: DN, km: 13.5, length_m: 400, max_speed_kmh: 60, type: scissors}
+  - {id: XO_EAST,        from: DN, to: UP, km: 32.0, length_m: 400, max_speed_kmh: 60, type: scissors}
+  - {id: XO_ASHDOWN_E,   from: DN, to: UP, km: 51.0, length_m: 400, max_speed_kmh: 60, type: scissors}

@@ -41,7 +41,6 @@ class TkSchematicView(SchematicView):
         self._lamp_groups = {}
         self._lamp_owner = {}
         self._sharing_lamp = set()
-        self._point_items = {}
         self._train_items = {}
         self._zone_items = {}
         self._static_drawn = False
@@ -202,7 +201,6 @@ class TkSchematicView(SchematicView):
         self._lamp_groups.clear()
         self._lamp_owner.clear()
         self._sharing_lamp.clear()
-        self._point_items.clear()
         layout = self.layout
         infra = self.scenario.infrastructure
         tracks = infra.tracks
@@ -252,9 +250,6 @@ class TkSchematicView(SchematicView):
             self._draw_signal(signal, tracks, signal_x)
 
         self._draw_branch_heads(infra, tracks, signal_x)
-
-        for point in infra.points.values():
-            self._draw_point(point)
 
         self._static_drawn = True
         self._draw_dynamic()
@@ -880,49 +875,6 @@ class TkSchematicView(SchematicView):
                 canvas.itemconfig(entry["main"], fill=inner)
             canvas.itemconfig(entry["lamp"], fill=outer)
 
-    #: Half-extents of a point diamond, along and across the running line.
-    POINT_LONG = 7
-    POINT_SHORT = 3
-
-    @classmethod
-    def _point_shape(cls, x: float, y: float, reverse: bool):
-        """Diamond coords for a point, oriented by the road it is set for.
-
-        Lock and position are two independent facts, and one lamp cannot carry
-        both: a point is locked exactly when a route is set over it, so a scheme
-        that let either win would hide the other almost always. Colour carries
-        the lock; the shape carries the position. Normal lies ALONG the running
-        line, reverse stands ACROSS it towards the road it has been swung to,
-        which is legible at four pixels in a way a third colour is not.
-        """
-        dx, dy = ((cls.POINT_SHORT, cls.POINT_LONG) if reverse
-                  else (cls.POINT_LONG, cls.POINT_SHORT))
-        return (x, y - dy, x + dx, y, x, y + dy, x - dx, y)
-
-    #: How far below its line a point diamond sits.
-    POINT_GAP = 11
-
-    def _draw_point(self, point) -> None:
-        """A point: a diamond at its node, coloured by lock, shaped by position.
-
-        Below the line, always - signals own the space above it now, and a
-        trailing point used to be drawn above, which put a diamond on top of a
-        signal lamp at twelve places on `twoway`. Two marks at one spot saying
-        different things is worse than losing the side distinction, and the
-        distinction was the weaker of the two: whether a point is facing or
-        trailing is visible in the geometry it stands at, while a lamp with a
-        diamond over it is unreadable.
-        """
-        layout = self.layout
-        x = layout.x(point.km)
-        y = layout.y(point.y) + self.POINT_GAP
-        item = self.canvas.create_polygon(
-            *self._point_shape(x, y, False),
-            fill=PALETTE["point_free"], outline="", tags="static",
-        )
-        # The anchor is kept: the shape is rebuilt from it every refresh.
-        self._point_items[point.id] = (item, x, y)
-
     def _draw_ruler(self) -> None:
         layout = self.layout
         base = layout.ruler_y()
@@ -969,21 +921,6 @@ class TkSchematicView(SchematicView):
             else:
                 colour = PALETTE["platform"] if platform else PALETTE["track"]
             self.canvas.itemconfig(item, fill=colour)
-
-        if sim.interlocking is not None:
-            state = sim.interlocking.point_state()
-            for point_id, (item, px, py) in self._point_items.items():
-                info = state.get(point_id, {})
-                # Two independent facts, two channels. Colour is the lock, shape
-                # is the position - a locked point swung to the loop used to show
-                # its lock and say nothing about where it was actually set.
-                self.canvas.coords(
-                    item, *self._point_shape(px, py, bool(info.get("reverse"))))
-                self.canvas.itemconfig(
-                    item,
-                    fill=(PALETTE["point_locked"] if info.get("locked_by")
-                          else PALETTE["point_free"]),
-                )
 
         dark = self._signals_out_of_use()
         for signal_id, item in self._signal_items.items():

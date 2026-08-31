@@ -289,8 +289,7 @@ class _Builder(object):
         meant signalling twice the railway to no purpose, since a train that
         cannot get back off the other direction's road is not going anywhere.
         """
-        spans: Dict[str, List[float]] = {}
-        connections: Dict[str, int] = {}
+        connections: Dict[str, List[Tuple[float, float]]] = {}
         for crossover_id, spec in self.crossovers_spec.items():
             pair = self._opposite_direction_pair(crossover_id, spec)
             if pair is None:
@@ -298,18 +297,28 @@ class _Builder(object):
             km = float(spec["km"])
             length = float(spec.get("length_m", 300.0))
             for track_id in pair:
-                spans.setdefault(track_id, []).extend((km, km + length / 1000.0))
-                connections[track_id] = connections.get(track_id, 0) + 1
-        for track_id, kms in sorted(spans.items()):
-            if connections[track_id] < 2:
+                connections.setdefault(track_id, []).append(
+                    (km, km + length / 1000.0))
+        for track_id, places in sorted(connections.items()):
+            if len(places) < 2:
                 raise InfrastructureError(
                     "track %r has one connection to a line running the other "
                     "way, at km %.3f. One is a way onto the other line and no "
                     "way off it - a train would be left on a road with nothing "
                     "in front of it. Working a line both ways needs a "
                     "connection at each end of the stretch to be worked."
-                    % (track_id, min(kms)))
-            self._lay_twin(track_id, min(kms), max(kms))
+                    % (track_id, places[0][0]))
+            # One span between each neighbouring pair of connections, not one
+            # span from the first to the last. The stretch a train can be worked
+            # the other way over is the stretch between the crossover it gets on
+            # at and the one it gets off at, and those are neighbours - so each
+            # pair is its own SECTION, and a train being worked the other way
+            # past Kingsford does not shut the line at Ashdown. One section for
+            # the lot would make a sixty-kilometre railway one-direction-at-a-
+            # time, which is a working method for a branch, not for this.
+            places.sort()
+            self._lay_twin(track_id, [(low[0], high[1])
+                                      for low, high in zip(places, places[1:])])
 
     def _opposite_direction_pair(self, crossover_id: str,
                          spec: dict) -> Optional[Tuple[str, str]]:
@@ -336,8 +345,14 @@ class _Builder(object):
             return None
         return from_id, to_id
 
-    def _lay_twin(self, track_id: str, low: float, high: float) -> None:
-        """The road back along ``track_id``, over the stretch ``low..high``."""
+    def _lay_twin(self, track_id: str, spans: List[Tuple[float, float]]) -> None:
+        """The road back along ``track_id``, over each of ``spans``.
+
+        One twin track, several sections. The rails are the same rails end to
+        end, so there is one road back along them; but which stretch of it may
+        be given to a train is settled crossover to crossover, so each span gets
+        its own section id.
+        """
         track = self.tracks_spec[track_id]
         mirror_id = "%s_R" % track_id
         if mirror_id in self.tracks_spec:
@@ -352,7 +367,7 @@ class _Builder(object):
         mirror["mirrors"] = track_id
         self.tracks_spec[mirror_id] = mirror
         self.mirror_of[mirror_id] = track_id
-        self.reversible_span[mirror_id] = (low, high)
+        self.reversible_span[mirror_id] = spans
 
     def _on_the_rails(self, track_id: str, chainage: float) -> float:
         """A chainage on a mirror, restated on the track it lies over.
@@ -392,16 +407,22 @@ class _Builder(object):
                 raise InfrastructureError(
                     "track %r is reversible but was never laid out"
                     % (track_id,))
-            if not any(min(b.km_start, b.km_end) >= self.reversible_span[mirror_id][0] - 1e-6
-                       and max(b.km_start, b.km_end) <= self.reversible_span[mirror_id][1] + 1e-6
-                       for b in originals):
-                raise InfrastructureError(
-                    "track %r has no complete block section between km %.3f and "
-                    "%.3f, so there is nothing there to work in both directions"
-                    % ((track_id,) + self.reversible_span[mirror_id]))
-            low, high = self.reversible_span[mirror_id]
-            for block in originals:
-                inside = (min(block.km_start, block.km_end) >= low - 1e-6
+            spans = self.reversible_span[mirror_id]
+            for index, (low, high) in enumerate(spans):
+                if not any(min(b.km_start, b.km_end) >= low - 1e-6
+                           and max(b.km_start, b.km_end) <= high + 1e-6
+                           for b in originals):
+                    raise InfrastructureError(
+                        "track %r has no complete block section between km "
+                        "%.3f and %.3f, so there is nothing there to work in "
+                        "both directions" % (track_id, low, high))
+            done = set()
+            for index, (low, high) in enumerate(spans):
+              section_id = ("%s_%d" % (mirror_id, index + 1) if len(spans) > 1
+                            else mirror_id)
+              for block in originals:
+                inside = (block.id not in done
+                          and min(block.km_start, block.km_end) >= low - 1e-6
                           and max(block.km_start, block.km_end) <= high + 1e-6)
                 if not inside:
                     continue
@@ -473,9 +494,13 @@ class _Builder(object):
                 self.mirror_conflicts.setdefault(mirror_seg, set()).add(block.id)
                 self.mirror_conflicts.setdefault(block.id, set()).add(mirror_seg)
                 # Both copies belong to one section, and the section is what may
-                # only be worked one way at a time.
-                self.direction_sections[block.id] = (mirror_id, "normal")
-                self.direction_sections[mirror_seg] = (mirror_id, "reverse")
+                # only be worked one way at a time. A block in the overlap
+                # between two spans - the crossover's own block, which both
+                # neighbouring pairs contain - goes to the first, so a block is
+                # in exactly one section.
+                done.add(block.id)
+                self.direction_sections[block.id] = (section_id, "normal")
+                self.direction_sections[mirror_seg] = (section_id, "reverse")
 
     # -------------------------------------------------------------- crossovers
 
