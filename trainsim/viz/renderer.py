@@ -73,13 +73,11 @@ PALETTE = {
     # colour asked to say both ends up hiding one of them.
     "point_free": "#6b788a",
     "point_locked": "#5ad2c8",
-    # A route indicator: the mark beside a signal that says WHICH road the route
-    # is set for - a theatre box with the platform number at a station, a
-    # feather at a junction. A feather is unlit for the line ahead and lit for
-    # the connection off it, which is how a driver reads a real one: the
-    # indication is the exception, not the rule.
-    "route_indicator_dark": "#3a434f",
-    "route_indicator_lit": "#e8eef6",
+    # An unlit lamp. A signal with a choice of road ahead has two heads - the
+    # inner one for the line ahead, the outer one for anything diverging from
+    # it - and the head that is not being used is dark rather than red. Dark is
+    # "not this way", which is a different statement from "this way, and stop".
+    "lamp_dark": "#3a434f",
 }
 
 ASPECT_COLOURS = {

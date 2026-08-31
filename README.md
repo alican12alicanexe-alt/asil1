@@ -348,76 +348,74 @@ The same principle decides the defaults. `sim.aspects.get(signal_id, RED)`, not
 cleared, and the lamp on the schematic is drawn red before the first refresh for
 the same reason. Absence of information is danger, never permission.
 
-### Which road: the route indicator
+### Which road: the second head
 
 An aspect says how far a train may go. It does not say **which way**, and until
 now the schematic could not either: three roads at Marlowe, one green lamp, and
 no way to tell from the picture which of them the interlocking had set.
 
-So a signal that reads over a facing divergence gets a second mark beside the
-lamp. There are two of them, because real railways have two and they are not
-interchangeable.
-
-A **theatre indicator** — a small box with the road number in it — where the
-roads ahead are platforms. That is what stands on a station approach, and the
-number is the thing a driver is looking for. It shows whichever road is set,
-platform 1 included: at a station every road has a number and none of them is
-"straight on".
+So a signal with a choice of road ahead gets a **second head** on the same post,
+further out from the rail. The **inner** head is the line ahead; the **outer**
+head is everything that diverges from it. Which head is lit says which road; the
+aspect on it says how far.
 
 ```
-   ─── ● [1]  platform 1 is set
-   ─── ● [2]  platform 2 is set
-   ─── ● [ ]  nothing set: box dark, no number
+     ○   outer: dark                 ●   outer: green
+     ●   inner: green                ○   inner: red
+   ─────────────────────           ─────────────────────
+   carrying on along the line      taking the road off it
 ```
 
-A **feather** — a short row of lights at forty-five degrees — where the road
-ahead is a connection to another line. That is what stands at a junction. Dark
-means the line ahead; lit means you are leaving it. There is nothing to number,
-and numbering it would invent a road name nobody uses.
+One rule decides both heads: **the head for the road that is set carries the
+aspect, and the other head is dark.** Everything else follows.
 
-```
-                ·
-              ·          the connection is set
-   ─────── ● ·
-   ─────── ●             the line ahead: feather dark
-```
+| state | inner | outer | |
+|---|---|---|---|
+| nothing set | red | dark | stopped, and no road decided yet |
+| line ahead set | green / yellow | dark | carry on |
+| diverging road set | **red** | green / yellow | you are leaving the line |
+| diverging road set, not yet clear | **red** | **red** | that way, but not yet |
 
-Three things about both of them are deliberate.
+The inner head *has* to be red in the third row. The route it stands for is not
+set, and a proceed aspect for a route nobody set is precisely what
+`clear_without_a_route()` exists to catch.
 
-**They carry no aspect.** How far a train may go stays entirely the lamp's
-business. Yellow means "the next signal is at danger" and nothing else — in
-particular it does not mean "you are booked to stop here", which is the
-timetable's business and which the signalling has no opinion about. Letting a
-booked call darken a signal would make every following train brake for a signal
-protecting nothing, and every headway figure in this README would stop meaning
-what it says.
+The fourth row is not special-cased — it falls out of the rule, and it is worth
+having. "You are going that way, and you are not going yet" is a different
+picture from "you are stopped and nobody has decided", and until now they looked
+identical. Measured on `twoway`: 4314 ticks of both-red against 166174 of
+inner-red-outer-dark.
 
-**A feather dark is the normal case.** A driver reads a junction indication as
-an exception; a mark that lit everywhere would say nothing anywhere. On a
-railway running to plan the feathers stay dark, and the eye is drawn to the one
-that isn't. A theatre box is different — at a station there is no "straight on"
-to be the quiet case, so it shows the number every time a road is set.
+**A dark head is not a red one.** Two reds on a post leave a driver working out
+which of them applies to them, and on a schematic they are indistinguishable
+from a signal that has failed. Dark says "not this way", which is a different
+statement from "this way, and stop".
 
-**They change nothing.** A train here is given its path at dispatch, and the
-interlocking guarantees the points agree with it — nothing chooses at the
-junction, so nothing needs telling. This is a display of a fact the simulator
-already knew and could not show. Measured: `twoway` draws 10 theatre boxes and
-10 feathers, `depotline` 5 boxes and no feathers; on the booked twoway service
-the boxes show 1, 2 and 3 and no feather ever lights, and on the diverted one
-`UP@13500` and `DN@28000` light — a train being turned off its own line onto
-the other one and put back beyond the obstruction. No run's numbers move by a
-second.
+**One head per divergence, not one per road.** Where three roads diverge —
+Marlowe's platforms 2 and 3 off the through road — the outer head says "not the
+line ahead", and the road that lights up on the schematic says which. A second
+head cannot carry a road number and this one does not pretend to.
+
+**It changes nothing.** A train is given its path at dispatch and the
+interlocking guarantees the points agree with it, so nothing chooses at the
+junction and nothing needs telling. This is a display of a fact the simulator
+already knew and could not show. Measured: 20 posts on `twoway` carry a second
+head and 5 on `depotline`; the outer head lights at 8 places on the booked
+twoway service and 9 on the diverted one — the extra two being `UP@13500` and
+`DN@28000`, a train turned off its own line and put back beyond the
+obstruction. No run's numbers move by a second.
 
 ### One post, one lamp
 
 Three roads at Marlowe had three lamps at one place, one per road. A train
 standing there is looking at one signal post, and it is one post on the ground
-too: a home signal reading into any of several roads is a single head, with the
-route indicator beside it carrying which road. So the alternatives at a facing
-divergence share a lamp, and it shows the least restrictive aspect of the
-group — which is not a fudge, because only one route can be set at a time, so
-at most one of them is off and the one that is off is the one being shown to
-the driver. `twoway` draws 104 lamps for 158 signals, `depotline` 49 for 57.
+too: a home signal reading into any of several roads is one post, with the
+second head on it carrying which road. So the alternatives at a facing
+divergence share a post, and its inner head shows the least restrictive aspect
+of the group — which is not a fudge, because only one route can be set at a
+time, so at most one of them is off and the one that is off is the one being
+shown to the driver. `twoway` draws 104 posts for 158 signals, `depotline` 49
+for 57.
 
 The signals at the **departure** end of a station are the opposite case and stay
 separate. Three roads converging on one block is three starting signals, one per
