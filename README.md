@@ -348,6 +348,49 @@ The same principle decides the defaults. `sim.aspects.get(signal_id, RED)`, not
 cleared, and the lamp on the schematic is drawn red before the first refresh for
 the same reason. Absence of information is danger, never permission.
 
+### Which road: the junction indicator
+
+An aspect says how far a train may go. It does not say **which way**, and until
+now the schematic could not either: three roads at Marlowe, one green lamp, and
+no way to tell from the picture which of them the interlocking had set.
+
+So a signal that reads over a facing divergence gets a second mark — a small
+rhombus beside the lamp, unlit for the road straight ahead and lit for a
+diverging one, with the platform number in it where the roads are numbered:
+
+```
+   ─── ●  ── platform 1 (through road): lamp only, rhombus dark
+   ─── ● ◇2  platform 2 is set: rhombus lit, showing the road
+```
+
+Three things about it are deliberate.
+
+**It carries no aspect.** How far a train may go stays entirely the lamp's
+business. Yellow means "the next signal is at danger" and nothing else — in
+particular it does not mean "you are booked to stop here", which is the
+timetable's business and which the signalling has no opinion about. Letting a
+booked call darken a signal would make every following train brake for a signal
+protecting nothing, and every headway figure in this README would stop meaning
+what it says.
+
+**Unlit is the normal case.** A driver reads an indication as an exception; a
+mark that lit everywhere would say nothing anywhere. On a railway running to
+plan the rhombuses stay dark, and the eye is drawn to the one that isn't.
+
+**It changes nothing.** A train here is given its path at dispatch, and the
+interlocking guarantees the points agree with it — nothing chooses at the
+junction, so nothing needs telling. This is a display of a fact the simulator
+already knew and could not show. Measured: it is drawn 46 times on `twoway` and
+5 on `depotline`, lights at 8 places on the booked twoway service and 9 on the
+diverted one, and no run's numbers move by a second.
+
+The one that only appears on the diverted run is the point: `UP@13500` and
+`DN@28000` light with no number, which is a train being turned off its own line
+onto the wrong one. A connection gets a lit rhombus and no character, because
+that is what a junction indicator on plain line is — there is one way off the
+line here, and a lit indication means you are taking it. Numbering it would be
+inventing a road name nobody uses.
+
 ### The all-green headway
 
 The interval a timetable is written to is not the one at which trains can just

@@ -36,6 +36,7 @@ class TkSchematicView(SchematicView):
         self._single_step = False
         self._block_items = {}
         self._signal_items = {}
+        self._indicator_items = {}
         self._point_items = {}
         self._train_items = {}
         self._zone_items = {}
@@ -193,6 +194,7 @@ class TkSchematicView(SchematicView):
         canvas.delete("static")
         self._block_items.clear()
         self._signal_items.clear()
+        self._indicator_items.clear()
         self._point_items.clear()
         layout = self.layout
         infra = self.scenario.infrastructure
@@ -240,6 +242,8 @@ class TkSchematicView(SchematicView):
         signal_x = self._signal_positions(infra, tracks)
         for signal in infra.signals.values():
             self._draw_signal(signal, tracks, signal_x)
+
+        self._draw_route_indicators(infra, tracks, signal_x)
 
         for point in infra.points.values():
             self._draw_point(point)
@@ -477,6 +481,142 @@ class TkSchematicView(SchematicView):
         )
         self._signal_items[signal.id] = lamp
 
+    #: Half-extents of a junction indicator rhombus, and how far beyond the lamp
+    #: it stands. Drawn small: it is read as present-or-absent long before it is
+    #: read as a shape.
+    INDICATOR_HALF = 4
+    INDICATOR_GAP = 11
+
+    def _junction_groups(self, infra):
+        """Signals that are alternatives to one another, keyed by where they are.
+
+        A train standing at one place, having arrived by one road, may be
+        signalled into any of several roads ahead - that is a facing divergence,
+        and those signals are its alternatives. They share a node and an
+        approach and differ only in the road they read into, so that is the key.
+
+        A group of one is not a divergence: there is one way to go and nothing
+        to indicate. Those get no rhombus, which is the point of the exercise -
+        an indicator that lit everywhere would say nothing anywhere.
+        """
+        groups = {}
+        for signal in infra.signals.values():
+            key = (signal.node_id, signal.track, signal.from_segment)
+            groups.setdefault(key, []).append(signal)
+        return {key: members for key, members in groups.items()
+                if len(members) > 1}
+
+    def _through_signal(self, infra, members, tracks):
+        """The one of a group that reads into the road straight ahead.
+
+        The through road is the one on the line's own alignment - a platform
+        road at y_offset 0, the main road, or the plain line itself where the
+        choice is between carrying on and taking a connection. Everything else
+        is a divergence.
+
+        It is the ROAD's alignment that decides, not the signal's. Where several
+        roads converge on a node the signals of that node are drawn on the
+        approach they apply to, so they all share a y and none of them says
+        anything about where they read to. The block does.
+        """
+        track_y = tracks.get(members[0].track, {}).get("y")
+        if track_y is None:
+            return None
+        for signal in members:
+            block = infra.blocks.get(signal.block_id)
+            if block is None:
+                continue
+            segment = infra.network.segments.get(block.first_segment)
+            if segment is not None and abs(segment.y - float(track_y)) < 1e-6:
+                return signal
+        return None
+
+    @staticmethod
+    def _road_label(infra, block_id: str) -> str:
+        """What the indicator displays for a road, if anything.
+
+        A platform road gets its number, which is what a theatre indicator on a
+        station approach actually shows: MARLOWE_UP_2 is "2", and the same road
+        worked the other way is "1R". Anything else - a connection, the next
+        section of plain line - gets nothing but the lit rhombus, because that
+        is what a junction indicator on plain line is: there is one way off the
+        line here and a lit indication means you are taking it. Numbering it
+        would be inventing a road name nobody uses.
+        """
+        block = infra.blocks.get(block_id)
+        if block is None or block.platform is None:
+            return ""
+        parts = block_id.split("_")
+        for index in range(len(parts) - 1, -1, -1):
+            if parts[index].isdigit():
+                return "".join(parts[index:])
+        return ""
+
+    def _draw_route_indicators(self, infra, tracks, signal_x) -> None:
+        """A rhombus beside each signal that reads over a facing divergence.
+
+        It carries no aspect. How far a train may go is the lamp's business and
+        stays entirely the lamp's business - the indicator says only WHICH road
+        the interlocking has set, which is a fact the schematic could not show
+        at all before: three roads at Marlowe, one green lamp, and no way to
+        tell which of them was set.
+
+        Unlit means the through road, lit means a divergence, and the number in
+        it is the road. That is the way round a real one works, and it means the
+        indicator is quiet on a railway running normally.
+        """
+        if not self.lineside:
+            return
+        layout = self.layout
+        for key, members in self._junction_groups(infra).items():
+            through = self._through_signal(infra, members, tracks)
+            anchor = through or members[0]
+            x = signal_x.get(anchor.id, layout.x(anchor.km))
+            y = layout.y(anchor.y)
+            up = tracks.get(anchor.track, {}).get("direction", "up") == "up"
+            gap = -self.INDICATOR_GAP if up else self.INDICATOR_GAP
+            cy = y + gap
+            half = self.INDICATOR_HALF
+            shape = self.canvas.create_polygon(
+                x, cy - half, x + half, cy, x, cy + half, x - half, cy,
+                fill="", outline=PALETTE["route_indicator_dark"], width=1,
+                tags="static",
+            )
+            text = self.canvas.create_text(
+                x, cy, text="", fill=PALETTE["route_indicator_lit"],
+                font=self.mono_small, tags="static",
+            )
+            self._indicator_items[key] = (
+                shape, text,
+                tuple(signal.id for signal in members),
+                through.id if through is not None else None,
+                {signal.id: self._road_label(infra, signal.block_id)
+                 for signal in members},
+            )
+
+    def _refresh_route_indicators(self) -> None:
+        """Light the rhombus for whichever road the interlocking has set."""
+        interlocking = self.sim.interlocking
+        for entry in self._indicator_items.values():
+            shape, text, signal_ids, through_id, labels = entry
+            shown = None
+            if interlocking is not None:
+                for signal_id in signal_ids:
+                    if (signal_id != through_id
+                            and interlocking.route_set_from(signal_id)):
+                        shown = signal_id
+                        break
+            if shown is None:
+                self.canvas.itemconfig(
+                    shape, fill="",
+                    outline=PALETTE["route_indicator_dark"])
+                self.canvas.itemconfig(text, text="")
+            else:
+                self.canvas.itemconfig(
+                    shape, fill="",
+                    outline=PALETTE["route_indicator_lit"])
+                self.canvas.itemconfig(text, text=labels[shown])
+
     #: Half-extents of a point diamond, along and across the running line.
     POINT_LONG = 7
     POINT_SHORT = 3
@@ -578,6 +718,8 @@ class TkSchematicView(SchematicView):
             aspect = sim.aspects.get(signal_id, "red")
             self.canvas.itemconfig(
                 item, fill=ASPECT_COLOURS.get(aspect, ASPECT_COLOURS["red"]))
+
+        self._refresh_route_indicators()
 
         self._draw_trains()
 
