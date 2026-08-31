@@ -315,6 +315,10 @@ class _Builder(object):
         runs before validation and must not pre-empt its error messages.
         """
         from_id, to_id = str(spec.get("from", "")), str(spec.get("to", ""))
+        if spec.get("type") == "diamond":
+            # Two lines crossing, joined to nothing. Nothing can get onto the
+            # other line here, so nothing about it is worked in both directions.
+            return None
         if from_id in self.platforms_spec or to_id in self.platforms_spec:
             return None
         if from_id not in self.tracks_spec or to_id not in self.tracks_spec:
@@ -480,19 +484,42 @@ class _Builder(object):
         so the chainages are collected here, before the block plan is drawn, and
         the tracks are then divided to fit them.
 
-        Both lines must run the same way. A connection between the up and the
-        down line is a different thing entirely: the train would be running
-        against the direction the down line is signalled for, which needs
-        bidirectional working to be safe and is not modelled. Saying so plainly
-        is better than building something that looks right and is not.
+        Three kinds, chosen with ``type``:
+
+        ``single`` (the default)
+            One diagonal. ``from`` is the road it leaves and ``to`` the road it
+            joins, reading in the direction of increasing km - so ``from: UP,
+            to: DN`` is drawn ``\\`` and ``from: DN, to: UP`` is drawn ``/``.
+            Which hand it is laid in matters: a single crossover takes a train
+            one way across, and the way back needs the other hand somewhere
+            else. That is a real constraint and it is now modelled.
+        ``scissors``
+            Both diagonals over one piece of pointwork, so a train can cross
+            either way at the same place.
+        ``diamond``
+            Not a connection at all: two lines crossing on the level. No train
+            changes lines, and two trains cannot be on it at once.
         """
         self.crossovers: List[dict] = []
+        self.diamonds: List[dict] = []
         for crossover_id, spec in self.crossovers_spec.items():
             try:
                 from_id, to_id = str(spec["from"]), str(spec["to"])
             except KeyError as exc:
                 raise InfrastructureError(
                     "crossover %r: missing %s" % (crossover_id, exc))
+
+            kind = str(spec.get("type", "single"))
+            if kind not in ("single", "scissors", "diamond"):
+                raise InfrastructureError(
+                    "crossover %r: unknown type %r. A connection is 'single' "
+                    "(one diagonal, the default), 'scissors' (both diagonals "
+                    "over one piece of pointwork) or 'diamond' (two lines "
+                    "crossing on the level, joining nothing)."
+                    % (crossover_id, kind))
+            if kind == "diamond":
+                self._plan_diamond(crossover_id, spec, from_id, to_id)
+                continue
 
             # Two kinds of end, and which one this is decides everything that
             # follows. A running line has to be *told* where the connection
@@ -527,10 +554,16 @@ class _Builder(object):
             to_dir = self.tracks_spec[to_id].get("direction", "up")
             if from_dir != to_dir:
                 self._plan_wrong_line_crossover(
-                    crossover_id, spec, from_id, to_id)
+                    crossover_id, spec, from_id, to_id, kind)
                 continue
 
             self._plan_line_crossover(crossover_id, spec, from_id, to_id, km)
+            if kind == "scissors":
+                # The other diagonal, over the same pointwork: the road that was
+                # being joined can now be left, and vice versa.
+                other = "%s_%s_%s" % (crossover_id, to_id, from_id)
+                self._plan_line_crossover(other, spec, to_id, from_id, km)
+                self._same_pointwork((crossover_id, other))
 
     def _plan_line_crossover(self, crossover_id, spec, from_id, to_id,
                              km) -> None:
@@ -576,45 +609,126 @@ class _Builder(object):
             wanted.append(chainage)
 
     def _plan_wrong_line_crossover(self, crossover_id, spec, from_id,
-                                   to_id) -> None:
+                                   to_id, kind) -> None:
         """A crossover between the up line and the down line.
 
-        One piece of pointwork, and four movements over it - which is what a
-        crossover between opposite lines is on the ground, and what it is drawn
-        as on a track diagram. An up train can cross to the down line and an up
-        train already on the down line can cross back; the same for a down train
-        on the up line. None of the four is a movement against the way its road
-        is signalled, because each of them names the road for the direction it
-        is going: ``DN_R`` is the road *up* the down line, laid over the same
-        rails by :meth:`_declare_reversible`.
+        One diagonal is two movements, because a diagonal is a piece of railway
+        and a piece of railway can be traversed either way: an up train crossing
+        from the up line to the down line, and a down train crossing back over
+        the same rails in the other direction. Neither is a movement against the
+        way its road is signalled, because each names the road for the direction
+        it is going - ``DN_R`` is the road *up* the down line, laid over the
+        same rails by :meth:`_declare_reversible`.
 
-        So the scenario writes one connection and gets the pointwork it drew.
-        Writing the four out by hand meant naming the ``_R`` roads in the file,
-        which is an implementation detail of how the wrong line is modelled, and
-        it made it possible to write three of them - a way on with no way back.
+        ``from`` and ``to`` read in the direction of increasing km, so they say
+        which hand the crossover is laid in, and the hand decides who can use
+        it. ``from: UP, to: DN`` takes an up train onto the down line and a down
+        train back off it; the up train's way back needs the other hand further
+        along. That is why a diversion is drawn as a pair - ``\\`` at one end
+        and ``/`` at the other - and it is why ``scissors``, which lays both
+        diagonals at one place, is the other option.
         """
         km = float(spec["km"])
         far = km + float(spec.get("length_m", 300.0)) / 1000.0
-        movements = ((from_id, "%s_R" % to_id), ("%s_R" % to_id, from_id),
-                     (to_id, "%s_R" % from_id), ("%s_R" % from_id, to_id))
+        hands = [(from_id, to_id)]
+        if kind == "scissors":
+            hands.append((to_id, from_id))
         laid = []
-        for leaves, joins in movements:
-            if leaves not in self.tracks_spec or joins not in self.tracks_spec:
-                # Only reachable if _declare_reversible declined to lay a twin,
-                # and it says why in an error of its own.
-                continue
-            # A connection is measured from the end the train leaves by, which
-            # for a road worked downwards is the far end of the pointwork.
-            at = km if self.tracks_spec[leaves].get(
-                "direction", "up") == "up" else far
-            movement_id = "%s_%s_%s" % (crossover_id, leaves, joins)
-            self._plan_line_crossover(movement_id, spec, leaves, joins, at)
-            laid.append(movement_id)
-        # The four are the same pointwork. Two trains cannot be on it at once,
-        # whichever way each of them is going.
-        for movement_id in laid:
+        for near, further in hands:
+            # The diagonal runs from `near` at km to `further` at far. A train
+            # travelling up traverses it that way round; a train travelling down
+            # traverses the same rails the other way, and each takes the road
+            # laid for the direction it is going.
+            for leaves, joins, at in (
+                    (self._road_going_up(near), self._road_going_up(further), km),
+                    (self._road_going_down(further), self._road_going_down(near), far)):
+                if (leaves not in self.tracks_spec
+                        or joins not in self.tracks_spec):
+                    # Only reachable if _declare_reversible declined to lay a
+                    # twin, and it says why in an error of its own.
+                    continue
+                movement_id = "%s_%s_%s" % (crossover_id, leaves, joins)
+                self._plan_line_crossover(movement_id, spec, leaves, joins, at)
+                laid.append(movement_id)
+        self._same_pointwork(laid)
+
+    def _road_going_up(self, track_id: str) -> str:
+        """The road over ``track_id``'s rails that is worked towards higher km."""
+        if self.tracks_spec[track_id].get("direction", "up") == "up":
+            return track_id
+        return "%s_R" % track_id
+
+    def _road_going_down(self, track_id: str) -> str:
+        """The road over ``track_id``'s rails that is worked towards lower km."""
+        if self.tracks_spec[track_id].get("direction", "up") == "down":
+            return track_id
+        return "%s_R" % track_id
+
+    def _same_pointwork(self, movement_ids) -> None:
+        """Declare a set of movements to be the same rails.
+
+        Every movement over one crossover runs over the same points, whichever
+        road it leaves and whichever way it is going, so two trains cannot be on
+        it at once. Crossing blocks are how that is already said here.
+        """
+        movement_ids = list(movement_ids)
+        for movement_id in movement_ids:
             self.mirror_conflicts.setdefault(movement_id, set()).update(
-                other for other in laid if other != movement_id)
+                other for other in movement_ids if other != movement_id)
+
+    def _plan_diamond(self, crossover_id, spec, from_id, to_id) -> None:
+        """Two lines crossing on the level, connected to nothing.
+
+        A diamond joins no roads: no train changes lines there, and there is
+        nothing to lay. What it costs is exclusivity - two trains cannot be on
+        one piece of crossing rail - and that is the whole of what a flat
+        junction costs anywhere else here. So it is recorded and turned into a
+        crossing between the two blocks once the tracks have been laid out and
+        it is known which blocks those are.
+
+        A diamond derived from the drawing already happens: a junction link that
+        ramps across an intervening line picks that line up as a crossing. This
+        is for the case the drawing cannot show - two lines that cross where
+        neither is ramping across the other.
+        """
+        for track_id in (from_id, to_id):
+            if track_id not in self.tracks_spec:
+                raise InfrastructureError(
+                    "diamond %r: %r is not a track. A diamond is two running "
+                    "lines crossing on the level, so both ends have to be "
+                    "tracks. Tracks here: %s."
+                    % (crossover_id, track_id, ", ".join(sorted(self.tracks_spec))))
+        if from_id == to_id:
+            raise InfrastructureError(
+                "diamond %r: a line cannot cross itself" % (crossover_id,))
+        if "km" not in spec:
+            raise InfrastructureError(
+                "diamond %r needs a km to say where the two lines cross"
+                % (crossover_id,))
+        self.diamonds.append({
+            "id": crossover_id,
+            "from": from_id,
+            "to": to_id,
+            "km": float(spec["km"]),
+        })
+
+    def _emit_diamonds(self, network: Network) -> Dict[str, set]:
+        """Turn each diamond into a crossing between the blocks that meet there."""
+        crossings: Dict[str, set] = {}
+        for diamond in self.diamonds:
+            blocks = []
+            for track_id in (diamond["from"], diamond["to"]):
+                block_id = self._block_on_track_at(network, track_id,
+                                                   diamond["km"])
+                if block_id is None:
+                    raise InfrastructureError(
+                        "diamond %r is at km %.3f, and %s has no block there "
+                        "for it to conflict with"
+                        % (diamond["id"], diamond["km"], track_id))
+                blocks.append(block_id)
+            crossings.setdefault(blocks[0], set()).add(blocks[1])
+            crossings.setdefault(blocks[1], set()).add(blocks[0])
+        return crossings
 
     def _plan_road_crossover(self, crossover_id, spec, from_id, to_id) -> None:
         """A connection whose ends are platform roads rather than running lines.
@@ -872,6 +986,8 @@ class _Builder(object):
                 crossings.setdefault(segment_id, set()).add(crossed)
                 crossings.setdefault(crossed, set()).add(segment_id)
         for block_id, others in self.mirror_conflicts.items():
+            crossings.setdefault(block_id, set()).update(others)
+        for block_id, others in self._emit_diamonds(network).items():
             crossings.setdefault(block_id, set()).update(others)
         return {block: tuple(sorted(others))
                 for block, others in crossings.items()}

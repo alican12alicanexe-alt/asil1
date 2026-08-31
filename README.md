@@ -1237,19 +1237,50 @@ and the down line, and says nothing else:
 
 ```yaml
 crossovers:
-  - {id: XO_WEST, from: UP, to: DN, km: 13.5, length_m: 400}
-  - {id: XO_EAST, from: UP, to: DN, km: 32.0, length_m: 400}
+  - {id: XO_WEST, from: UP, to: DN, km: 13.5, length_m: 400, type: scissors}
+  - {id: XO_EAST, from: DN, to: UP, km: 32.0, length_m: 400, type: scissors}
 ```
 
-Everything else falls out of those two lines. Each crossover becomes **four
-movements over one piece of pointwork** — an up train onto the down line and
-back, a down train onto the up line and back — which is what a crossover between
-opposite lines is on the ground and what it is drawn as on a track diagram. And
-the stretch **between** them, km 13.5 to km 32.4, gets **a second set of block
-sections over the same rails**, running the other way: `DN_019_R` is the road up
-the down line where `DN_019` is the road down it. Each movement then joins two
-roads that run the same way, so the rule that a crossover joins lines running the
-same way is not being bent.
+Everything else falls out of those two lines. The stretch **between** them,
+km 13.5 to km 32.4, gets **a second set of block sections over the same rails**,
+running the other way: `DN_019_R` is the road up the down line where `DN_019` is
+the road down it. Every movement over the pointwork then joins two roads that run
+the same way, so the rule that a crossover joins lines running the same way is
+not being bent.
+
+`type` picks what is laid, and it is not decoration:
+
+| type | what it is | movements |
+|------|-----------|-----------|
+| `single` (default) | one diagonal. `from` and `to` read in the direction of increasing km, so `UP → DN` is drawn `\` and `DN → UP` is drawn `/` | 2 — the diagonal traversed each way |
+| `scissors` | both diagonals over one piece of pointwork | 4 |
+| `diamond` | two lines crossing on the level, joined to nothing | 0 |
+
+A diagonal is a piece of railway, so it is traversed both ways: `UP → DN` takes
+an up train onto the down line **and** a down train back off it. What it does not
+do is take an up train back, which needs the other hand further along — which is
+why a diversion is drawn as a `\` at one end and a `/` at the other:
+
+```
+UP  ------------------\-----------------------------/-------------
+                       \                           /
+DN  --------------------\-------------------------/--------------
+```
+
+That pair diverts up trains. Down trains need the opposite pair, or `scissors`,
+which is what `twoway` uses so that both directions can be worked round Marlowe.
+A `diamond` lays nothing at all: no train changes lines there, and all it costs
+is that two trains cannot be on it at once — which is the whole cost of a flat
+junction, and is already how one is policed here.
+
+One consequence of the same rails carrying two roads: a path finder that only
+follows nodes will arrive at a shared node going up and leave it going down,
+which on the ground is a train changing ends in the middle of a junction — and
+it will do it in preference to a longer legitimate way round. Nothing else in
+the simulator models a reversal, so `find_path` refuses one: a train that
+arrives travelling towards higher chainage leaves travelling towards higher
+chainage. Without that rule the hand of a crossover made no difference, because
+every wrong way round was reachable by turning about at a point.
 
 Where the reversible stretch is is not declared, because it is not a free
 choice: a line is worked both ways exactly where a train can get onto the

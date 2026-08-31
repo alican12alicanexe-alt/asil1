@@ -170,6 +170,31 @@ class Network:
             path.extend(leg[1:])
         return path
 
+    def _reverses(self, here: str, nxt: str) -> bool:
+        """Whether continuing from ``here`` onto ``nxt`` turns the train round.
+
+        Where a stretch is worked in both directions the same rails carry two
+        roads, one each way, and they share their nodes. A path finder that only
+        follows nodes will happily arrive at one of those nodes going up and
+        leave it going down - which on the ground is a train changing ends in
+        the middle of a junction, and it will do it in preference to a longer
+        legitimate way round. Nothing else in the simulator models a reversal,
+        so the path finder must not invent one: a train that arrives travelling
+        towards higher chainage leaves travelling towards higher chainage.
+        """
+        one = self._sense(here)
+        two = self._sense(nxt)
+        return bool(one) and bool(two) and one != two
+
+    def _sense(self, segment_id: str) -> int:
+        """``1`` for a segment worked towards higher km, ``-1`` for lower."""
+        segment = self.segments[segment_id]
+        if segment.km_end > segment.km_start:
+            return 1
+        if segment.km_end < segment.km_start:
+            return -1
+        return 0
+
     def _quickest(self, start: str, goal: str) -> Optional[List[str]]:
         """The way round that takes least time, not fewest block sections.
 
@@ -207,6 +232,8 @@ class Network:
                     node = came_from[node]
                 return list(reversed(chain))
             for nxt in self.successors(current):
+                if self._reverses(current, nxt):
+                    continue
                 through = spent + cost(nxt)
                 if through < best.get(nxt, float("inf")) - 1e-9:
                     best[nxt] = through

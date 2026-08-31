@@ -121,5 +121,21 @@ crossovers:
   # Both ends of a connection have to be clear of a platform zone: a zone is one
   # block section from throat to throat, and a connection cannot land in the
   # middle of one - there is no boundary there for it to join at.
-  - {id: XO_WEST, from: UP, to: DN, km: 13.5, length_m: 400, max_speed_kmh: 60}
-  - {id: XO_EAST, from: UP, to: DN, km: 32.0, length_m: 400, max_speed_kmh: 60}
+  # `type` picks the pointwork:
+  #
+  #   single    one diagonal. `from` and `to` read in the direction of
+  #             increasing km, so UP -> DN is drawn \ and DN -> UP is drawn /.
+  #             The hand matters: a single crossover takes a train one way
+  #             across and the way back needs the other hand somewhere else,
+  #             which is why a diversion is drawn as a \ ... / pair.
+  #   scissors  both diagonals over one piece of pointwork, so a train can
+  #             cross either way at the same place.
+  #   diamond   two lines crossing on the level, joining nothing. No train
+  #             changes lines; what it costs is that two trains cannot be on it
+  #             at once.
+  #
+  # Scissors at both ends here, so BOTH directions can be diverted. Make either
+  # of them `type: single` and it becomes one hand: with UP -> DN at the west
+  # and DN -> UP at the east, up trains get a diversion and down trains do not.
+  - {id: XO_WEST, from: UP, to: DN, km: 13.5, length_m: 400, max_speed_kmh: 60, type: scissors}
+  - {id: XO_EAST, from: DN, to: UP, km: 32.0, length_m: 400, max_speed_kmh: 60, type: scissors}

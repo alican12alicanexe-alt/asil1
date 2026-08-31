@@ -63,6 +63,7 @@ PLATFORM = frozenset({
 #: connection meets it.
 CROSSOVER = frozenset({
     "id", "from", "to", "km", "length_m", "max_speed_kmh", "bidirectional",
+    "type",
 })
 
 #: ``timetable.yaml``

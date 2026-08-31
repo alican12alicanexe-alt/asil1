@@ -23,7 +23,9 @@
 # A crossover joins two lines that run the same way. An up-to-down connection is
 # a different thing: a train taking it runs against the way that line is
 # signalled. Railways do it anyway when something is in the way, and here the
-# infrastructure draws two of them, one each side of Marlowe. The stretch between
+# infrastructure draws two crossovers, one each side of Marlowe, each of them a
+# scissors so that either direction can be diverted (a `single` lays one
+# diagonal, and its hand decides who can use it). The stretch between
 # them - the only stretch a train can get onto the wrong line and off it again -
 # gets a second set of block sections over the same rails running the other way:
 # DN_012_R is the road up the down line where DN_012 is the road down it.
