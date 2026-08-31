@@ -668,39 +668,55 @@ class TkSchematicView(SchematicView):
     TWO_WAY_MAST = 9
 
     def _signals_out_of_use(self):
-        """The signals for the direction a two-way stretch is NOT being worked.
+        """The signals nothing can be approaching, because the other direction
+        has the rails.
 
-        A stretch worked in both directions is worked one direction at a time,
-        so at any moment half the lamps on it are lamps nothing can be
-        approaching. They are drawn - a signal that exists is on the ground
-        whether or not it is in use, and hiding it hides the layout - but they
-        are drawn DARK.
+        A stretch worked both ways carries two blocks over one set of rails, one
+        each way. While a train is on one of them, or a route is set into it,
+        the other is a block nothing can enter - so its signal is a lamp nothing
+        can be approaching, and it is drawn DARK.
 
-        Dark is the same word it is on a second head: not this way. A driver
-        does not have to work out which of two lamps at a boundary applies to
-        them, because only one of them is lit; and the stretch's direction is
-        readable at a glance, from which line's signals are alight.
+        Dark is the same word it is on a second head: *not this way*. Nobody has
+        to work out which of two lamps applies to them, because only one of them
+        is lit.
 
-        A section nobody is using rests in its normal direction. It is
-        available to either, and lighting neither would say the railway had
-        stopped rather than that nothing is on it.
+        Asked of the BLOCK, not of the section. A section here is nineteen
+        kilometres; asking it would mean a train being worked the other way past
+        Kingsford decided what Marlowe's platforms were for, and that is not
+        true - a platform road is available in either direction until something
+        is actually on it or booked over it. The station lamps stay lit both
+        ways, which is what they are: two directions that both work, waiting to
+        see which one is asked for.
+
+        Only a twin counts, never any crossing. A diamond at a flat junction is
+        a crossing too, and a train on the other line there does not mean this
+        line has changed direction - it means wait, which is what red is for.
         """
         sim = self.sim
         interlocking = sim.interlocking
+        if interlocking is None:
+            return set()
         infra = self.scenario.infrastructure
-        in_force = {}
+        sections = infra.direction_sections
+        taken = {}
         dark = set()
         for signal in infra.signals.values():
-            here = self._two_way_section(signal)
+            here = sections.get(signal.block_id)
             if here is None:
                 continue
-            section, way = here
-            if section not in in_force:
-                working = None
-                if interlocking is not None:
-                    working = interlocking.section_direction(section, sim)
-                in_force[section] = working or "normal"
-            if way != in_force[section]:
+            if signal.block_id not in taken:
+                section, way = here
+                busy = False
+                for other in infra.crossings.get(signal.block_id, ()):
+                    there = sections.get(other)
+                    if (there is None or there[0] != section
+                            or there[1] == way):
+                        continue
+                    if interlocking.block_is_committed(other, sim):
+                        busy = True
+                        break
+                taken[signal.block_id] = busy
+            if taken[signal.block_id]:
                 dark.add(signal.id)
         return dark
 

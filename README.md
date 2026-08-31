@@ -1429,14 +1429,26 @@ purpose. Two things police it, and neither is new:
   is on the ground whether or not it is in use and hiding it hides the layout —
   and they are drawn **dark**. That is the same word it is on a second head:
   *not this way*. Nobody has to work out which of two lamps applies to them,
-  because only one is lit, and which way the stretch is set is readable at a
-  glance from which lamps are alight. Where the two directions' signals stand at
-  the same point they share a lamp and the sharing does the same job: it is dark
-  only when both are. On `twoway` 8 of 104 lamps are dark through the booked
-  service — the reverse-direction starters at the platforms in the two-way
-  stretch — and the diverted run passes through three different sets of them,
-  averaging 11. `depotline` has no two-way stretch and nothing on it is ever
-  dark.
+  because only one is lit. Where the two directions' signals stand at the same
+  point they share a lamp and the sharing does the same job: it is dark only
+  when both are.
+
+  It is asked of the **block**, not of the section. A section here is nineteen
+  kilometres, so asking the section would mean a train being worked the other
+  way past Kingsford had settled what Marlowe's platforms were for — and it
+  hasn't. A platform road is available in either direction until something is
+  actually on it or booked over it, so a station's lamps stay lit both ways,
+  which is exactly what they are: two directions that both work, waiting to see
+  which is asked for. Only a *twin* counts, never any crossing — a diamond at a
+  flat junction is a crossing too, and a train on the other line there does not
+  mean this line has changed direction; it means wait, which is what red is for.
+
+  On `twoway` that is 0.74 lamps dark per tick through the booked service, in
+  six different arrangements — Marlowe's reverse-direction platform lamps go out
+  for the 1106 ticks a train is standing on the road and are lit the rest of the
+  time — and 1.75 per tick in 69 arrangements on the diverted run, which is the
+  down line actually changing hands. `depotline` has no two-way stretch and
+  nothing on it is ever dark.
 - **a section worked both ways is worked one way at a time.** Safety is not liveness:
   admit a train at each end and they meet in the middle, each holding what the
   other needs, and neither can be backed out. Every railway that works a section

@@ -370,6 +370,19 @@ class Interlocking(object):
                             % (section, other, ", ".join(sorted(occupants))))
         return None
 
+    def block_is_committed(self, block_id: str, sim) -> bool:
+        """Whether a block is held by a route set into it, or occupied.
+
+        The two things that mean these rails are spoken for. Held *as its own
+        block*, not as a crossing: every route over a stretch worked both ways
+        names the block underneath it as a crossing, so the general question
+        would have every train read as a movement the other way over the same
+        rails.
+        """
+        if self._block_set_for(block_id) is not None:
+            return True
+        return bool(sim.occupancy.trains_in(block_id))
+
     def section_direction(self, section: str, sim) -> Optional[str]:
         """Which way a section worked in both directions is being worked now.
 
