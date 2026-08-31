@@ -380,13 +380,13 @@ plan the rhombuses stay dark, and the eye is drawn to the one that isn't.
 **It changes nothing.** A train here is given its path at dispatch, and the
 interlocking guarantees the points agree with it — nothing chooses at the
 junction, so nothing needs telling. This is a display of a fact the simulator
-already knew and could not show. Measured: it is drawn 46 times on `twoway` and
+already knew and could not show. Measured: it is drawn 20 times on `twoway` and
 5 on `depotline`, lights at 8 places on the booked twoway service and 9 on the
 diverted one, and no run's numbers move by a second.
 
 The one that only appears on the diverted run is the point: `UP@13500` and
 `DN@28000` light with no number, which is a train being turned off its own line
-onto the wrong one. A connection gets a lit rhombus and no character, because
+onto the other one. A connection gets a lit rhombus and no character, because
 that is what a junction indicator on plain line is — there is one way off the
 line here, and a lit indication means you are taking it. Numbering it would be
 inventing a road name nobody uses.
@@ -663,10 +663,11 @@ What it is worth, on the flight booked at intervals it cannot keep — mean dela
 Before the change, moving block at a 60 s booking was 104.9 s late; it is now
 15.8 s. Nothing in `MovingBlock` moved.
 
-The relaxation is safe here because a track has a direction and the route table
-offers no wrong-line moves, so anything already in the block ahead is running the
-same way. A bidirectional single line would need an opposing-move check before
-the same relaxation could be allowed.
+The relaxation is safe here because every road has a direction and no route runs
+against it — the two directions of a stretch signalled both ways are two roads,
+not one road used backwards — so anything already in the block ahead is running
+the same way. Opposing moves are kept apart a section at a time instead, by the
+crossings and the direction lock.
 
 #### Seeing it: two trains in one block
 
@@ -1265,7 +1266,7 @@ already meet at their throats - the points join them - so a connection between
 them has nothing to connect.
 ```
 
-#### Wrong-line working, without teaching trains to run backwards
+#### Working a line in both directions, without teaching trains to run backwards
 
 `scenarios/twoway` is depotline's sixty kilometres with a line each way, and it
 exists for the move a crossover between an up line and a down line is for: when
@@ -1336,19 +1337,21 @@ purpose. Two things police it, and neither is new:
 
 - **each twin block crosses the block underneath it.** Crossing blocks already
   meant something — it is how a flat junction is policed — so the interlocking
-  will not set a route over the wrong line while anything holds or occupies the
-  right one. The kernel now also reports a violation if two trains are ever in a
+  will not set a route over one direction's road while anything holds or occupies
+  the other's. The kernel now also reports a violation if two trains are ever in a
   crossing pair at once, under every signalling system: no separation model makes
   it safe to run a train up a line another train is coming down.
-- **the same rails carry two sets of signals.** Each road has its own signals
-  at the same block boundaries, drawn on opposite sides of the rail — which is
-  how a bidirectional line is drawn, and falls out of the twin's direction being
-  reversed. Two identical lamps facing each other at one chainage read as a
-  fault rather than as a signal and its wrong-line counterpart, so the wrong-line
-  one is drawn smaller and on a shorter mast: 4 px against 6, 5.6 px off the
-  rail against 9. On `twoway` that is 26 places, all of them inside the
-  reversible stretch and nowhere else, which is why only the one section between
-  Kingsford and Marlowe looked doubled.
+- **the two directions share a lamp.** Each road has its own signals at the
+  same block boundaries, and drawing both put two lamps at one chainage facing
+  each other, which reads as a fault rather than as a pair. Neither is the
+  *wrong* one — a line signalled in both directions is signalled in both
+  directions, and which way it is set is a state of the railway, the same kind
+  of fact as which way a point lies. There is only ever one answer to show,
+  because the section is worked one direction at a time, so the pair share a
+  lamp and it stands on the side of the direction in force. The side is the
+  indication. On `twoway` that turns 158 signals into 112 lamps, and it is why
+  only the section between Kingsford and Marlowe looked doubled: that is the
+  only station-to-station run inside the two-way stretch.
 - **a section worked both ways is worked one way at a time.** Safety is not liveness:
   admit a train at each end and they meet in the middle, each holding what the
   other needs, and neither can be backed out. Every railway that works a section
@@ -1363,7 +1366,7 @@ and crosses back at km 32.0.
 
 ```
 service   delay      what happened
-U01-U06   on time    815 ticks each on the wrong line, thirteen minutes
+U01-U06   on time    815 ticks each on the down line, thirteen minutes
 D01       +35:44     queued at Ashdown for a section it could not have
 D06       +14:35     by then the up flight was through
 ```
@@ -1389,20 +1392,16 @@ It now takes the way that takes least *time*, which is the road a planner would
 pick. On depotline with the connection above, no train uses it — it is slower —
 and the comparison table is unchanged to the second from before there was one.
 
-#### Only between lines that run the same way
+#### Between lines that run the same way, and between lines that don't
 
-```
-crossover 'BAD' connects UF (up) to DN (down), which run in opposite
-directions. A train taking it would be running against the way DN is
-signalled - that is wrong-line working, and it needs bidirectional
-signalling, which is not modelled.
-```
-
-Up-to-down connections are a different thing. The train would be running against
-the direction the down line is signalled for, which needs bidirectional working
-to be safe. Refusing it is better than building something that draws correctly
-and is not a railway. Slow-to-fast, fast-to-slow, and any other same-direction
-pair all work.
+A slow-to-fast or fast-to-slow crossover joins two roads worked the same way,
+and one declaration is one movement. A crossover between the up line and the
+down line is a different animal: it is what makes the stretch between two of
+them signalled in both directions, and the builder expands it into the
+movements that stretch needs (see [above](#working-a-line-in-both-directions-without-teaching-trains-to-run-backwards)).
+It used to be refused outright, on the grounds that a train taking it would be
+running against the way the other line is signalled — which is true, and is
+exactly the thing that turned out to be worth building rather than refusing.
 
 #### What it is for
 
@@ -1615,8 +1614,8 @@ PyYAML on every shipped file. `.json` scenario files work too.
 - **a crossover forces a block boundary at each end** — or the connection would
   land mid-block with nowhere for its signal to stand
 - **the running line stays the normal position** through both of its points
-- **a crossover between opposite-running lines is refused** — with the reason,
-  because it is wrong-line working and not a crossover at all
+- **a crossover between opposite-running lines builds the two-way stretch** —
+  the twin roads, the crossings that police them, and the section direction lock
 - **the route finder uses a crossover without being told to** — no timetable
   names one; a slow-line platform to a fast-line platform simply routes that way
 - **and the trains that do not need it never touch it**

@@ -18,7 +18,7 @@
 # flights are now sharing eighteen kilometres of railway, in opposite directions,
 # with nothing but the interlocking between them.
 #
-# What holds them apart is the crossing declaration. Each wrong-line block
+# What holds them apart is the crossing declaration. Each reverse-direction block
 # crosses the block underneath it, so a route up the down line cannot be set
 # while a down train holds or occupies any of it, and a down train cannot be
 # signalled into a section a diverted up train is standing in. It is the same
@@ -30,7 +30,7 @@
 # slow, and it should be. Read the delays against scenario.yaml's.
 
 name: twoway (Marlowe up roads closed)
-description: "twoway with the up services diverted over the down line round Marlowe - wrong-line working, policed by the interlocking."
+description: "twoway with the up services diverted over the down line round Marlowe - both directions over one pair of rails, policed by the interlocking."
 
 infrastructure: infrastructure.yaml
 timetable: timetable-blocked.yaml

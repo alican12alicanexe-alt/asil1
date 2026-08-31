@@ -76,7 +76,7 @@ def _by_direction(network, legs) -> Dict[int, List[str]]:
     line worked both ways from sprouting a set of points at every block boundary.
 
     Direction is read off the schematic chainage rather than declared, so it
-    holds for a crossover landing on the wrong line as much as for plain track:
+    holds for a crossover landing on the other direction's road as much as for plain track:
     what matters is which way a train on that road would be travelling here.
     """
     groups: Dict[int, List[str]] = {}

@@ -187,7 +187,7 @@ class _Builder(object):
             self._build_track(track_id)
 
         # The twin road over each reversible line, before the connections that
-        # reach it: a crossover onto the wrong line joins one of these blocks.
+        # reach it: a crossover onto the other direction's road joins one of these blocks.
         self._emit_mirrors()
         self._emit_crossovers()
         self._link_successors()
@@ -217,8 +217,8 @@ class _Builder(object):
                 # The line whose rails this one is laid over, where it is the
                 # road back along a stretch worked both ways. The schematic
                 # needs it: two roads over one rail draw two sets of signals in
-                # the same place, and which set is the wrong-line one has to be
-                # legible or the pair reads as a fault.
+                # the same place, and the view has to know they are two
+                # directions of one rail rather than two separate roads.
                 "mirrors": t.get("mirrors"),
             }
             for tid, t in self.tracks_spec.items()
@@ -269,7 +269,7 @@ class _Builder(object):
         That is modelled as a second set of blocks laid over the same alignment,
         running the other way, each of them declared to *cross* the one beneath
         it. Crossing blocks already mean something to the interlocking - it is
-        how a flat junction is policed - so a route over the wrong line is
+        how a flat junction is policed - so a route over the other direction's road is
         refused while anything holds or occupies the right one, and a head-on
         movement cannot be set up. Nothing in the kernel, the signalling or the
         driver has to learn about direction at all. The alternative was to teach
@@ -287,12 +287,12 @@ class _Builder(object):
         them. Declaring it separately meant saying the same thing twice, in two
         places that could disagree; making every line reversible end to end
         meant signalling twice the railway to no purpose, since a train that
-        cannot get back off the wrong line is not going anywhere.
+        cannot get back off the other direction's road is not going anywhere.
         """
         spans: Dict[str, List[float]] = {}
         connections: Dict[str, int] = {}
         for crossover_id, spec in self.crossovers_spec.items():
-            pair = self._wrong_line_pair(crossover_id, spec)
+            pair = self._opposite_direction_pair(crossover_id, spec)
             if pair is None:
                 continue
             km = float(spec["km"])
@@ -304,14 +304,14 @@ class _Builder(object):
             if connections[track_id] < 2:
                 raise InfrastructureError(
                     "track %r has one connection to a line running the other "
-                    "way, at km %.3f. One is a way onto the wrong line and no "
+                    "way, at km %.3f. One is a way onto the other direction's road and no "
                     "way off it - a train would be left facing the wrong "
                     "direction with nothing in front of it. Wrong-line working "
                     "needs a connection at each end of the stretch to be worked."
                     % (track_id, min(kms)))
             self._lay_twin(track_id, min(kms), max(kms))
 
-    def _wrong_line_pair(self, crossover_id: str,
+    def _opposite_direction_pair(self, crossover_id: str,
                          spec: dict) -> Optional[Tuple[str, str]]:
         """The two tracks of a connection between lines running opposite ways.
 
@@ -443,7 +443,7 @@ class _Builder(object):
                 self.block_of_segment[mirror_seg] = mirror_seg
                 if source.platform is not None:
                     # A platform road worked the other way is still a platform
-                    # road: a train diverted onto the wrong line can call at it,
+                    # road: a train diverted onto the other direction's road can call at it,
                     # and the timetable has to be able to say so. It is NOT added
                     # to the station's list of roads - the station has the roads
                     # it has, and this is one of them being used backwards, not a
@@ -567,7 +567,7 @@ class _Builder(object):
             from_dir = self.tracks_spec[from_id].get("direction", "up")
             to_dir = self.tracks_spec[to_id].get("direction", "up")
             if from_dir != to_dir:
-                self._plan_wrong_line_crossover(
+                self._plan_two_way_crossover(
                     crossover_id, spec, from_id, to_id, kind)
                 continue
 
@@ -622,7 +622,7 @@ class _Builder(object):
         if not any(abs(chainage - already) < 1e-6 for already in wanted):
             wanted.append(chainage)
 
-    def _plan_wrong_line_crossover(self, crossover_id, spec, from_id,
+    def _plan_two_way_crossover(self, crossover_id, spec, from_id,
                                    to_id, kind) -> None:
         """A crossover between the up line and the down line.
 
@@ -932,7 +932,7 @@ class _Builder(object):
             raise InfrastructureError(
                 "crossover %r joins %s on %s (%s) to %s on %s (%s), which run in "
                 "opposite directions. A train taking it would be running against "
-                "the way %s is signalled - wrong-line working, which needs "
+                "the way %s is signalled - working a line in both directions, which needs "
                 "bidirectional signalling and is not modelled."
                 % (crossover["id"], crossover["from"], from_track, from_dir,
                    crossover["to"], to_track, to_dir, to_track))
@@ -1020,9 +1020,9 @@ class _Builder(object):
     # ------------------------------------------------------- signals and routes
 
     def _build_signals(self, network: Network, points: Dict[str, Point]) -> None:
-        """One entry signal per road approaching each block."""
+        """One entry signal per road a train could approach the block by."""
         for block_id, block in list(self.blocks.items()):
-            approaches = network.incoming(block.entry_node)
+            approaches = network.approaches(block.first_segment)
             legs: List[Optional[str]] = list(approaches) if len(approaches) > 1 else [
                 approaches[0] if approaches else None
             ]

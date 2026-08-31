@@ -180,6 +180,23 @@ class Network:
         """Ids of segments arriving at ``node_id``."""
         return list(self._in.get(node_id, ()))
 
+    def approaches(self, segment_id: str) -> List[str]:
+        """The roads a train could actually have arrived by, to enter ``segment_id``.
+
+        Not simply everything that ends at the node. Where a stretch is worked
+        in both directions the same rails carry two roads, and they share their
+        nodes, so the raw incoming list at every boundary there includes the
+        road back the way the train came - an approach only a train that changed
+        ends could use. On ``twoway`` that was 112 of 266 signals and 112 of 266
+        routes: movements nothing can make, each drawing its own lamp at the
+        same place and reading as a doubled signal.
+
+        The rule is the one :meth:`_reverses` already applies to path finding,
+        applied at the other end: a train arrives travelling the way it leaves.
+        """
+        return [leg for leg in self.incoming(self.segments[segment_id].start_node)
+                if not self._reverses(leg, segment_id)]
+
     def is_facing_point(self, node_id: str) -> bool:
         """True where a train has a choice of route ahead."""
         return len(self._out.get(node_id, ())) > 1

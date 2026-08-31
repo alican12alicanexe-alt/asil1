@@ -21,6 +21,7 @@ from tkinter import font as tkfont
 
 from ..core.units import format_clock, format_delay, ms_to_kmh
 from .layout import SchematicLayout
+from ..core.signals import Aspect
 from .renderer import ASPECT_COLOURS, PALETTE, SchematicView
 
 FRAME_MS = 50  # 20 frames per second
@@ -36,6 +37,7 @@ class TkSchematicView(SchematicView):
         self._single_step = False
         self._block_items = {}
         self._signal_items = {}
+        self._two_way_groups = {}
         self._indicator_items = {}
         self._point_items = {}
         self._train_items = {}
@@ -194,6 +196,7 @@ class TkSchematicView(SchematicView):
         canvas.delete("static")
         self._block_items.clear()
         self._signal_items.clear()
+        self._two_way_groups.clear()
         self._indicator_items.clear()
         self._point_items.clear()
         layout = self.layout
@@ -243,6 +246,7 @@ class TkSchematicView(SchematicView):
         for signal in infra.signals.values():
             self._draw_signal(signal, tracks, signal_x)
 
+        self._draw_two_way_signals(infra, tracks, signal_x)
         self._draw_route_indicators(infra, tracks, signal_x)
 
         for point in infra.points.values():
@@ -452,7 +456,12 @@ class TkSchematicView(SchematicView):
         picture of a railway that does not exist. Marker boards are drawn instead:
         the block boundaries are still there, they just no longer tell anyone
         anything.
+
+        Signals on a stretch signalled both ways are not drawn here at all -
+        they share a lamp, and :meth:`_draw_two_way_signals` draws it.
         """
+        if self._two_way_section(signal) is not None:
+            return
         layout = self.layout
         x = signal_x.get(signal.id, layout.x(signal.km))
         y = layout.y(signal.y)
@@ -461,16 +470,6 @@ class TkSchematicView(SchematicView):
         # visually on the side its trains are approaching from.
         up = track.get("direction", "up") == "up"
         mast = -9 if up else 9
-        # A stretch worked both ways carries two roads over one rail, each with
-        # its own signals at the same block boundaries. Putting them on opposite
-        # sides is right - that is how a bidirectional line is drawn, and it is
-        # what the mast sign above already does - but two identical lamps facing
-        # each other at one chainage read as a fault rather than as a signal and
-        # its wrong-line counterpart. So the wrong-line one is drawn smaller, on
-        # a shorter mast: still a signal, visibly the secondary of the pair.
-        wrong_line = bool(track.get("mirrors"))
-        if wrong_line:
-            mast = mast * 0.62
 
         if not self.lineside:
             self.canvas.create_line(
@@ -485,12 +484,115 @@ class TkSchematicView(SchematicView):
         # Lit red until the first refresh says otherwise. A lamp has to be
         # drawn as something before the railway has been asked, and a signal
         # nobody has asked about is at danger.
-        radius = 2 if wrong_line else 3
         lamp = self.canvas.create_oval(
-            x - radius, y + mast - radius, x + radius, y + mast + radius,
+            x - 3, y + mast - 3, x + 3, y + mast + 3,
             fill=ASPECT_COLOURS["red"], outline="", tags="static",
         )
         self._signal_items[signal.id] = lamp
+
+    # ------------------------------------------------- signalled both ways
+
+    def _two_way_section(self, signal):
+        """``(section, way)`` if this signal is on a stretch signalled both ways.
+
+        Both ways are legitimate. A line signalled in both directions IS
+        signalled in both directions - which way it is set at any moment is a
+        state of the railway, the same kind of fact as which way a point lies,
+        and not a degraded mode with a right side and a wrong one. So neither of
+        the pair at a boundary is the lesser of the two, and neither should be
+        drawn as though it were.
+        """
+        return self.scenario.infrastructure.direction_sections.get(
+            signal.block_id)
+
+    #: How far a two-way lamp stands off the rail, and how far its mast reaches.
+    TWO_WAY_MAST = 9
+
+    def _draw_two_way_signals(self, infra, tracks, signal_x) -> None:
+        """One lamp per boundary on a stretch signalled both ways.
+
+        The two roads over one rail have their own signals at the same
+        boundaries, and drawing both put two lamps at one chainage facing each
+        other - which reads as a fault, not as a pair. There is only ever one
+        answer to show anyway: a section signalled both ways is worked one
+        direction at a time, so at any moment one of the two is the signal that
+        governs and the other is a lamp nothing can be approaching.
+
+        So they share a lamp, and it stands on the side of the direction the
+        section is being worked in. The side is the indication: which way this
+        stretch is set is exactly what somebody looks at it to find out.
+
+        They are paired by NODE, not by where they were drawn. A boundary is a
+        node; the positioning pass slides each road's signals to the rearmost of
+        its own group, and a road worked the other way has the other end of the
+        pair as its rearmost, so pairing by x split half of them apart.
+        """
+        if not self.lineside:
+            return
+        layout = self.layout
+        for signal in infra.signals.values():
+            here = self._two_way_section(signal)
+            if here is None:
+                continue
+            section, way = here
+            key = (signal.node_id, section)
+            group = self._two_way_groups.get(key)
+            if group is None:
+                group = {
+                    "x": None, "y": layout.y(signal.y), "section": section,
+                    "ways": {}, "normal_up": True,
+                    "mast": self.canvas.create_line(
+                        0, 0, 0, 0, fill=PALETTE["track"], width=1,
+                        tags="static"),
+                    "lamp": self.canvas.create_oval(
+                        0, 0, 0, 0, fill=ASPECT_COLOURS["red"], outline="",
+                        tags="static"),
+                }
+                self._two_way_groups[key] = group
+            group["ways"].setdefault(way, []).append(signal.id)
+            if way == "normal" or group["x"] is None:
+                # The lamp stands where the normal direction's signal stands,
+                # and takes its alignment: that is the road the line is for.
+                group["x"] = signal_x.get(signal.id, layout.x(signal.km))
+                group["y"] = layout.y(signal.y)
+                group["normal_up"] = tracks.get(
+                    signal.track, {}).get("direction", "up") == "up"
+                if way != "normal":
+                    # Seen from the twin, whose direction is the opposite one.
+                    group["normal_up"] = not group["normal_up"]
+
+    def _refresh_two_way_signals(self) -> None:
+        """Put each shared lamp on the side being worked, showing its aspect."""
+        sim = self.sim
+        interlocking = sim.interlocking
+        for group in self._two_way_groups.values():
+            way = None
+            if interlocking is not None:
+                way = interlocking.section_direction(group["section"], sim)
+            if way not in group["ways"]:
+                # Clear, or being worked the way this boundary has no signal
+                # for. Show the normal direction: a section nobody is using is
+                # available to either, and the normal way is the one to rest at.
+                way = ("normal" if "normal" in group["ways"]
+                       else next(iter(group["ways"])))
+            # The least restrictive of the signals for that direction. Several
+            # of them means several approaches to one block, and the driver
+            # whose route is set is the one being spoken to.
+            aspect = Aspect.least_restrictive(
+                [sim.aspects.get(sid, Aspect.RED)
+                 for sid in group["ways"][way]] or [Aspect.RED])
+            # Up-worked signals stand above their line and down-worked below, as
+            # everywhere else here, so the side is read the same way whether the
+            # line has one direction or two.
+            up = group["normal_up"] if way == "normal" else not group["normal_up"]
+            mast = -self.TWO_WAY_MAST if up else self.TWO_WAY_MAST
+            x, y = group["x"], group["y"]
+            self.canvas.coords(group["mast"], x, y, x, y + mast)
+            self.canvas.coords(group["lamp"],
+                               x - 3, y + mast - 3, x + 3, y + mast + 3)
+            self.canvas.itemconfig(
+                group["lamp"],
+                fill=ASPECT_COLOURS.get(aspect, ASPECT_COLOURS["red"]))
 
     #: Half-extents of a junction indicator rhombus, and how far beyond the lamp
     #: it stands. Drawn small: it is read as present-or-absent long before it is
@@ -730,6 +832,7 @@ class TkSchematicView(SchematicView):
             self.canvas.itemconfig(
                 item, fill=ASPECT_COLOURS.get(aspect, ASPECT_COLOURS["red"]))
 
+        self._refresh_two_way_signals()
         self._refresh_route_indicators()
 
         self._draw_trains()

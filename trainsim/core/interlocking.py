@@ -201,7 +201,7 @@ class Interlocking(object):
         # apart these two trains actually have to be.
         #
         # This is safe here because a track has a direction and the route table
-        # offers no wrong-line moves, so anything already in that block is
+        # offers no move against a road's direction, so anything in that block is
         # running the same way. On a bidirectional single line it would need an
         # opposing-move check first.
         exclusive = self._blocks_are_exclusive(sim)
@@ -335,7 +335,7 @@ class Interlocking(object):
         """Whether a stretch worked in both directions is busy the other way.
 
         Two blocks over the same rails already refuse each other one at a time -
-        that is the crossing check above, and it is what makes wrong-line working
+        that is the crossing check above, and it is what makes working a line in both directions
         *safe*. It does not make it *work*: a train admitted at one end of the
         section and a train admitted at the other meet in the middle, each
         holding what the other needs, and neither can be backed out. Every
@@ -356,7 +356,7 @@ class Interlocking(object):
                 continue
             for other in blocks:
                 # Held *as its own block*, not as a crossing. Every route over
-                # the right line names the wrong-line block it lies under as a
+                # the right line names the reverse-direction block it lies under as a
                 # crossing, so asking the general question here would have each
                 # up train reading as a movement down the same rails and locking
                 # the section against the train behind it.
@@ -368,6 +368,23 @@ class Interlocking(object):
                 if occupants:
                     return ("%s is being worked the other way: %s holds %s"
                             % (section, other, ", ".join(sorted(occupants))))
+        return None
+
+    def section_direction(self, section: str, sim) -> Optional[str]:
+        """Which way a section worked in both directions is being worked now.
+
+        ``"normal"``, ``"reverse"``, or ``None`` when the section is clear and
+        either direction may have it. Both directions are legitimate: a stretch
+        signalled both ways is signalled both ways, and which way it is set is a
+        state of the railway, not a fault. It is the schematic's business
+        because one lamp at each boundary can only be showing one of them.
+        """
+        for way, blocks in self._section_blocks.get(section, {}).items():
+            for block_id in blocks:
+                if self._block_set_for(block_id) is not None:
+                    return way
+                if sim.occupancy.trains_in(block_id):
+                    return way
         return None
 
     @staticmethod

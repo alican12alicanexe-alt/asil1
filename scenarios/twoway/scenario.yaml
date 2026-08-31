@@ -15,8 +15,10 @@
 #   - the two directions stop competing. An up train and a down train pass each
 #     other instead of queueing, and the headway is a property of each direction
 #     on its own.
-#   - the rails become shareable. A line each way is what makes wrong-line
-#     working possible, and that is the whole point of the connections below.
+#   - the rails become shareable. A line each way is what lets a stretch be
+#     signalled in BOTH directions, and that is the point of the connections
+#     below. Neither direction is the wrong one: a line signalled both ways is
+#     signalled both ways, and which way it is set is a state of the railway.
 #
 # WRONG-LINE WORKING, AND HOW IT IS MODELLED
 #
@@ -26,7 +28,7 @@
 # infrastructure draws two crossovers, one each side of Marlowe, each of them a
 # scissors so that either direction can be diverted (a `single` lays one
 # diagonal, and its hand decides who can use it). The stretch between
-# them - the only stretch a train can get onto the wrong line and off it again -
+# them - the only stretch a train can get onto the other line and off it again -
 # gets a second set of block sections over the same rails running the other way:
 # DN_012_R is the road up the down line where DN_012 is the road down it.
 #
@@ -34,8 +36,8 @@
 # Crossing blocks already meant something here - it is how a flat junction is
 # policed - so:
 #
-#   - the interlocking will not set a route over the wrong line while anything
-#     holds or occupies the right one, and vice versa
+#   - the interlocking will not set a route over one direction's road while
+#     anything holds or occupies the other's, and vice versa
 #   - the kernel reports a violation if two trains are ever in a crossing pair
 #     at once, under every signalling system, because no separation model makes
 #     it safe to run a train up a line another train is coming down
@@ -53,7 +55,7 @@
 # the up trains are booked round the back of it on the down line.
 
 name: twoway
-description: "Sixty kilometres with a line each way and a crossover between them each side of Marlowe - the railway where wrong-line working is possible."
+description: "Sixty kilometres with a line each way and a crossover between them each side of Marlowe - the railway where a stretch can be signalled in both directions."
 
 infrastructure: infrastructure.yaml
 timetable: timetable.yaml
