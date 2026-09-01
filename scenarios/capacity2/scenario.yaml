@@ -112,9 +112,52 @@
 # fixed block was already paying for a whole block whether it needed it or not,
 # so it has less to lose.
 #
-# Two conclusions worth keeping apart, then. Mixing the fleet is what destroys
-# capacity here. Raising the speed does not destroy it, but it does not buy any
-# either, and if every train uses the extra speed it costs a little.
+# THE THIRD CONTROL, AND THE ONE THAT CHANGES THE READING
+#
+# A 160 km/h unit can always be driven like a 120 km/h one, so a mixed fleet
+# cannot be *forced* to be worse than an all-normal one. That says the 559 s is
+# not the cost of owning fast trains. It is the cost of letting them run fast on
+# a timetable booked at a uniform interval with the types alternating.
+#
+#   python scenarios/capacity2/_sweep_headway.py virtual_coupling paced
+#
+# "paced" books the whole flight on the normal unit's run times and then works
+# half of it with fast units. They still run as hard as the road allows, arrive
+# early at every call and stand there until their booked departure - a 160 km/h
+# unit kept to a 120 km/h path, which is what a railway does when it will not
+# rewrite the timetable around a minority of quicker stock.
+#
+#   system                 mixed         paced        all normal
+#   fixed_block_3aspect   559 / 517    275 / 145     211 / 179
+#   etcs_moving_block     491 / 442    207 /  69     123 /  77
+#   virtual_coupling      489 / 433    205 /  67     121 /  68
+#
+# Almost all of the loss comes back. And on the keeps-time figure - the one an
+# operator cares about - pacing is *better* than an all-normal fleet: 145 s
+# against 179 s under fixed block, 69 against 77 under moving block, 67 against
+# 68 under virtual coupling. That is not a fluke. A fast unit booked on normal
+# timings is carrying a recovery allowance it did not have to be given: when
+# something checks it, it has the performance to make the time back, and it
+# still keeps its booking. The all-normal fleet has no such margin anywhere.
+#
+# What does not come back is the all-green figure - 275 s against 211 s, 207
+# against 123. Between stations the fast unit still closes on the train in front
+# whatever its booking says, and being checked once is all it takes to lose
+# all-green. Some of that is real and some of it is this simulator: the driver
+# always runs as hard as the authority allows, so the only way a train here can
+# be paced is to arrive early and wait. A driver advisory system - drive at
+# 120 because there is no point arriving early - would close most of that gap,
+# and nothing in the model can express it today.
+#
+# So, three conclusions, in the order they matter:
+#
+#   1. Mixing performance costs capacity only if the timetable spends it. Book
+#      the quick trains on the slow trains' times and most of the loss goes.
+#   2. Spending it is a trade, not a mistake: the mixed flight's fast trains
+#      arrive about 43 s early at the terminus in the paced run, which is
+#      journey time nobody gets. 559 s of interval buys those minutes back.
+#   3. Raising the line speed neither costs nor buys capacity while the trains
+#      are all 120 km/h units, and costs a little once they all use it.
 #
 # WHAT THE EXPERIMENT ANSWERS
 #

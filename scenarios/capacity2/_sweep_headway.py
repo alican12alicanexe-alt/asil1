@@ -71,10 +71,20 @@ FITMENT = {
 #: the base is the speed and the geometry, and the difference between it and
 #: "mixed" is the fleet and nothing else. "fast" is the other end: what the
 #: railway does when every train can use the 150.
+#: Each entry is (what the timetable is written for, what actually runs). They
+#: are separate because a train may be booked on one type's run times and worked
+#: by another - which is not a mistake, it is a driving policy, and "paced" below
+#: exists to measure it.
 FLEETS = {
-    "mixed":  (NORMAL, FAST),
-    "normal": (NORMAL, NORMAL),
-    "fast":   (FAST, FAST),
+    "mixed":  ((NORMAL, FAST),   (NORMAL, FAST)),
+    "normal": ((NORMAL, NORMAL), (NORMAL, NORMAL)),
+    "fast":   ((FAST, FAST),     (FAST, FAST)),
+    # The fast units are booked on the normal unit's run times. They still run
+    # as fast as the road allows, arrive early at every call and stand there
+    # until their booked departure, which is a 160 km/h unit kept to a 120 km/h
+    # path - what a real railway does when it will not rewrite the timetable
+    # around a minority of quicker stock. The fleet is mixed; the plan is not.
+    "paced":  ((NORMAL, NORMAL), (NORMAL, FAST)),
 }
 
 
@@ -151,10 +161,10 @@ def refine(times, system, test, clean_s, degraded_s, fleet=FLEET):
 
 def main(system="fixed_block_3aspect", fleet_name="mixed"):
     try:
-        fleet = FLEETS[fleet_name]
+        booked, fleet = FLEETS[fleet_name]
     except KeyError:
         raise SystemExit("fleet must be one of %s" % ", ".join(sorted(FLEETS)))
-    times = probe_all(fleet=fleet)
+    times = probe_all(fleet=booked)
     alone = sum(run(times, HEADWAYS[0], system, indices=[n],
                     fleet=fleet).total_restrained_s
                 for n in range(COUNT))
@@ -162,6 +172,9 @@ def main(system="fixed_block_3aspect", fleet_name="mixed"):
                if fleet_for(n, fleet)["id"] == FAST["id"])
     print("%d trains each way under %s: %d normal, %d fast, all calling "
           "everywhere" % (COUNT, system, COUNT - fast, fast))
+    if booked is not fleet:
+        print("booked on the %s unit's run times throughout - the fast units "
+              "are held to a normal path." % (booked[0]["name"].split()[0].lower(),))
     print("the flight alone is restrained %.0f s at the controlled station "
           "signals; the column below is over that.\n" % alone)
     print("  headway   restrained   mean delay      worst   completed")
