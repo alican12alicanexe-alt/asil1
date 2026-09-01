@@ -74,9 +74,10 @@ python scenarios/twoway/sweep.py                        all three systems, up tr
 ```
 
 Three systems are compared: fixed block, moving block, virtual coupling. Both
-capacity sweeps declare the fitment per system, and moving block is run without
-integrity reporting, so its row is the block-granularity fallback rather than
-following by distance. Virtual coupling has the full fit.
+capacity sweeps declare the fitment per system and give each one what it needs
+and nothing more — moving block the integrity report, so it can follow the rear
+of the train in front; virtual coupling the radio link on top of that, so it can
+plan to stop where the leader will stop.
 
 `scenarios/capacity` is the scenario built for that sweep: one stock type, one
 calling pattern, evenly spaced stations and a flat line speed, so that running it

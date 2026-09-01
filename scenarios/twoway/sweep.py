@@ -165,8 +165,11 @@ def stock_for(system):
 
     elif system == "etcs_moving_block":
 
+        # Integrity reporting on: moving block follows the REAR of the train
+        # in front, and a train that cannot confirm its own integrity has no
+        # trustworthy rear to follow.
         stock["etcs_level"] = "l3"
-        stock["tims"] = False
+        stock["tims"] = True
         stock["v2v"] = False
 
     elif system == "virtual_coupling":

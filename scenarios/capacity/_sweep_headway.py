@@ -57,14 +57,13 @@ from trainsim.scenario.loader import build_timetable
 #: system is measured on the same unfitted unit and reports the same fallback
 #: under three different names.
 #:
-#: Moving block runs here without integrity reporting, which is the fitment
-#: asked for. Read the row knowing what it is: a train whose rear cannot be
-#: confirmed cannot be followed by distance, so the system falls back to block
-#: granularity behind it. Virtual coupling has the full fit and does follow by
-#: distance.
+#: Moving block needs the integrity report and nothing else: it follows the rear
+#: of the train in front, and a rear that cannot be confirmed cannot be
+#: followed. Virtual coupling needs the radio link on top of that, because it
+#: plans to stop where the leader will stop rather than where it stands.
 FITMENT = {
     "fixed_block_3aspect": ("none", False, False),
-    "etcs_moving_block":   ("l3",   False, False),
+    "etcs_moving_block":   ("l3",   True,  False),
     "virtual_coupling":    ("l3",   True,  True),
 }
 
