@@ -1,0 +1,225 @@
+# capacity2 timetable - generated, do not edit by hand.
+#
+#   python scenarios/capacity2/_generate_timetable.py
+#
+# 8 trains each way, booked 300 seconds apart, taking the roads at each station
+# in turn. Two types alternate along each line - normal, fast, normal, fast -
+# and every booked time is what that type achieves over those roads with the
+# railway to itself.
+#
+# This is sweep 2: the capacity base with heterogeneous train performance and
+# nothing else changed.
+
+stock:
+  - id: EMU
+    name: Normal unit
+    length_m: 160
+    max_speed_kmh: 120
+    max_accel: 1.0
+    service_brake: 0.8
+    emergency_brake: 1.2
+    etcs_level: none
+    tims: false
+  - id: EMUF
+    name: Fast unit
+    length_m: 160
+    max_speed_kmh: 160
+    max_accel: 1.5
+    service_brake: 1.1
+    emergency_brake: 1.4
+    etcs_level: none
+    tims: false
+
+services:
+
+  - id: U01
+    name: 07:00 West Depot - East Depot
+    stock: EMU
+    departure: "07:00:00"
+    ready_lead_s: 60
+    calls:
+      - {station: WDEPOT, platform: WDEPOT_UP_1, departure: "07:00:00", dwell_s: 60}
+      - {station: LINFORD, platform: LINFORD_UP_1, arrival: "07:08:21", departure: "07:09:06", dwell_s: 45}
+      - {station: BRAMLEY, platform: BRAMLEY_UP_1, arrival: "07:17:21", departure: "07:18:06", dwell_s: 45}
+      - {station: CALDER, platform: CALDER_UP_1, arrival: "07:26:21", departure: "07:27:06", dwell_s: 45}
+      - {station: EDEPOT, platform: EDEPOT_UP_1, arrival: "07:35:39", dwell_s: 60}
+
+  - id: U02
+    name: 07:05 West Depot - East Depot (fast)
+    stock: EMUF
+    departure: "07:05:00"
+    ready_lead_s: 60
+    calls:
+      - {station: WDEPOT, platform: WDEPOT_UP_2, departure: "07:05:00", dwell_s: 60}
+      - {station: LINFORD, platform: LINFORD_UP_2, arrival: "07:12:13", departure: "07:12:58", dwell_s: 45}
+      - {station: BRAMLEY, platform: BRAMLEY_UP_2, arrival: "07:20:09", departure: "07:20:54", dwell_s: 45}
+      - {station: CALDER, platform: CALDER_UP_2, arrival: "07:28:05", departure: "07:28:50", dwell_s: 45}
+      - {station: EDEPOT, platform: EDEPOT_UP_2, arrival: "07:36:08", dwell_s: 60}
+
+  - id: U03
+    name: 07:10 West Depot - East Depot
+    stock: EMU
+    departure: "07:10:00"
+    ready_lead_s: 60
+    calls:
+      - {station: WDEPOT, platform: WDEPOT_UP_1, departure: "07:10:00", dwell_s: 60}
+      - {station: LINFORD, platform: LINFORD_UP_3, arrival: "07:18:36", departure: "07:19:21", dwell_s: 45}
+      - {station: BRAMLEY, platform: BRAMLEY_UP_3, arrival: "07:27:59", departure: "07:28:44", dwell_s: 45}
+      - {station: CALDER, platform: CALDER_UP_3, arrival: "07:37:22", departure: "07:38:07", dwell_s: 45}
+      - {station: EDEPOT, platform: EDEPOT_UP_1, arrival: "07:46:48", dwell_s: 60}
+
+  - id: U04
+    name: 07:15 West Depot - East Depot (fast)
+    stock: EMUF
+    departure: "07:15:00"
+    ready_lead_s: 60
+    calls:
+      - {station: WDEPOT, platform: WDEPOT_UP_2, departure: "07:15:00", dwell_s: 60}
+      - {station: LINFORD, platform: LINFORD_UP_1, arrival: "07:21:53", departure: "07:22:38", dwell_s: 45}
+      - {station: BRAMLEY, platform: BRAMLEY_UP_1, arrival: "07:29:15", departure: "07:30:00", dwell_s: 45}
+      - {station: CALDER, platform: CALDER_UP_1, arrival: "07:36:37", departure: "07:37:22", dwell_s: 45}
+      - {station: EDEPOT, platform: EDEPOT_UP_2, arrival: "07:44:26", dwell_s: 60}
+
+  - id: U05
+    name: 07:20 West Depot - East Depot
+    stock: EMU
+    departure: "07:20:00"
+    ready_lead_s: 60
+    calls:
+      - {station: WDEPOT, platform: WDEPOT_UP_1, departure: "07:20:00", dwell_s: 60}
+      - {station: LINFORD, platform: LINFORD_UP_2, arrival: "07:28:36", departure: "07:29:21", dwell_s: 45}
+      - {station: BRAMLEY, platform: BRAMLEY_UP_2, arrival: "07:37:59", departure: "07:38:44", dwell_s: 45}
+      - {station: CALDER, platform: CALDER_UP_2, arrival: "07:47:22", departure: "07:48:07", dwell_s: 45}
+      - {station: EDEPOT, platform: EDEPOT_UP_1, arrival: "07:56:48", dwell_s: 60}
+
+  - id: U06
+    name: 07:25 West Depot - East Depot (fast)
+    stock: EMUF
+    departure: "07:25:00"
+    ready_lead_s: 60
+    calls:
+      - {station: WDEPOT, platform: WDEPOT_UP_2, departure: "07:25:00", dwell_s: 60}
+      - {station: LINFORD, platform: LINFORD_UP_3, arrival: "07:32:13", departure: "07:32:58", dwell_s: 45}
+      - {station: BRAMLEY, platform: BRAMLEY_UP_3, arrival: "07:40:09", departure: "07:40:54", dwell_s: 45}
+      - {station: CALDER, platform: CALDER_UP_3, arrival: "07:48:05", departure: "07:48:50", dwell_s: 45}
+      - {station: EDEPOT, platform: EDEPOT_UP_2, arrival: "07:56:08", dwell_s: 60}
+
+  - id: U07
+    name: 07:30 West Depot - East Depot
+    stock: EMU
+    departure: "07:30:00"
+    ready_lead_s: 60
+    calls:
+      - {station: WDEPOT, platform: WDEPOT_UP_1, departure: "07:30:00", dwell_s: 60}
+      - {station: LINFORD, platform: LINFORD_UP_1, arrival: "07:38:21", departure: "07:39:06", dwell_s: 45}
+      - {station: BRAMLEY, platform: BRAMLEY_UP_1, arrival: "07:47:21", departure: "07:48:06", dwell_s: 45}
+      - {station: CALDER, platform: CALDER_UP_1, arrival: "07:56:21", departure: "07:57:06", dwell_s: 45}
+      - {station: EDEPOT, platform: EDEPOT_UP_1, arrival: "08:05:39", dwell_s: 60}
+
+  - id: U08
+    name: 07:35 West Depot - East Depot (fast)
+    stock: EMUF
+    departure: "07:35:00"
+    ready_lead_s: 60
+    calls:
+      - {station: WDEPOT, platform: WDEPOT_UP_2, departure: "07:35:00", dwell_s: 60}
+      - {station: LINFORD, platform: LINFORD_UP_2, arrival: "07:42:13", departure: "07:42:58", dwell_s: 45}
+      - {station: BRAMLEY, platform: BRAMLEY_UP_2, arrival: "07:50:09", departure: "07:50:54", dwell_s: 45}
+      - {station: CALDER, platform: CALDER_UP_2, arrival: "07:58:05", departure: "07:58:50", dwell_s: 45}
+      - {station: EDEPOT, platform: EDEPOT_UP_2, arrival: "08:06:08", dwell_s: 60}
+
+  - id: D01
+    name: 07:00 East Depot - West Depot
+    stock: EMU
+    departure: "07:00:00"
+    ready_lead_s: 60
+    calls:
+      - {station: EDEPOT, platform: EDEPOT_DN_1, departure: "07:00:00", dwell_s: 60}
+      - {station: CALDER, platform: CALDER_DN_1, arrival: "07:08:21", departure: "07:09:06", dwell_s: 45}
+      - {station: BRAMLEY, platform: BRAMLEY_DN_1, arrival: "07:17:21", departure: "07:18:06", dwell_s: 45}
+      - {station: LINFORD, platform: LINFORD_DN_1, arrival: "07:26:21", departure: "07:27:06", dwell_s: 45}
+      - {station: WDEPOT, platform: WDEPOT_DN_1, arrival: "07:35:39", dwell_s: 60}
+
+  - id: D02
+    name: 07:05 East Depot - West Depot (fast)
+    stock: EMUF
+    departure: "07:05:00"
+    ready_lead_s: 60
+    calls:
+      - {station: EDEPOT, platform: EDEPOT_DN_2, departure: "07:05:00", dwell_s: 60}
+      - {station: CALDER, platform: CALDER_DN_2, arrival: "07:12:13", departure: "07:12:58", dwell_s: 45}
+      - {station: BRAMLEY, platform: BRAMLEY_DN_2, arrival: "07:20:09", departure: "07:20:54", dwell_s: 45}
+      - {station: LINFORD, platform: LINFORD_DN_2, arrival: "07:28:05", departure: "07:28:50", dwell_s: 45}
+      - {station: WDEPOT, platform: WDEPOT_DN_2, arrival: "07:36:08", dwell_s: 60}
+
+  - id: D03
+    name: 07:10 East Depot - West Depot
+    stock: EMU
+    departure: "07:10:00"
+    ready_lead_s: 60
+    calls:
+      - {station: EDEPOT, platform: EDEPOT_DN_1, departure: "07:10:00", dwell_s: 60}
+      - {station: CALDER, platform: CALDER_DN_3, arrival: "07:18:36", departure: "07:19:21", dwell_s: 45}
+      - {station: BRAMLEY, platform: BRAMLEY_DN_3, arrival: "07:27:59", departure: "07:28:44", dwell_s: 45}
+      - {station: LINFORD, platform: LINFORD_DN_3, arrival: "07:37:22", departure: "07:38:07", dwell_s: 45}
+      - {station: WDEPOT, platform: WDEPOT_DN_1, arrival: "07:46:48", dwell_s: 60}
+
+  - id: D04
+    name: 07:15 East Depot - West Depot (fast)
+    stock: EMUF
+    departure: "07:15:00"
+    ready_lead_s: 60
+    calls:
+      - {station: EDEPOT, platform: EDEPOT_DN_2, departure: "07:15:00", dwell_s: 60}
+      - {station: CALDER, platform: CALDER_DN_1, arrival: "07:21:53", departure: "07:22:38", dwell_s: 45}
+      - {station: BRAMLEY, platform: BRAMLEY_DN_1, arrival: "07:29:15", departure: "07:30:00", dwell_s: 45}
+      - {station: LINFORD, platform: LINFORD_DN_1, arrival: "07:36:37", departure: "07:37:22", dwell_s: 45}
+      - {station: WDEPOT, platform: WDEPOT_DN_2, arrival: "07:44:26", dwell_s: 60}
+
+  - id: D05
+    name: 07:20 East Depot - West Depot
+    stock: EMU
+    departure: "07:20:00"
+    ready_lead_s: 60
+    calls:
+      - {station: EDEPOT, platform: EDEPOT_DN_1, departure: "07:20:00", dwell_s: 60}
+      - {station: CALDER, platform: CALDER_DN_2, arrival: "07:28:36", departure: "07:29:21", dwell_s: 45}
+      - {station: BRAMLEY, platform: BRAMLEY_DN_2, arrival: "07:37:59", departure: "07:38:44", dwell_s: 45}
+      - {station: LINFORD, platform: LINFORD_DN_2, arrival: "07:47:22", departure: "07:48:07", dwell_s: 45}
+      - {station: WDEPOT, platform: WDEPOT_DN_1, arrival: "07:56:48", dwell_s: 60}
+
+  - id: D06
+    name: 07:25 East Depot - West Depot (fast)
+    stock: EMUF
+    departure: "07:25:00"
+    ready_lead_s: 60
+    calls:
+      - {station: EDEPOT, platform: EDEPOT_DN_2, departure: "07:25:00", dwell_s: 60}
+      - {station: CALDER, platform: CALDER_DN_3, arrival: "07:32:13", departure: "07:32:58", dwell_s: 45}
+      - {station: BRAMLEY, platform: BRAMLEY_DN_3, arrival: "07:40:09", departure: "07:40:54", dwell_s: 45}
+      - {station: LINFORD, platform: LINFORD_DN_3, arrival: "07:48:05", departure: "07:48:50", dwell_s: 45}
+      - {station: WDEPOT, platform: WDEPOT_DN_2, arrival: "07:56:08", dwell_s: 60}
+
+  - id: D07
+    name: 07:30 East Depot - West Depot
+    stock: EMU
+    departure: "07:30:00"
+    ready_lead_s: 60
+    calls:
+      - {station: EDEPOT, platform: EDEPOT_DN_1, departure: "07:30:00", dwell_s: 60}
+      - {station: CALDER, platform: CALDER_DN_1, arrival: "07:38:21", departure: "07:39:06", dwell_s: 45}
+      - {station: BRAMLEY, platform: BRAMLEY_DN_1, arrival: "07:47:21", departure: "07:48:06", dwell_s: 45}
+      - {station: LINFORD, platform: LINFORD_DN_1, arrival: "07:56:21", departure: "07:57:06", dwell_s: 45}
+      - {station: WDEPOT, platform: WDEPOT_DN_1, arrival: "08:05:39", dwell_s: 60}
+
+  - id: D08
+    name: 07:35 East Depot - West Depot (fast)
+    stock: EMUF
+    departure: "07:35:00"
+    ready_lead_s: 60
+    calls:
+      - {station: EDEPOT, platform: EDEPOT_DN_2, departure: "07:35:00", dwell_s: 60}
+      - {station: CALDER, platform: CALDER_DN_2, arrival: "07:42:13", departure: "07:42:58", dwell_s: 45}
+      - {station: BRAMLEY, platform: BRAMLEY_DN_2, arrival: "07:50:09", departure: "07:50:54", dwell_s: 45}
+      - {station: LINFORD, platform: LINFORD_DN_2, arrival: "07:58:05", departure: "07:58:50", dwell_s: 45}
+      - {station: WDEPOT, platform: WDEPOT_DN_2, arrival: "08:06:08", dwell_s: 60}

@@ -1,0 +1,161 @@
+# capacity2 - sweep 2: what heterogeneous train performance does to the answer.
+#
+#   python run.py scenarios/capacity2              (live schematic)
+#   python run.py scenarios/capacity2 --headless
+#   python run.py scenarios/capacity2 --check      (the layout, and the plan)
+#   python scenarios/capacity2/_sweep_headway.py   (what the line actually holds)
+#
+# WHAT THIS EXPERIMENT IS FOR
+#
+# scenarios/capacity is the homogeneous base: every train the same unit, so that
+# the only thing that can move a number between two runs is the signalling. It
+# gives fixed block, moving block and virtual coupling three headway figures and
+# a ranking between them.
+#
+# The obvious next question is whether that ranking survives a real fleet. A
+# system that wins by putting trains closer together is winning on distance, and
+# distance is easy to hold when every train covers it at the same rate. Put a
+# quicker train behind a slower one and the gap closes on its own, which is a
+# different kind of pressure and not obviously one that all three
+# systems handle alike.
+#
+# So: the base, with exactly one thing changed.
+#
+# WHAT CHANGED, AND WHAT DID NOT
+#
+# Changed - the fleet, and the line limit that lets the fleet differ:
+#
+#   normal   120 km/h   1.0 m/s^2 accel   0.8 service brake   1.2 emergency
+#   fast     160 km/h   1.5 m/s^2 accel   1.1 service brake   1.4 emergency
+#
+#   The two types alternate deterministically along each line - normal, fast,
+#   normal, fast - in both directions, so every fast train follows a normal one
+#   and is followed by a normal one.
+#
+#   The line limit goes from 120 to 150 km/h on the running lines and the
+#   through roads. Without that the fast unit is just a normal unit with better
+#   brakes and the experiment measures nothing. 150 rather than 160 because a
+#   train that is limited by the road rather than by itself is the ordinary
+#   case, and because it keeps the crossover blocks signalable.
+#
+# Not changed - the layout (same five stations, same spacing, same roads, same
+# four crossovers), the dwells, the driver, the interlocking, the simulation
+# step, the KPI definitions, the headway list, the bisection method, and the
+# three fitments. Same script, same questions, different trains.
+#
+# THE TIMETABLE IS BUILT FOR THE FLEET, NOT INHERITED
+#
+# Every booked time comes from running that service unimpeded with the type that
+# actually works it, one probe per (type, set of roads). Reusing the base's
+# homogeneous timings would have booked half the flight on run times it beats by
+# minutes and the other half on run times it cannot keep, and every figure below
+# would have been about the timetable rather than about the signalling.
+#
+# WHAT IT MEASURES, AS BUILT
+#
+# From _sweep_headway.py, both figures per direction, as on the base:
+#
+#   system                all-green   keeps time   each way
+#   fixed_block_3aspect      559 s       517 s      6.4 / 7.0 an hour
+#   etcs_moving_block        491 s       442 s      7.3 / 8.1
+#   virtual_coupling         489 s       433 s      7.4 / 8.3
+#
+# And the base, for the shape of it rather than for a direct comparison - the
+# line limit and the crossovers moved with the fleet, so the absolute numbers
+# are not the same measurement:
+#
+#   fixed_block_3aspect      212 s       180 s      17.0 / 20.0 an hour
+#   etcs_moving_block        123 s        77 s      29.3 / 46.8
+#   virtual_coupling         121 s        68 s      29.8 / 52.9
+#
+# WHAT THE EXPERIMENT ANSWERS
+#
+# It changes the ranking hardly at all and the margins almost entirely.
+#
+# The order is the same in both: fixed block worst, moving block well clear of
+# it, virtual coupling a little ahead of moving block. Nothing overtakes
+# anything. But the size of the gap collapses. On the base the cab systems buy
+# 1.7 times the all-green capacity of fixed block and 2.6 to 2.9 times the
+# keeps-time capacity. Here they buy 1.14 and 1.16 to 1.19. Moving block and
+# virtual coupling, 13 per cent apart on the base's keeps-time figure, are 2 per
+# cent apart on this one.
+#
+# The reason is that the binding constraint has changed hands. On the base what
+# limits the interval is how close one train may legally follow another, which
+# is precisely what a signalling system decides, so the system that allows the
+# shortest separation wins by the whole of that difference. Here what limits the
+# interval is that a fast unit makes up about a minute a leg on the unit in
+# front and eats roughly four minutes of gap over the run. No signalling system
+# can give a train back four minutes it was never booked; the best any of them
+# can do is let the fast train sit closer behind the slow one while it waits,
+# which is worth 60 to 80 seconds of interval and not much more.
+#
+# So the honest reading is that these three systems are being compared on
+# something they do not control. A capacity gain from moving block or virtual
+# coupling is real, and this experiment does not contradict the base - it says
+# that on a line worked at a uniform interval by trains of unequal performance,
+# most of that gain is spent before the signalling gets a say. Getting it back
+# is a timetabling problem, not a signalling one: uneven intervals that give the
+# fast train the gap it needs, flighting the types in groups rather than
+# alternating them, or the overtakes the loops at Linford, Bramley and Calder
+# were laid in for and which nothing here uses.
+#
+# TWO THINGS TO KNOW BEFORE COMPARING WITH THE BASE
+#
+# The line limit is 150 here and 120 there, and the four crossovers are 1000 m
+# here and 900 m there - the fast unit needs 939 m to stop from 150 and 900 m
+# blocks would have been unsignalable. Both changes follow from the fleet, but
+# they mean the absolute headways are not measured on the same railway. What is
+# comparable is the ratio between the three systems within each run, which is
+# what the experiment was for.
+#
+# The flight is booked at a uniform interval in both directions with the types
+# strictly alternating. That is the harshest arrangement and it was chosen
+# deliberately: every fast train follows a slow one. Group the types instead and
+# the numbers will move - that is the next experiment, not this one.
+#
+# THE TRAIN HAS TO BE FITTED FOR THE SYSTEM
+#
+# Same three fitments as the base, applied to both types:
+#
+#   fixed_block_3aspect   ETCS none, no integrity report, no radio link
+#   etcs_moving_block     ETCS L3, integrity report on, no radio link
+#   virtual_coupling      ETCS L3, integrity report on, radio link on
+#
+# Moving block follows the rear of the train in front and needs the integrity
+# report to have a trustworthy rear to follow; virtual coupling needs the radio
+# link on top of that. Sweeping an unfitted unit under three names measures the
+# same fallback three times.
+#
+# --compare on this scenario switches the signalling system without refitting
+# the trains, so it does not answer this question. The sweep does.
+
+name: capacity2
+description: "The capacity base with two train types alternating - does heterogeneous performance change the ranking of fixed block, moving block and virtual coupling?"
+
+infrastructure: infrastructure.yaml
+timetable: timetable.yaml
+
+simulation:
+  dt: 1.0
+  start_time: "06:57:00"
+  duration_s: 9000
+  strict: false
+
+signalling:
+  system: fixed_block_3aspect
+  sighting_distance_m: 250
+
+interlocking:
+  route_request_distance_m: 2000
+  route_request_lead_s: 60
+  automatic_signals: false
+  route_lookahead: 2
+
+driver:
+  reaction_time_s: 2.0
+  safety_margin_m: 25.0
+
+view:
+  title: "capacity2 - mixed performance"
+  speed: 20
