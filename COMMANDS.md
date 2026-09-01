@@ -74,10 +74,19 @@ python scenarios/twoway/sweep.py                        all three systems, up tr
 ```
 
 Each sweep runs a coarse list of intervals and then closes in. The coarse rows
-only bracket the answer — clean at 135 s and degraded at 120 s says nothing about
+only bracket the answer — clean at 135 s and checked at 120 s says nothing about
 128 s — so it halves the bracket until one second separates the two ends, and
 prints every interval it tried on the way. Four or five extra runs, rather than
 the fifteen a second-by-second sweep would take.
+
+Two figures come out of it. The **all-green headway** is the closest these trains
+follow each other without any of them ever being checked by a signal — a property
+of the railway, and the one to quote when comparing signalling systems. The
+**keeps-time headway** is the closest they follow each other with every train
+still making its booked arrival, and it is a lot tighter: on `capacity`, virtual
+coupling is all-green at 121 s and still punctual at 68 s. A run anywhere between
+the two shows every train on time and looks entirely normal to watch, and is
+genuinely being held down by the signalling the whole way. Both are true.
 
 Three systems are compared: fixed block, moving block, virtual coupling. Both
 capacity sweeps declare the fitment per system and give each one what it needs

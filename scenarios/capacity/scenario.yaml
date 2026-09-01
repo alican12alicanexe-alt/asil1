@@ -56,19 +56,41 @@
 # The booked run finishes 16 of 16 on time under every system, which is the
 # point of it: nothing is being obstructed, so any later run that is not clean
 # has a reason that can be named. Tighten the interval and the systems separate.
-# Measured by _sweep_headway.py - the widest interval at which no train is ever
-# checked by a signal:
+# Measured by _sweep_headway.py, which reports two intervals per system:
 #
-#   system                 all-green headway, each way
-#   fixed_block_3aspect     212 s   17.0 an hour
-#   etcs_moving_block       123 s   29.3
-#   virtual_coupling        121 s   29.8
+#   system                all-green   keeps time   each way
+#   fixed_block_3aspect      212 s       180 s      17.0 / 20.0 an hour
+#   etcs_moving_block        123 s        77 s      29.3 / 46.8
+#   virtual_coupling         121 s        68 s      29.8 / 52.9
 #
-# To the second. The sweep runs a coarse list of intervals and then halves the
-# bracket between the last clean one and the first degraded one until a single
-# second separates them, so these are boundaries rather than the nearest row of
-# a grid - the coarse grid put fixed block at 240 s and both cab systems at
-# 135 s, which is up to 28 s out.
+# TWO FIGURES, BECAUSE THEY ANSWER DIFFERENT QUESTIONS
+#
+# All-green is the strict one: the closest these trains follow each other
+# without any of them ever being checked by a signal at all. It is a property
+# of the railway, it is what a signalling system is fairly compared on, and it
+# is the number to quote for capacity.
+#
+# Keeps time is the one an operator asks: the closest they follow each other
+# with every train still making its booked arrival. It is always the tighter
+# figure, and here it is a lot tighter - virtual coupling is all-green at 121 s
+# and still punctual at 68 s, which is nearly twice the service.
+#
+# The gap between them is not a contradiction. A train can be throttled back
+# for twenty seconds on a forty-minute run and arrive on the minute, because a
+# booked station-to-station time is not an unimpeded one. So a run anywhere
+# between the two figures shows every train on time and nothing obviously wrong
+# to watch, and is genuinely being held down by the signalling the whole way.
+# Both are true. If a run at 90 s looks perfectly normal, that is because at
+# 90 s it is: 6 s worst delay, and 336 s of restraint spread over sixteen
+# trains that never lose a minute for it.
+#
+# The rows in between are marked "checked, still on time" rather than
+# "degraded", because that is what they are.
+#
+# To the second, both of them. The sweep runs a coarse list of intervals and
+# then halves the bracket between the last row that passed and the first that
+# did not, until a single second separates them - so these are boundaries
+# rather than the nearest row of a grid.
 #
 # Three systems, because those are the three the comparison is about. The
 # intermediate ETCS levels are still in the registry and _sweep_headway.py will

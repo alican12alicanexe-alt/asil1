@@ -285,7 +285,24 @@ def is_clean(metrics):
             and metrics.completed == metrics.services)
 
 
-def refine(times, system, clean_s, degraded_s):
+def keeps_time(metrics):
+    """
+    Whether the flight still ran to time at this interval.
+
+    A weaker test than is_clean(), and the one an operator would ask. A train
+    can be checked by a signal, brake for a few seconds and still make its
+    booked arrival, because a station-to-station run time is not the same
+    thing as an unimpeded one.
+
+    30 s because that is where the simulator itself stops printing "on time".
+    """
+
+    worst = max(metrics.delays.values()) if metrics.delays else 0.0
+
+    return worst < 30.0 and metrics.completed == metrics.services
+
+
+def refine(times, system, test, clean_s, degraded_s):
     """
     Narrow the boundary between a clean interval and a degraded one to 1 s.
 
@@ -307,8 +324,9 @@ def refine(times, system, clean_s, degraded_s):
     where the restraint column is not monotonic this finds *a* boundary in
     the bracket rather than the only one.
 
-    Returns the tightest interval that still ran clean, and every interval
-    tried on the way.
+    ``test`` is the question being asked of each run - all-green, or merely
+    keeping time. Returns the tightest interval that still passed it, and
+    every interval tried on the way.
     """
 
     lo = int(degraded_s)     # known degraded
@@ -320,7 +338,7 @@ def refine(times, system, clean_s, degraded_s):
 
         mid = (lo + hi) // 2
 
-        ok = is_clean(run(times, mid, system))
+        ok = test(run(times, mid, system))
 
         tried.append((mid, ok))
 
@@ -392,10 +410,20 @@ def main():
         print_header(system)
 
 
-        # The tightest interval that ran clean, and the widest that did not
-        # once it had. Together they bracket the boundary.
-        all_green = None
-        first_degraded = None
+        # Two questions, asked of every row. "All-green" is the strict one:
+        # was any train ever checked by a signal at all. "Keeps time" is the
+        # one an operator would ask: did every train still make its booked
+        # arrival.
+        #
+        # They are not the same interval and the gap is not small. A train
+        # can be throttled back for twenty seconds on a forty-minute run and
+        # still arrive on the minute, which is why a railway swept well past
+        # its all-green headway still looks, and is, perfectly punctual.
+        #
+        # Each pair below is the tightest interval that passed and the widest
+        # that did not once it had. Together they bracket the boundary.
+        green_ok, green_bad = None, None
+        time_ok, time_bad = None, None
 
 
         for headway in HEADWAYS:
@@ -445,44 +473,82 @@ def main():
 
 
             # -------------------------------------------------------
-            # Track the bracket.
+            # Track the two brackets.
             # -------------------------------------------------------
 
             if is_clean(metrics):
-                all_green = headway
-                first_degraded = None
+                green_ok, green_bad = headway, None
 
-            elif all_green is not None and first_degraded is None:
-                first_degraded = headway
+            elif green_ok is not None and green_bad is None:
+                green_bad = headway
+
+            if keeps_time(metrics):
+                time_ok, time_bad = headway, None
+
+            elif time_ok is not None and time_bad is None:
+                time_bad = headway
 
 
         # -----------------------------------------------------------
-        # Close in on the exact interval.
+        # Close in on the exact intervals.
         # -----------------------------------------------------------
 
         print()
 
-        if all_green is None:
+        if green_ok is None:
             print("  no interval in the range ran all-green - widen HEADWAYS")
             continue
 
-        if first_degraded is None:
+        if green_bad is None:
             print("  all-green all the way down to %d s: this railway has not "
-                  "bent yet, so" % (all_green,))
+                  "bent yet, so" % (green_ok,))
             print("  that is the end of HEADWAYS rather than a limit. Tighten "
                   "the list.")
+
+        else:
+            print("  all-green between %d s and %d s. Closing in:"
+                  % (green_ok, green_bad))
+
+            exact, tried = refine(times, system, is_clean,
+                                  green_ok, green_bad)
+
+            for headway, ok in tried:
+                print("    %4d s   %s" % (headway,
+                                          "clean" if ok else "checked"))
+
+            print("  all-green headway: %d s (%.1f tph). At %d s one train is "
+                  "checked." % (exact, 3600.0 / exact, exact - 1))
+
+
+        # The interval the railway actually keeps time at. This is the one to
+        # quote at anybody who has watched a run and seen nothing wrong with
+        # it, because past the all-green headway that is exactly what they
+        # will see: trains checked here and there, and every one on time.
+
+        print()
+
+        if time_ok is None:
+            print("  no interval in the range kept time - widen HEADWAYS")
             continue
 
-        print("  clean at %d s, degraded at %d s. Closing in:"
-              % (all_green, first_degraded))
+        if time_bad is None:
+            print("  keeps time all the way down to %d s: where it stops "
+                  "doing so is below" % (time_ok,))
+            print("  the bottom of HEADWAYS.")
+            continue
 
-        exact, tried = refine(times, system, all_green, first_degraded)
+        print("  keeps time between %d s and %d s. Closing in:"
+              % (time_ok, time_bad))
+
+        punctual, tried = refine(times, system, keeps_time,
+                                 time_ok, time_bad)
 
         for headway, ok in tried:
-            print("    %4d s   %s" % (headway, "clean" if ok else "degraded"))
+            print("    %4d s   %s" % (headway, "on time" if ok else "late"))
 
-        print("  all-green headway: %d s (%.1f tph). At %d s one train is "
-              "checked." % (exact, 3600.0 / exact, exact - 1))
+        print("  keeps-time headway: %d s (%.1f tph). Checked, but every train "
+              "still" % (punctual, 3600.0 / punctual))
+        print("  makes its booked arrival.")
 
 
 # ---------------------------------------------------------------------------

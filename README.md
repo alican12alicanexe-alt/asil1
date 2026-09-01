@@ -520,20 +520,31 @@ $ python scenarios/depotline/_sweep_headway.py
     120 s      1168 s       77.6 s      153 s
      60 s      3250 s      264.6 s      452 s
 
-clean at 240 s, degraded at 210 s. Closing in on the boundary:
+all-green between 240 s and 210 s. Closing in on the boundary:
     225 s   clean
-    217 s   degraded
-    221 s   degraded
+    217 s   checked
+    221 s   checked
     223 s   clean
-    222 s   degraded
+    222 s   checked
 
 all-green headway: 223 s (16.1 trains an hour)
+keeps-time headway: 199 s (18.1 trains an hour)
 ```
 
-The coarse rows only bracket the answer - clean at 240 s and degraded at 210 s
+The coarse rows only bracket the answer - clean at 240 s and checked at 210 s
 says nothing about 225 s - so the sweep then halves that bracket until one second
 separates the two ends. Four or five runs, rather than the thirty a
 second-by-second sweep would take.
+
+Two figures, because they answer different questions. **All-green** is the
+closest these trains follow each other without any of them ever being checked by
+a signal: a property of the railway, and the one to quote when comparing
+signalling systems. **Keeps time** is the closest they follow each other with
+every train still making its booked arrival, and it is always tighter. A run
+between the two shows every train on time and looks entirely normal to watch, and
+is being held down by the signalling the whole way. Both are true: a train can be
+throttled back for twenty seconds on a forty-minute run and still arrive on the
+minute, because a booked station-to-station time is not an unimpeded one.
 
 223 s measured against a 149 s worst section. The theory is a floor and it is not
 a tight one: signal spacing is only part of the story, and the rest is the route
