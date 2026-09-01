@@ -126,12 +126,36 @@ def probe_all(count=COUNT):
     return times
 
 
-def flight_spec(times, headway_s, count=COUNT):
-    """Both directions, interleaved: the up flight and the down flight."""
+#: (line, pattern, id prefix, name) for each direction, in report order.
+DIRECTIONS = (("UP", UP_PATTERN, "U", "West Depot - East Depot"),
+              ("DN", DN_PATTERN, "D", "East Depot - West Depot"))
+
+
+def flight_spec(times, headway_s, count=COUNT, indices=None,
+                directions=None, stock=None):
+    """Both directions, interleaved: the up flight and the down flight.
+
+    ``directions`` restricts the spec to particular lines - ``("UP",)`` runs an
+    up flight on its own, which is how following capacity is measured without
+    the station throats being shared with anything coming the other way.
+
+    ``indices`` restricts it to particular services while leaving them booked
+    where they would be in the full flight, which is how a sweep prices the
+    flight running alone.
+
+    ``stock`` replaces the unit the flight is booked with. The physical train
+    is not the variable in a signalling comparison - what changes is what the
+    train is *fitted* with, and that lives on the stock entry, so a sweep hands
+    a copy of :data:`STOCK` with different equipment rather than editing the
+    timetable file.
+    """
+    unit = dict(stock or STOCK)
+    wanted = None if directions is None else tuple(directions)
     services = []
-    for line, pattern, prefix, name in (("UP", UP_PATTERN, "U", "West Depot - East Depot"),
-                                        ("DN", DN_PATTERN, "D", "East Depot - West Depot")):
-        for n in range(count):
+    for line, pattern, prefix, name in DIRECTIONS:
+        if wanted is not None and line not in wanted:
+            continue
+        for n in range(count) if indices is None else indices:
             shift = n * headway_s
             entries = []
             for station, dwell in pattern:
@@ -146,9 +170,9 @@ def flight_spec(times, headway_s, count=COUNT):
             services.append({
                 "id": "%s%02d" % (prefix, n + 1),
                 "name": "%s %s" % (format_clock(BASE + shift)[:5], name),
-                "stock": "EMU", "departure": format_clock(BASE + shift),
+                "stock": unit["id"], "departure": format_clock(BASE + shift),
                 "ready_lead_s": 60, "calls": entries})
-    return {"stock": [STOCK], "services": services}
+    return {"stock": [unit], "services": services}
 
 
 HEADER = '''# twoway timetable - generated, do not edit by hand.
