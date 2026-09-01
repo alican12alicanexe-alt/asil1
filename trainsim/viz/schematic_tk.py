@@ -691,34 +691,58 @@ class TkSchematicView(SchematicView):
         Only a twin counts, never any crossing. A diamond at a flat junction is
         a crossing too, and a train on the other line there does not mean this
         line has changed direction - it means wait, which is what red is for.
+
+        Asked of BOTH of a signal's roads, the one it reads into and the one it
+        reads out of. Into is the obvious one: no route can be set over a road
+        the other direction is using. Out of is the one that matters at a
+        platform, and it was missing. A platform road worked both ways has a
+        starting signal at each end, one per direction, and a train standing
+        there can only ever be looking at one of them - the other reads out of
+        the same rails the opposite way, and the train is sitting on them. Its
+        own road is what makes it unapproachable, not the road ahead, so asking
+        only about the road ahead left it lit, and lit at danger: a red lamp at
+        the far end of an occupied platform, for a train that cannot exist.
         """
         sim = self.sim
         interlocking = sim.interlocking
         if interlocking is None:
             return set()
         infra = self.scenario.infrastructure
-        sections = infra.direction_sections
         taken = {}
+
+        def opposed(block_id):
+            """Is this road's twin taken - a train on it, or a route over it?"""
+            if block_id not in taken:
+                taken[block_id] = self._twin_is_committed(block_id)
+            return taken[block_id]
+
         dark = set()
         for signal in infra.signals.values():
-            here = sections.get(signal.block_id)
-            if here is None:
-                continue
-            if signal.block_id not in taken:
-                section, way = here
-                busy = False
-                for other in infra.crossings.get(signal.block_id, ()):
-                    there = sections.get(other)
-                    if (there is None or there[0] != section
-                            or there[1] == way):
-                        continue
-                    if interlocking.block_is_committed(other, sim):
-                        busy = True
-                        break
-                taken[signal.block_id] = busy
-            if taken[signal.block_id]:
+            behind = infra.block_of_segment.get(signal.from_segment)
+            if opposed(signal.block_id) or (behind and opposed(behind)):
                 dark.add(signal.id)
         return dark
+
+    def _twin_is_committed(self, block_id):
+        """Is the opposite direction over these rails occupied or booked?
+
+        ``False`` for a road that is not worked both ways, which has no twin to
+        be committed, and for one whose twin is free.
+        """
+        sim = self.sim
+        infra = self.scenario.infrastructure
+        sections = infra.direction_sections
+        here = sections.get(block_id)
+        if here is None:
+            return False
+        section, way = here
+        for other in infra.crossings.get(block_id, ()):
+            there = sections.get(other)
+            if there is None or there[0] != section or there[1] == way:
+                continue
+            if sim.interlocking.block_is_committed(other, sim):
+                return True
+        return False
 
     #: The second head, in pixels: how far its centre stands beyond the main
     #: lamp's, and the radius both are drawn at.
