@@ -68,6 +68,54 @@
 #   etcs_moving_block        123 s        77 s      29.3 / 46.8
 #   virtual_coupling         121 s        68 s      29.8 / 52.9
 #
+# THE CONTROLS, WHICH ARE WHY THOSE NUMBERS CAN BE READ AT ALL
+#
+# Three things changed between the base and this experiment - the fleet is
+# mixed, the line limit went 120 to 150, and the crossovers went 900 m to
+# 1000 m - so a number that moved could have moved for any of them. The sweep
+# takes a fleet argument for exactly that reason:
+#
+#   python scenarios/capacity2/_sweep_headway.py virtual_coupling normal
+#   python scenarios/capacity2/_sweep_headway.py virtual_coupling fast
+#
+# "normal" puts a 120 km/h unit on every path of this railway. It isolates the
+# speed and the geometry, because it is the base's fleet on the changed layout:
+#
+#   system                 this railway        the base       difference
+#   fixed_block_3aspect    211 s / 179 s    212 s / 180 s     1 s / 1 s
+#   etcs_moving_block      123 s /  77 s    123 s /  77 s     none
+#   virtual_coupling       121 s /  68 s    121 s /  68 s     none
+#
+# Nothing. Two of the three systems reproduce the base exactly and the third is
+# a second out, which is the width of the bisection's last step. Raising the
+# limit to 150 and lengthening four blocks by 100 m changed the capacity of this
+# railway by nothing at all, because a 120 km/h unit never uses the extra speed
+# and 100 m of extra block is lost in a 1200 m platform zone.
+#
+# So the whole of the collapse from 212 s to 559 s belongs to the fleet mix.
+# There is no other candidate left.
+#
+# "fast" is the other control, and it is the more surprising one: every train a
+# 160 km/h unit, all of them held to the 150 limit, all of them identical.
+#
+#   system                  all fast        all normal       difference
+#   fixed_block_3aspect    221 s / 188 s   211 s / 179 s     10 s /  9 s worse
+#   etcs_moving_block      153 s / 106 s   123 s /  77 s     30 s / 29 s worse
+#   virtual_coupling       151 s /  97 s   121 s /  68 s     30 s / 29 s worse
+#
+# A uniformly faster railway holds *fewer* trains, not more, and the cab systems
+# lose the most by it. That is not a fault, it is what braking distance does:
+# it grows with the square of speed while the time saved grows only linearly, so
+# every train needs a longer piece of railway to itself and the gain in journey
+# time is paid for twice over in separation. Moving block and virtual coupling
+# feel it hardest precisely because their separation *is* the braking distance -
+# fixed block was already paying for a whole block whether it needed it or not,
+# so it has less to lose.
+#
+# Two conclusions worth keeping apart, then. Mixing the fleet is what destroys
+# capacity here. Raising the speed does not destroy it, but it does not buy any
+# either, and if every train uses the extra speed it costs a little.
+#
 # WHAT THE EXPERIMENT ANSWERS
 #
 # It changes the ranking hardly at all and the margins almost entirely.
@@ -100,14 +148,13 @@
 # alternating them, or the overtakes the loops at Linford, Bramley and Calder
 # were laid in for and which nothing here uses.
 #
-# TWO THINGS TO KNOW BEFORE COMPARING WITH THE BASE
+# COMPARING WITH THE BASE
 #
 # The line limit is 150 here and 120 there, and the four crossovers are 1000 m
 # here and 900 m there - the fast unit needs 939 m to stop from 150 and 900 m
-# blocks would have been unsignalable. Both changes follow from the fleet, but
-# they mean the absolute headways are not measured on the same railway. What is
-# comparable is the ratio between the three systems within each run, which is
-# what the experiment was for.
+# blocks would have been unsignalable. Both changes follow from the fleet. The
+# "normal" control above prices them, and the price is nothing, so the mixed
+# figures can be set against the base directly after all.
 #
 # The flight is booked at a uniform interval in both directions with the types
 # strictly alternating. That is the harshest arrangement and it was chosen

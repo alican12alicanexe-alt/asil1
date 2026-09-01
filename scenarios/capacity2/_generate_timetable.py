@@ -141,19 +141,22 @@ def probe(line, pattern, index=0, unit=None):
             for station, _ in pattern}
 
 
-def probe_all(count=COUNT):
+def probe_all(count=COUNT, fleet=None):
     """An unimpeded run per service, per direction, keyed (line, index).
 
     Two services get the same answer only if they take the same roads *and* are
     worked by the same type, so the type is part of the key. On the homogeneous
     base it was not, and reusing that would have booked half this flight on the
     wrong timings.
+
+    ``fleet`` replaces the pair of types, so a control run can put the same unit
+    on every path and price the railway without the mix.
     """
     times = {}
     seen = {}
     for line, pattern in (("UP", UP_PATTERN), ("DN", DN_PATTERN)):
         for index in range(count):
-            unit = fleet_for(index)
+            unit = fleet_for(index, fleet)
             key = (line, unit["id"],
                    tuple(road(s, line, index) for s, _ in pattern))
             if key not in seen:
@@ -204,10 +207,17 @@ def flight_spec(times, headway_s, count=COUNT, indices=None,
             services.append({
                 "id": "%s%02d" % (prefix, n + 1),
                 "name": "%s %s %s" % (format_clock(BASE + shift)[:5], name,
-                                      "(fast)" if unit is types[1] else ""),
+                                      "(fast)" if unit["id"] != types[0]["id"]
+                                      else ""),
                 "stock": unit["id"], "departure": format_clock(BASE + shift),
                 "ready_lead_s": 60, "calls": entries})
-    return {"stock": list(types), "services": services}
+    # Deduplicated by id, because a control run puts the same type on every
+    # path and a timetable may not declare one unit twice.
+    declared = []
+    for unit in types:
+        if unit["id"] not in [d["id"] for d in declared]:
+            declared.append(unit)
+    return {"stock": declared, "services": services}
 
 
 HEADER = '''# capacity2 timetable - generated, do not edit by hand.

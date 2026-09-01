@@ -43,8 +43,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(os.path.dirname(HERE)))
 sys.path.insert(0, HERE)
 
-from _generate_timetable import (COUNT, FLEET, flight_spec, fleet_for,
-                                 probe_all, simulation, INFRA)
+from _generate_timetable import (COUNT, FAST, FLEET, NORMAL, flight_spec,
+                                 fleet_for, probe_all, simulation, INFRA)
 from trainsim.analysis.kpi import measure
 from trainsim.scenario.loader import build_timetable
 
@@ -60,15 +60,33 @@ FITMENT = {
 }
 
 
-def fleet_fitted(system):
-    """A copy of :data:`FLEET` fitted for ``system`` - both types alike."""
+#: The fleet the sweep books, by name. "mixed" is the experiment; the other two
+#: are its controls, and they are why the experiment can be read at all.
+#:
+#: The absolute headways here cannot be set beside scenarios/capacity, because
+#: three things changed at once between the two: the fleet is mixed, the line
+#: limit went from 120 to 150, and the crossovers went from 900 m to 1000 m. A
+#: number that moved could have moved for any of them. "normal" runs this exact
+#: railway with a 120 km/h unit on every path, so the difference between it and
+#: the base is the speed and the geometry, and the difference between it and
+#: "mixed" is the fleet and nothing else. "fast" is the other end: what the
+#: railway does when every train can use the 150.
+FLEETS = {
+    "mixed":  (NORMAL, FAST),
+    "normal": (NORMAL, NORMAL),
+    "fast":   (FAST, FAST),
+}
+
+
+def fleet_fitted(system, fleet=FLEET):
+    """A copy of ``fleet`` fitted for ``system`` - every type alike."""
     try:
         level, tims, v2v = FITMENT[system]
     except KeyError:
         raise SystemExit(
             "no fitment declared for %r - add it to FITMENT" % (system,))
     fitted = []
-    for unit in FLEET:
+    for unit in fleet:
         copy = dict(unit)
         copy["etcs_level"], copy["tims"], copy["v2v"] = level, tims, v2v
         fitted.append(copy)
@@ -83,10 +101,10 @@ HEADWAYS = (900, 780, 660, 600, 540, 480, 420, 360,
             300, 270, 240, 210, 195, 180, 165, 150, 135, 120, 105, 90, 75, 60)
 
 
-def run(times, headway_s, system, count=COUNT, indices=None):
+def run(times, headway_s, system, count=COUNT, indices=None, fleet=FLEET):
     timetable = build_timetable(
         flight_spec(times, headway_s, count, indices,
-                    fleet=fleet_fitted(system)), INFRA)
+                    fleet=fleet_fitted(system, fleet)), INFRA)
     sim = simulation(timetable, duration_s=headway_s * count + 4200,
                      system=system)
     # measure() drives the run itself, one tick at a time, because the numbers
@@ -111,7 +129,7 @@ def keeps_time(metrics):
     return worst < 30.0 and metrics.completed == metrics.services
 
 
-def refine(times, system, test, clean_s, degraded_s):
+def refine(times, system, test, clean_s, degraded_s, fleet=FLEET):
     """Narrow the boundary between a clean interval and a degraded one to 1 s.
 
     Assumes the railway does not un-degrade as the interval tightens. Where the
@@ -122,7 +140,7 @@ def refine(times, system, test, clean_s, degraded_s):
     tried = []
     while hi - lo > 1:
         mid = (lo + hi) // 2
-        ok = test(run(times, mid, system))
+        ok = test(run(times, mid, system, fleet=fleet))
         tried.append((mid, ok))
         if ok:
             hi = mid
@@ -131,13 +149,19 @@ def refine(times, system, test, clean_s, degraded_s):
     return hi, tried
 
 
-def main(system="fixed_block_3aspect"):
-    times = probe_all()
-    alone = sum(run(times, HEADWAYS[0], system, indices=[n]).total_restrained_s
+def main(system="fixed_block_3aspect", fleet_name="mixed"):
+    try:
+        fleet = FLEETS[fleet_name]
+    except KeyError:
+        raise SystemExit("fleet must be one of %s" % ", ".join(sorted(FLEETS)))
+    times = probe_all(fleet=fleet)
+    alone = sum(run(times, HEADWAYS[0], system, indices=[n],
+                    fleet=fleet).total_restrained_s
                 for n in range(COUNT))
-    fast = sum(1 for n in range(COUNT) if fleet_for(n) is FLEET[1])
-    print("%d trains each way under %s: %d normal, %d fast, alternating, all "
-          "calling everywhere" % (COUNT, system, COUNT - fast, fast))
+    fast = sum(1 for n in range(COUNT)
+               if fleet_for(n, fleet)["id"] == FAST["id"])
+    print("%d trains each way under %s: %d normal, %d fast, all calling "
+          "everywhere" % (COUNT, system, COUNT - fast, fast))
     print("the flight alone is restrained %.0f s at the controlled station "
           "signals; the column below is over that.\n" % alone)
     print("  headway   restrained   mean delay      worst   completed")
@@ -145,7 +169,7 @@ def main(system="fixed_block_3aspect"):
     green_ok, green_bad = None, None
     time_ok, time_bad = None, None
     for headway in HEADWAYS:
-        metrics = run(times, headway, system)
+        metrics = run(times, headway, system, fleet=fleet)
         worst = max(metrics.delays.values()) if metrics.delays else 0.0
         congestion = metrics.total_restrained_s - alone
         ok = is_clean(metrics, alone)
@@ -175,7 +199,8 @@ def main(system="fixed_block_3aspect"):
         print("all-green between %d s and %d s. Closing in on the boundary:"
               % (green_ok, green_bad))
         exact, tried = refine(times, system,
-                              lambda m: is_clean(m, alone), green_ok, green_bad)
+                              lambda m: is_clean(m, alone), green_ok, green_bad,
+                              fleet=fleet)
         for headway, ok in tried:
             print("  %5d s   %s" % (headway, "clean" if ok else "checked"))
         print()
@@ -198,7 +223,8 @@ def main(system="fixed_block_3aspect"):
 
     print()
     print("keeps time between %d s and %d s. Closing in:" % (time_ok, time_bad))
-    punctual, tried = refine(times, system, keeps_time, time_ok, time_bad)
+    punctual, tried = refine(times, system, keeps_time, time_ok, time_bad,
+                             fleet=fleet)
     for headway, ok in tried:
         print("  %5d s   %s" % (headway, "on time" if ok else "late"))
     print()
@@ -210,4 +236,4 @@ def main(system="fixed_block_3aspect"):
 
 
 if __name__ == "__main__":
-    main(*sys.argv[1:2])
+    main(*sys.argv[1:3])
