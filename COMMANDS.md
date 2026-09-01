@@ -66,12 +66,18 @@ usually less, because trains stand at platforms and reoccupation binds before
 block spacing does. To measure it, sweep the flight:
 
 ```
-python scenarios/depotline/_sweep_headway.py            depotline: 210 s, 17.1 tph
+python scenarios/depotline/_sweep_headway.py            depotline: 223 s, 16.1 tph
 python scenarios/depotline/_sweep_headway.py etcs_l2    under any other system
-python scenarios/capacity/_sweep_headway.py             capacity: 240 s, 15.0 tph each way
+python scenarios/capacity/_sweep_headway.py             capacity: 212 s, 17.0 tph each way
 python scenarios/capacity/_sweep_headway.py virtual_coupling
 python scenarios/twoway/sweep.py                        all three systems, up trains only
 ```
+
+Each sweep runs a coarse list of intervals and then closes in. The coarse rows
+only bracket the answer — clean at 135 s and degraded at 120 s says nothing about
+128 s — so it halves the bracket until one second separates the two ends, and
+prints every interval it tried on the way. Four or five extra runs, rather than
+the fifteen a second-by-second sweep would take.
 
 Three systems are compared: fixed block, moving block, virtual coupling. Both
 capacity sweeps declare the fitment per system and give each one what it needs

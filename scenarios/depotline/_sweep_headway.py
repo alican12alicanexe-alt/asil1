@@ -70,6 +70,44 @@ def run(times, headway_s, system, count=COUNT, indices=None):
     return measure(sim)
 
 
+def is_clean(metrics, alone):
+    """Whether this interval ran all-green: nothing checked, nobody late.
+
+    ``alone`` is what the flight pays with the railway to itself, so what is
+    tested is the congestion on top of that rather than the total.
+    """
+    worst = max(metrics.delays.values()) if metrics.delays else 0.0
+    return (metrics.total_restrained_s - alone <= 0.0 and worst <= 1.0
+            and metrics.completed == metrics.services)
+
+
+def refine(times, system, alone, clean_s, degraded_s):
+    """Narrow the boundary between a clean interval and a degraded one to 1 s.
+
+    The coarse sweep only says the answer is somewhere between two of its rows -
+    clean at 240 s, degraded at 210 s says nothing about 225 s. This halves that
+    bracket until one second separates the two ends, which costs four or five
+    runs rather than the thirty a second-by-second sweep would.
+
+    It assumes the railway does not un-degrade as the interval tightens. That is
+    usually true, but it is an assumption: where the restraint column is not
+    monotonic this finds *a* boundary in the bracket rather than the only one.
+
+    Returns the tightest interval that still ran clean, and every interval tried.
+    """
+    lo, hi = int(degraded_s), int(clean_s)   # lo is degraded, hi is clean
+    tried = []
+    while hi - lo > 1:
+        mid = (lo + hi) // 2
+        ok = is_clean(run(times, mid, system), alone)
+        tried.append((mid, ok))
+        if ok:
+            hi = mid
+        else:
+            lo = mid
+    return hi, tried
+
+
 def main(system="fixed_block_3aspect"):
     times = probe_all()
     # What the flight pays with the railway to itself. Every row below is
@@ -90,14 +128,17 @@ def main(system="fixed_block_3aspect"):
     print("  headway   restrained   mean delay      worst   completed")
     print("  " + "-" * 55)
     all_green = None
+    first_degraded = None
     for headway in HEADWAYS:
         metrics = run(times, headway, system)
         worst = max(metrics.delays.values()) if metrics.delays else 0.0
         congestion = metrics.total_restrained_s - alone
-        ok = (congestion <= 0.0 and worst <= 1.0
-              and metrics.completed == metrics.services)
+        ok = is_clean(metrics, alone)
         if ok:
             all_green = headway
+            first_degraded = None
+        elif all_green is not None and first_degraded is None:
+            first_degraded = headway
         print("  %5d s   %7.0f s    %7.1f s   %6.0f s   %d/%d %s"
               % (headway, congestion, metrics.mean_delay_s,
                  worst, metrics.completed, metrics.services,
@@ -105,10 +146,25 @@ def main(system="fixed_block_3aspect"):
     print()
     if all_green is None:
         print("no interval in the range ran all-green; widen HEADWAYS")
-    else:
-        print("all-green headway: %d s (%.1f trains an hour) - the closest these "
-              "trains follow each other" % (all_green, 3600.0 / all_green))
-        print("without one of them ever being checked by a signal.")
+        return
+    if first_degraded is None:
+        print("every interval in the range ran all-green down to %d s; the "
+              "railway has not" % (all_green,))
+        print("bent yet, so this is the end of HEADWAYS rather than a limit. "
+              "Tighten the list.")
+        return
+
+    print("clean at %d s, degraded at %d s. Closing in on the boundary:"
+          % (all_green, first_degraded))
+    exact, tried = refine(times, system, alone, all_green, first_degraded)
+    for headway, ok in tried:
+        print("  %5d s   %s" % (headway, "clean" if ok else "degraded"))
+    print()
+    print("all-green headway: %d s (%.1f trains an hour) - the closest these "
+          "trains follow" % (exact, 3600.0 / exact))
+    print("each other without one of them ever being checked by a signal. One "
+          "second closer,")
+    print("at %d s, one of them is." % (exact - 1,))
 
 
 if __name__ == "__main__":

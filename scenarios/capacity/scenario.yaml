@@ -60,9 +60,15 @@
 # checked by a signal:
 #
 #   system                 all-green headway, each way
-#   fixed_block_3aspect     240 s   15.0 an hour
-#   etcs_moving_block       135 s   26.7
-#   virtual_coupling        135 s   26.7
+#   fixed_block_3aspect     212 s   17.0 an hour
+#   etcs_moving_block       123 s   29.3
+#   virtual_coupling        121 s   29.8
+#
+# To the second. The sweep runs a coarse list of intervals and then halves the
+# bracket between the last clean one and the first degraded one until a single
+# second separates them, so these are boundaries rather than the nearest row of
+# a grid - the coarse grid put fixed block at 240 s and both cab systems at
+# 135 s, which is up to 28 s out.
 #
 # Three systems, because those are the three the comparison is about. The
 # intermediate ETCS levels are still in the registry and _sweep_headway.py will
@@ -94,10 +100,11 @@
 # one that fits the train to the system, and it is the one to quote for
 # capacity.
 #
-# Virtual coupling ties moving block here, and that is a result rather than a
-# fault: every train on this railway calls at every station, so by 135 s the
-# binding constraint has moved into the platform, and closing the gap between
-# trains cannot help once what they are queueing for is a road to stand on. To
+# Virtual coupling is two seconds better than moving block here, which is a tie
+# in everything but arithmetic, and that is a result rather than a fault: every
+# train on this railway calls at every station, so by 123 s the binding
+# constraint has moved into the platform, and closing the gap between trains
+# cannot help once what they are queueing for is a road to stand on. To
 # see virtual coupling do what it is for, the constraint has to be somewhere it
 # can still reach - trains that do not all stop everywhere, a mix of speeds, a
 # flight closer than a platform can turn round. That is the next experiment,

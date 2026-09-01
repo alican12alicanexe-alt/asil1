@@ -265,6 +265,74 @@ def run(times, headway_s, system, count=COUNT):
 
 
 # ---------------------------------------------------------------------------
+# FINDING THE EXACT BOUNDARY
+# ---------------------------------------------------------------------------
+
+def is_clean(metrics):
+    """
+    Whether this interval ran all-green.
+
+    All-green means no train was ever held down by the signalling, nobody
+    arrived late, and every train finished. It is a stricter test than "no
+    violations": a railway can run a timetable safely and still be fighting
+    itself the whole way.
+    """
+
+    worst = max(metrics.delays.values()) if metrics.delays else 0.0
+
+    return (metrics.total_restrained_s <= 0.0
+            and worst <= 1.0
+            and metrics.completed == metrics.services)
+
+
+def refine(times, system, clean_s, degraded_s):
+    """
+    Narrow the boundary between a clean interval and a degraded one to 1 s.
+
+    The coarse sweep only says the answer is somewhere between two of its
+    rows. Clean at 120 s and degraded at 105 s says nothing about 112 s.
+
+    So halve the bracket and try the middle:
+
+        clean 120, degraded 105  ->  try 112
+        112 clean                ->  try 108
+        108 degraded             ->  try 110
+        ...until one second separates the two ends
+
+    Four or five runs instead of the fifteen a second-by-second sweep would
+    take.
+
+    This assumes the railway does not become clean again as the interval
+    tightens. That holds in every case seen here, but it is an assumption:
+    where the restraint column is not monotonic this finds *a* boundary in
+    the bracket rather than the only one.
+
+    Returns the tightest interval that still ran clean, and every interval
+    tried on the way.
+    """
+
+    lo = int(degraded_s)     # known degraded
+    hi = int(clean_s)        # known clean
+
+    tried = []
+
+    while hi - lo > 1:
+
+        mid = (lo + hi) // 2
+
+        ok = is_clean(run(times, mid, system))
+
+        tried.append((mid, ok))
+
+        if ok:
+            hi = mid
+        else:
+            lo = mid
+
+    return hi, tried
+
+
+# ---------------------------------------------------------------------------
 # PRINT HEADER
 # ---------------------------------------------------------------------------
 
@@ -324,6 +392,12 @@ def main():
         print_header(system)
 
 
+        # The tightest interval that ran clean, and the widest that did not
+        # once it had. Together they bracket the boundary.
+        all_green = None
+        first_degraded = None
+
+
         for headway in HEADWAYS:
 
             # -------------------------------------------------------
@@ -368,6 +442,47 @@ def main():
                     metrics.violations,
                 )
             )
+
+
+            # -------------------------------------------------------
+            # Track the bracket.
+            # -------------------------------------------------------
+
+            if is_clean(metrics):
+                all_green = headway
+                first_degraded = None
+
+            elif all_green is not None and first_degraded is None:
+                first_degraded = headway
+
+
+        # -----------------------------------------------------------
+        # Close in on the exact interval.
+        # -----------------------------------------------------------
+
+        print()
+
+        if all_green is None:
+            print("  no interval in the range ran all-green - widen HEADWAYS")
+            continue
+
+        if first_degraded is None:
+            print("  all-green all the way down to %d s: this railway has not "
+                  "bent yet, so" % (all_green,))
+            print("  that is the end of HEADWAYS rather than a limit. Tighten "
+                  "the list.")
+            continue
+
+        print("  clean at %d s, degraded at %d s. Closing in:"
+              % (all_green, first_degraded))
+
+        exact, tried = refine(times, system, all_green, first_degraded)
+
+        for headway, ok in tried:
+            print("    %4d s   %s" % (headway, "clean" if ok else "degraded"))
+
+        print("  all-green headway: %d s (%.1f tph). At %d s one train is "
+              "checked." % (exact, 3600.0 / exact, exact - 1))
 
 
 # ---------------------------------------------------------------------------

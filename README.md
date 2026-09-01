@@ -513,17 +513,29 @@ $ python scenarios/depotline/_sweep_headway.py
 
   headway   restrained   mean delay      worst
     270 s         0 s        0.0 s        0 s
-    240 s         0 s        0.0 s        0 s     <- all-green
+    240 s         0 s        0.0 s        0 s     <- clean
     210 s        30 s        2.0 s       16 s     <- degraded
     195 s        75 s        4.9 s       31 s
     165 s       258 s       16.6 s       63 s
     120 s      1168 s       77.6 s      153 s
      60 s      3250 s      264.6 s      452 s
 
-all-green headway: 240 s (15.0 trains an hour)
+clean at 240 s, degraded at 210 s. Closing in on the boundary:
+    225 s   clean
+    217 s   degraded
+    221 s   degraded
+    223 s   clean
+    222 s   degraded
+
+all-green headway: 223 s (16.1 trains an hour)
 ```
 
-240 s measured against a 149 s worst section. The theory is a floor and it is not
+The coarse rows only bracket the answer - clean at 240 s and degraded at 210 s
+says nothing about 225 s - so the sweep then halves that bracket until one second
+separates the two ends. Four or five runs, rather than the thirty a
+second-by-second sweep would take.
+
+223 s measured against a 149 s worst section. The theory is a floor and it is not
 a tight one: signal spacing is only part of the story, and the rest is the route
 reservation and the roads the flight is booked over, neither of which the spacing
 formula knows anything about. Restraint is reported over what the flight pays
@@ -576,9 +588,11 @@ next one.
 
 A flight using the loops in turn puts half its trains in a 253 s road to escape
 the 169 s one, and that is what it measures: spreading this flight across every
-road at every station took the all-green headway from 210 s to 240 s — 17.1
-trains an hour to 15.0. Loops let a fast train past a slow one; this flight has
-nothing to overtake.
+road at every station took the all-green headway from 210 s to 223 s — 17.1
+trains an hour to 16.1. Loops let a fast train past a slow one; this flight has
+nothing to overtake. (The 210 s is where the coarse grid landed before the sweep
+learned to close in on the boundary; only the 223 s has been refined to the
+second, so the gap between the two is if anything understated.)
 
 The shipped timetable uses them anyway. A station's roads existing and never
 being used is its own kind of lie about the railway, and the cost is now a
