@@ -294,6 +294,32 @@ class Path:
     def speed_limit_at(self, chainage_m: float) -> float:
         return self.entry_at(chainage_m).segment.max_speed_ms
 
+    def speed_limit_over(self, rear_m: float, front_m: float) -> float:
+        """The tightest limit anywhere under a train spanning ``[rear, front]``.
+
+        A speed limit is not released when the driver passes the end of it - it
+        is released when the *train* is clear of it, which is why a temporary
+        restriction has its termination board sited a train length beyond the
+        restricted rail. Reading the limit at the nose alone lets a train open
+        up with most of itself still on the slow road, which it did: a 160 m
+        unit was leaving a 40 km/h depot road at 66 km/h.
+
+        Every segment the train covers is asked, not merely the two ends, so a
+        restriction shorter than the train cannot hide inside it.
+        """
+        low = max(0.0, min(rear_m, front_m))
+        high = max(rear_m, front_m)
+        tightest = None
+        for entry in self.entries:
+            if entry.end_m <= low or entry.start_m >= high:
+                continue
+            speed = entry.segment.max_speed_ms
+            if tightest is None or speed < tightest:
+                tightest = speed
+        if tightest is None:
+            return self.speed_limit_at(front_m)
+        return tightest
+
     def grade_at(self, chainage_m: float) -> float:
         """Rise per thousand where the train's front is, in its own direction."""
         return self.entry_at(chainage_m).segment.grade_permille

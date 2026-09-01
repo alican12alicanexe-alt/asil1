@@ -48,8 +48,13 @@ STATION = frozenset({"id", "name", "km"})
 TRACK = frozenset({
     "id", "direction", "y", "max_speed_kmh", "block_length_m", "platform_zone_m",
     "serves", "block_lengths", "junction", "grade_permille", "gradients",
+    "speed_limits",
 })
 BLOCK_LENGTHS = frozenset({"from", "to", "block_length_m"})
+#: A permanent line-speed change over a stretch, in schematic kilometres. Not a
+#: disruption: a curve is not a defect, and a limit that is part of the railway
+#: belongs in the railway rather than in a list of things that went wrong.
+SPEED_LIMITS = frozenset({"from_km", "to_km", "max_speed_kmh"})
 GRADIENTS = frozenset({"from", "to", "grade_permille"})
 JUNCTION = frozenset({"track", "at", "length_m", "max_speed_kmh",
                       "grade_separated", "grade_permille"})

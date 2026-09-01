@@ -187,6 +187,15 @@ class SpeedLimits(object):
     def at(self, train, chainage_m: float) -> float:
         return train.path.speed_limit_at(chainage_m)
 
+    def over(self, train, rear_m: float, front_m: float) -> float:
+        """The tightest limit anywhere under the train.
+
+        What the driver is actually held to. A limit binds until the train is
+        clear of it, not until the driver has passed the end of it, so the whole
+        length is asked rather than the nose alone.
+        """
+        return train.path.speed_limit_over(rear_m, front_m)
+
     def ahead(self, train, chainage_m: float,
               lookahead_m: float) -> Sequence[Tuple[float, float]]:
         return train.path.restrictions_ahead(chainage_m, lookahead_m)
@@ -203,13 +212,31 @@ class DisruptedSpeedLimits(SpeedLimits):
 
     def at(self, train, chainage_m: float) -> float:
         limit = train.path.speed_limit_at(chainage_m)
-        entry = train.path.entry_at(chainage_m)
-        km = entry.segment.km_at(chainage_m - entry.start_m)
-        temporary = self.disruptions.limit_at(
-            entry.segment.track, km, self.clock())
+        temporary = self._temporary(train, chainage_m)
         if temporary is not None:
             return min(limit, temporary)
         return limit
+
+    def over(self, train, rear_m: float, front_m: float) -> float:
+        """As :meth:`SpeedLimits.over`, with any active restriction laid over it.
+
+        The permanent limits are taken across every segment the train covers.
+        The temporary ones are sampled at the two ends, which is exact unless a
+        restriction is shorter than the train and falls entirely between its
+        nose and its tail - a case worth knowing about rather than pretending
+        away, and one no scenario here creates.
+        """
+        limit = train.path.speed_limit_over(rear_m, front_m)
+        for chainage in (max(0.0, min(rear_m, front_m)), max(rear_m, front_m)):
+            temporary = self._temporary(train, chainage)
+            if temporary is not None:
+                limit = min(limit, temporary)
+        return limit
+
+    def _temporary(self, train, chainage_m: float):
+        entry = train.path.entry_at(chainage_m)
+        km = entry.segment.km_at(chainage_m - entry.start_m)
+        return self.disruptions.limit_at(entry.segment.track, km, self.clock())
 
     def ahead(self, train, chainage_m: float,
               lookahead_m: float) -> Sequence[Tuple[float, float]]:

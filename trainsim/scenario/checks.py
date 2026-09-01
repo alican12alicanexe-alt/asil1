@@ -101,8 +101,12 @@ def check_block_lengths(infrastructure, timetable, driver_config,
         # grounds that a train stopping there brakes anyway - but a train running
         # *through* a platform does not, and its exit signal can be at danger,
         # so the section still has to be long enough to brake in.
-        segment = infrastructure.network.segments[block.segment_ids[0]]
-        line_speed = segment.max_speed_ms
+        # The fastest a train may be going anywhere in this block, because that
+        # is what it has to be able to stop from. Taking the first segment was
+        # right while a block held exactly one; a block split by a speed limit
+        # holds several, and the tightest of them is not the one that binds.
+        line_speed = max(infrastructure.network.segments[seg_id].max_speed_ms
+                         for seg_id in block.segment_ids)
         # The gradient a train braking in this section is on. The steepest fall
         # decides, because that is the one that takes rate away from the brake
         # and so asks for the longest section.

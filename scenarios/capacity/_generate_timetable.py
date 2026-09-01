@@ -15,8 +15,10 @@ possible.
     python scenarios/capacity/_generate_timetable.py
     python scenarios/capacity/_generate_timetable.py 240 timetable-close
 
-Nothing here is booked over the Mere or Sandon branches. They are laid in and
-left alone - see the head of infrastructure.yaml.
+Nothing branches off this railway - see the head of infrastructure.yaml. The
+line speed is not flat: limits change roughly every 650 m and drop to 50 over
+each crossover, so the probe runs below are what a train actually achieves over
+that profile rather than a flat-out run.
 
 Stdlib only, like everything else here.
 """
@@ -45,8 +47,8 @@ COUNT = 8
 HEADWAY_S = 300
 
 STOCK = {"id": "EMU", "name": "Line unit", "length_m": 160,
-         "max_speed_kmh": 120, "max_accel": 1.0, "service_brake": 0.8,
-         "emergency_brake": 1.2, "etcs_level": "none", "tims": False}
+         "max_speed_kmh": 120, "max_accel": 0.9, "service_brake": 1.0,
+         "emergency_brake": 1.5, "etcs_level": "none", "tims": False}
 
 INFRA = build_infrastructure(
     read_data_file(os.path.join(HERE, "infrastructure.yaml")))
@@ -206,9 +208,9 @@ def stock_yaml():
     name: Line unit
     length_m: 160
     max_speed_kmh: 120
-    max_accel: 1.0
-    service_brake: 0.8
-    emergency_brake: 1.2
+    max_accel: 0.9
+    service_brake: 1.0
+    emergency_brake: 1.5
     etcs_level: none
     tims: false
 

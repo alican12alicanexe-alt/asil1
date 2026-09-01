@@ -1,5 +1,24 @@
 # capacity2 - sweep 2: what heterogeneous train performance does to the answer.
 #
+# RETIRED, AND KEPT FOR THE RECORD
+#
+# The comparison work went back to a homogeneous fleet, so nothing new is run
+# here. It is kept because the finding is worth keeping and because the moving
+# block fitment it settled - L3 with the integrity report on - is the one the
+# base uses.
+#
+# ITS FIGURES ARE STALE, AND KNOWINGLY SO
+#
+# Two changes landed after these numbers were measured: a speed limit is now
+# released only when the whole train is clear of it rather than when the driver
+# passes the end, and the base scenario grew a speed limit profile this one does
+# not have. The first of those makes every train very slightly slower, so every
+# headway below is a little optimistic. The timetable has been regenerated so
+# the scenario still runs clean; the sweep has not been re-run, because the
+# conclusion - that mixing performance costs capacity only if the timetable
+# spends it - does not turn on a second or two of headway. Re-run it before
+# quoting a number from it.
+#
 #   python run.py scenarios/capacity2              (live schematic)
 #   python run.py scenarios/capacity2 --headless
 #   python run.py scenarios/capacity2 --check      (the layout, and the plan)

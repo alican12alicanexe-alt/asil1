@@ -35,13 +35,28 @@
 # their own line throughout - but the capability is there for a diversion, and
 # for the reversible working an incident scenario would need.
 #
-# THE JUNCTIONS ARE THERE AND UNUSED
+# THERE ARE NO JUNCTIONS
 #
-# Two double junctions, at Linford and at Calder, each to an outlying station.
-# Nothing is booked over them. A junction changes capacity by taking the main
-# line away from main-line trains, and that is a separate measurement from this
-# one: putting the pointwork in now means the layout does not change underneath
-# the base figures when it is time to take it.
+# Nothing branches off this railway, so the only things that can hold a train up
+# are the train in front, a platform road and the signalling. A junction adds a
+# conflict that belongs to the junction rather than to the train control system,
+# and there is nowhere on this layout for that to hide a difference between two
+# systems. The crossovers are not junctions in that sense: they join the two
+# lines of this same railway to each other and lead nowhere else.
+#
+# THE LINE SPEED IS NOT FLAT
+#
+# A new limit roughly every 650 m, cycling through 80, 90, 100, 110 and 120, and
+# each crossover braced by a stepped approach - 90, then 70, then 50 over the
+# pointwork - with the crossovers themselves at 40. Declared as `speed_limits:`
+# on each track in infrastructure.yaml, which is infrastructure and not a
+# disruption: a curve is part of the railway.
+#
+# A limit that changes inside a block splits the block into several segments
+# rather than moving the signal, so train detection, the interlocking and the
+# aspect sequence still see 192 blocks while the driver reads 500 segments. And
+# a limit binds until the whole train is clear of it, not until the driver has
+# passed the end - so a train leaves a slow road at the slow road's speed.
 #
 # WHAT THE BOOKED SERVICE IS
 #
@@ -59,9 +74,35 @@
 # Measured by _sweep_headway.py, which reports two intervals per system:
 #
 #   system                all-green   keeps time   each way
-#   fixed_block_3aspect      212 s       180 s      17.0 / 20.0 an hour
-#   etcs_moving_block        123 s        77 s      29.3 / 46.8
-#   virtual_coupling         121 s        68 s      29.8 / 52.9
+#   fixed_block_3aspect      259 s       206 s      13.9 / 17.5 an hour
+#   etcs_moving_block        121 s        78 s      29.8 / 46.2
+#   virtual_coupling         114 s        72 s      31.6 / 50.0
+#
+# WHAT THE SPEED LIMITS DID TO THAT
+#
+# They cost fixed block a great deal and the cab systems nothing. On the flat
+# 120 railway this scenario used to be, with a 0.8 m/s^2 brake, it measured:
+#
+#   fixed_block_3aspect      212 s       180 s
+#   etcs_moving_block        123 s        77 s
+#   virtual_coupling         121 s        68 s
+#
+# Fixed block went from 212 s to 259 s - a fifth of its capacity gone. Moving
+# block did not move (123 to 121) and virtual coupling improved (121 to 114).
+#
+# The reason is that the two kinds of system are paying for different things. A
+# fixed-block headway is set by how long a train occupies a block, and a train
+# held to 50 over a crossover occupies that block for longer, whatever else is
+# true. A distance-separated system is set by braking distance, and braking
+# distance falls with the square of speed: the same limit that slows the train
+# down also lets the one behind it sit closer. So a heavily restricted railway
+# does not merely cost capacity - it widens the gap between the systems, and it
+# widens it in favour of the cab.
+#
+# Note the stock changed with the layout: 0.9 m/s^2 acceleration, 1.0 service
+# brake, 1.5 emergency. The two changes are not separated by a control run, so
+# the comparison above is between two railways rather than between two limit
+# profiles.
 #
 # TWO FIGURES, BECAUSE THEY ANSWER DIFFERENT QUESTIONS
 #

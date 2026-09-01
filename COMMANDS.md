@@ -68,7 +68,7 @@ block spacing does. To measure it, sweep the flight:
 ```
 python scenarios/depotline/_sweep_headway.py            depotline: 223 s, 16.1 tph
 python scenarios/depotline/_sweep_headway.py etcs_l2    under any other system
-python scenarios/capacity/_sweep_headway.py             capacity: 212 s, 17.0 tph each way
+python scenarios/capacity/_sweep_headway.py             capacity: 259 s, 13.9 tph each way
 python scenarios/capacity/_sweep_headway.py virtual_coupling
 python scenarios/twoway/sweep.py                        all three systems, up trains only
 ```

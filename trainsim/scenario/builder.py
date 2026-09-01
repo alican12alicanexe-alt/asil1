@@ -121,6 +121,9 @@ class _Builder(object):
             for entry in track.get("gradients") or []:
                 _check("track %r gradients entry" % track_id, entry,
                        schema.GRADIENTS)
+            for entry in track.get("speed_limits") or []:
+                _check("track %r speed_limits entry" % track_id, entry,
+                       schema.SPEED_LIMITS)
             if track.get("junction") is not None:
                 _check("track %r junction" % track_id, track["junction"],
                        schema.JUNCTION)
@@ -145,6 +148,10 @@ class _Builder(object):
         #: Chainages a track must have a node at, whatever its block length says.
         #: A crossover has to start and end somewhere a signal can stand.
         self.required_chainages: Dict[str, List[float]] = {}
+        #: Permanent line-speed changes per track, as (low_km, high_km, m/s).
+        #: Filled when each track is laid out; empty for a railway with none,
+        #: in which case every block is emitted as one segment exactly as before.
+        self.speed_limits: Dict[str, List[Tuple[float, float, float]]] = {}
 
         #: Mirror track -> the track whose rails it is laid over. A reversible
         #: line is modelled as a second set of blocks over the same railway,
@@ -458,42 +465,50 @@ class _Builder(object):
                           and max(block.km_start, block.km_end) <= high + 1e-6)
                 if not inside:
                     continue
-                if len(block.segment_ids) != 1:
-                    raise InfrastructureError(
-                        "block %s spans %d segments, and only single-segment "
-                        "blocks can be worked in both directions so far"
-                        % (block.id, len(block.segment_ids)))
-                source = next(s for s in self.segments
-                              if s.id == block.segment_ids[0])
-                mirror_seg = "%s_R" % source.id
-                self.segments.append(Segment(
-                    id=mirror_seg,
-                    start_node=source.end_node,
-                    end_node=source.start_node,
-                    length_m=source.length_m,
-                    max_speed_ms=source.max_speed_ms,
-                    track=mirror_id,
-                    km_start=source.km_end,
-                    km_end=source.km_start,
-                    y=source.end_y,
-                    y_end=source.y,
-                    platform=None,
-                    station=source.station,
-                    grade_permille=-source.grade_permille,
-                ))
+                # A block laid as several segments - one per speed limit over
+                # it - mirrors as several segments too, in the reverse order:
+                # the last piece the up train meets is the first the down train
+                # does. The limits themselves need no reversing, because a limit
+                # is a property of the rail rather than of the direction.
+                by_id = {seg.id: seg for seg in self.segments}
+                sources = [by_id[seg_id] for seg_id in block.segment_ids]
+                source = sources[0]
+                mirror_seg = "%s_R" % block.id
+                mirror_ids = []
+                for offset, piece in enumerate(reversed(sources)):
+                    piece_id = (mirror_seg if len(sources) == 1
+                                else "%s_R%s" % (piece.id, ""))
+                    self.segments.append(Segment(
+                        id=piece_id,
+                        start_node=piece.end_node,
+                        end_node=piece.start_node,
+                        length_m=piece.length_m,
+                        max_speed_ms=piece.max_speed_ms,
+                        track=mirror_id,
+                        km_start=piece.km_end,
+                        km_end=piece.km_start,
+                        y=piece.end_y,
+                        y_end=piece.y,
+                        platform=None,
+                        station=piece.station,
+                        grade_permille=-piece.grade_permille,
+                    ))
+                    mirror_ids.append(piece_id)
+                last = sources[-1]
                 self.blocks[mirror_seg] = BlockSection(
                     id=mirror_seg,
-                    segment_ids=(mirror_seg,),
+                    segment_ids=tuple(mirror_ids),
                     track=mirror_id,
-                    entry_node=source.end_node,
+                    entry_node=last.end_node,
                     exit_node=source.start_node,
-                    length_m=source.length_m,
-                    km_start=source.km_end,
+                    length_m=sum(p.length_m for p in sources),
+                    km_start=last.km_end,
                     km_end=source.km_start,
                     platform=None,
                     station=block.station,
                 )
-                self.block_of_segment[mirror_seg] = mirror_seg
+                for piece_id in mirror_ids:
+                    self.block_of_segment[piece_id] = mirror_seg
                 if source.platform is not None:
                     # A platform road worked the other way is still a platform
                     # road: a train diverted onto the other direction's road can call at it,
@@ -1201,6 +1216,8 @@ class _Builder(object):
 
         overrides = self._stretch_overrides(track_id, track)
         gradients = self._gradient_overrides(track_id, track)
+        self.speed_limits[track_id] = self._speed_limit_overrides(
+            track_id, track)
         self.track_layout[track_id] = {
             "sign": sign, "start_km": start_km, "y": track_y,
             "zones": {station: (start, end) for station, start, end in zones},
@@ -1240,6 +1257,77 @@ class _Builder(object):
         if junction is not None and junction["joining"]:
             self._emit_junction_link(track_id, track, track_y, sign, start_km,
                                      junction, layout_to, total, track_grade)
+
+    def _speed_limit_overrides(self, track_id, track):
+        """Permanent line-speed changes along a track, in schematic kilometres.
+
+            speed_limits:
+              - {from_km: 12.0, to_km: 12.7, max_speed_kmh: 80}
+
+        Kilometres rather than station names, because a limit follows the
+        geography - a curve, a bridge, an approach - and not the timetable. The
+        ranges are read without regard to order, so one entry covers the same
+        stretch of both the up and the down line even though their chainage runs
+        opposite ways.
+
+        Overlapping entries are allowed and the tightest wins, which is how a
+        real limit list behaves: a general 100 over a stretch with a 60 inside it
+        is two facts, not a contradiction.
+        """
+        limits = []
+        for entry in track.get("speed_limits") or []:
+            if not isinstance(entry, dict):
+                raise InfrastructureError(
+                    "track %r: each speed_limits entry must be a mapping"
+                    % (track_id,))
+            try:
+                low = float(entry["from_km"])
+                high = float(entry["to_km"])
+                speed = kmh_to_ms(float(entry["max_speed_kmh"]))
+            except KeyError as exc:
+                raise InfrastructureError(
+                    "track %r: speed_limits entry missing %s" % (track_id, exc))
+            if speed <= 0.0:
+                raise InfrastructureError(
+                    "track %r: speed_limits entry at km %.3f has a max_speed_kmh "
+                    "of zero or less, which is a blockade rather than a limit"
+                    % (track_id, low))
+            limits.append((min(low, high), max(low, high), speed))
+        return limits
+
+    def _limit_pieces(self, track_id, from_ch, to_ch, sign, start_km,
+                      default_ms):
+        """``[(start_ch, end_ch, max_speed_ms)]`` across one stretch of line.
+
+        Split wherever the limit changes, and only there: a stretch with no
+        limits over it comes back as the single piece it was, so a railway that
+        declares none is built exactly as it was before this existed.
+        """
+        limits = self.speed_limits.get(track_id) or []
+        if not limits:
+            return [(from_ch, to_ch, default_ms)]
+
+        cuts = set()
+        for low_km, high_km, _speed in limits:
+            for km in (low_km, high_km):
+                chainage = (km - start_km) * 1000.0 / sign
+                if from_ch + 1e-6 < chainage < to_ch - 1e-6:
+                    cuts.add(chainage)
+        bounds = [from_ch] + sorted(cuts) + [to_ch]
+
+        pieces = []
+        for start, end in zip(bounds, bounds[1:]):
+            middle_km = start_km + sign * ((start + end) / 2.0) / 1000.0
+            speed = default_ms
+            for low_km, high_km, limit in limits:
+                if low_km - 1e-9 <= middle_km <= high_km + 1e-9:
+                    speed = min(speed, limit)
+            # Neighbouring pieces that ended up at the same speed are one piece.
+            if pieces and abs(pieces[-1][2] - speed) < 1e-9:
+                pieces[-1] = (pieces[-1][0], end, speed)
+            else:
+                pieces.append((start, end, speed))
+        return pieces
 
     def _stretch_overrides(self, track_id, track) -> Dict[Tuple[str, str], float]:
         """Per-stretch block lengths, keyed by the stations either side.
@@ -1520,6 +1608,12 @@ class _Builder(object):
             block_end = block_start + step
             counter += 1
             seg_id = "%s_%03d" % (track_id, counter)
+            # A speed limit is a property of the rail; a block is a property of
+            # the signalling. They are allowed to disagree, so a limit that
+            # changes inside a block splits the block into several segments
+            # rather than forcing a signal to stand where the limit board does.
+            pieces = self._limit_pieces(track_id, block_start, block_end,
+                                        sign, start_km, line_speed)
             self._emit_block(
                 track_id=track_id,
                 seg_id=seg_id,
@@ -1533,6 +1627,7 @@ class _Builder(object):
                 platform=None,
                 station=None,
                 grade_permille=grade_permille,
+                pieces=pieces,
             )
         return counter
 
@@ -1607,46 +1702,69 @@ class _Builder(object):
 
     def _emit_block(self, track_id, seg_id, block_id, start_ch, end_ch, sign,
                     start_km, y, max_speed_ms, platform, station,
-                    grade_permille=0.0) -> None:
-        start_node = self._node(track_id, start_ch, sign, start_km, y,
-                                "station" if station else "plain")
-        end_node = self._node(track_id, end_ch, sign, start_km, y,
-                              "station" if station else "plain")
+                    grade_permille=0.0, pieces=None) -> None:
+        """One block, laid as one segment or as several at different speeds.
+
+        ``pieces`` is ``[(start_ch, end_ch, max_speed_ms)]`` and defaults to the
+        whole block at ``max_speed_ms``, which is what everything but open line
+        wants. Where a speed limit changes mid-block the block is laid as several
+        segments end to end: they share one block id, so train detection, the
+        interlocking and the aspect sequence see exactly one block, while the
+        driver reads the limit off whichever segment it is on. The signal pass
+        that follows keys off the block's entry node, and an interior node has
+        one road in and one out, so no signal is ever placed at a limit board.
+        """
+        if not pieces:
+            pieces = [(start_ch, end_ch, max_speed_ms)]
+
+        kind = "station" if station else "plain"
         km_start = start_km + sign * start_ch / 1000.0
         km_end = start_km + sign * end_ch / 1000.0
 
-        segment = Segment(
-            id=seg_id,
-            start_node=start_node,
-            end_node=end_node,
-            length_m=end_ch - start_ch,
-            max_speed_ms=max_speed_ms,
-            track=track_id,
-            km_start=km_start,
-            km_end=km_end,
-            y=y,
-            platform=platform,
-            station=station,
-            grade_permille=grade_permille,
-        )
-        self.segments.append(segment)
+        segment_ids = []
+        total_length = 0.0
+        for index, (piece_start, piece_end, piece_speed) in enumerate(pieces):
+            piece_id = seg_id if len(pieces) == 1 else "%s%s" % (
+                seg_id, chr(ord("a") + index))
+            segment = Segment(
+                id=piece_id,
+                start_node=self._node(track_id, piece_start, sign, start_km, y,
+                                      kind),
+                end_node=self._node(track_id, piece_end, sign, start_km, y,
+                                    kind),
+                length_m=piece_end - piece_start,
+                max_speed_ms=piece_speed,
+                track=track_id,
+                km_start=start_km + sign * piece_start / 1000.0,
+                km_end=start_km + sign * piece_end / 1000.0,
+                y=y,
+                platform=platform,
+                station=station,
+                grade_permille=grade_permille,
+            )
+            self.segments.append(segment)
+            segment_ids.append(piece_id)
+            total_length += segment.length_m
 
         # Signals are created in a later pass: how many a block needs depends on
         # how many roads converge on its entry node, which is not known until
         # every track has been laid out.
         self.blocks[block_id] = BlockSection(
             id=block_id,
-            segment_ids=(seg_id,),
+            segment_ids=tuple(segment_ids),
             track=track_id,
-            entry_node=start_node,
-            exit_node=end_node,
-            length_m=segment.length_m,
+            entry_node=self._node(track_id, start_ch, sign, start_km, y, kind),
+            exit_node=self._node(track_id, end_ch, sign, start_km, y, kind),
+            length_m=total_length,
             km_start=km_start,
             km_end=km_end,
             platform=platform,
             station=station,
         )
-        self.block_of_segment[seg_id] = block_id
+        # Every piece belongs to the one block, which is what makes train
+        # detection see a block split by a speed limit as the single block it is.
+        for piece_id in segment_ids:
+            self.block_of_segment[piece_id] = block_id
 
     def _node(self, track_id, chainage, sign, start_km, y, kind) -> str:
         node_id = "%s@%d" % (track_id, int(round(chainage)))

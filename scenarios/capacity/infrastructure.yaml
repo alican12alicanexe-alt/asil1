@@ -86,6 +86,129 @@ tracks:
     max_speed_kmh: 120
     block_length_m: 1800
     serves: [WDEPOT, LINFORD, BRAMLEY, CALDER, EDEPOT]
+    # A new limit roughly every 650 m, from a repeating cycle of 80-120, with
+    # each crossover braced by a stepped approach - 90, 70, then 50 over the
+    # pointwork itself. Overlapping entries are allowed and the tightest wins,
+    # which is what lets the crossover braces simply be laid over the cycle.
+    #
+    # The kilometres are the same for both lines: a limit is a property of the
+    # rail, and the ranges are read without regard to order, so the up and the
+    # down line carry the same list even though their chainage runs opposite
+    # ways.
+    speed_limits:
+      - {from_km:  0.00, to_km:  0.65, max_speed_kmh: 120}
+      - {from_km:  0.65, to_km:  1.30, max_speed_kmh: 100}
+      - {from_km:  1.30, to_km:  1.95, max_speed_kmh: 120}
+      - {from_km:  1.95, to_km:  2.60, max_speed_kmh:  90}
+      - {from_km:  2.60, to_km:  3.25, max_speed_kmh: 110}
+      - {from_km:  3.25, to_km:  3.90, max_speed_kmh:  80}
+      - {from_km:  3.90, to_km:  4.55, max_speed_kmh: 120}
+      - {from_km:  4.55, to_km:  5.20, max_speed_kmh: 100}
+      - {from_km:  5.20, to_km:  5.85, max_speed_kmh:  90}
+      - {from_km:  5.85, to_km:  6.50, max_speed_kmh: 120}
+      - {from_km:  6.50, to_km:  7.15, max_speed_kmh:  80}
+      - {from_km:  7.15, to_km:  7.80, max_speed_kmh: 110}
+      - {from_km:  7.80, to_km:  8.45, max_speed_kmh: 120}
+      - {from_km:  8.45, to_km:  9.10, max_speed_kmh: 100}
+      - {from_km:  9.10, to_km:  9.75, max_speed_kmh: 120}
+      - {from_km:  9.75, to_km: 10.40, max_speed_kmh:  90}
+      - {from_km: 10.40, to_km: 11.05, max_speed_kmh: 110}
+      - {from_km: 11.05, to_km: 11.70, max_speed_kmh:  80}
+      - {from_km: 11.70, to_km: 12.35, max_speed_kmh: 120}
+      - {from_km: 12.35, to_km: 13.00, max_speed_kmh: 100}
+      - {from_km: 13.00, to_km: 13.65, max_speed_kmh:  90}
+      - {from_km: 13.65, to_km: 14.30, max_speed_kmh: 120}
+      - {from_km: 14.30, to_km: 14.95, max_speed_kmh:  80}
+      - {from_km: 14.95, to_km: 15.60, max_speed_kmh: 110}
+      - {from_km: 15.60, to_km: 16.25, max_speed_kmh: 120}
+      - {from_km: 16.25, to_km: 16.90, max_speed_kmh: 100}
+      - {from_km: 16.90, to_km: 17.55, max_speed_kmh: 120}
+      - {from_km: 17.55, to_km: 18.20, max_speed_kmh:  90}
+      - {from_km: 18.20, to_km: 18.85, max_speed_kmh: 110}
+      - {from_km: 18.85, to_km: 19.50, max_speed_kmh:  80}
+      - {from_km: 19.50, to_km: 20.15, max_speed_kmh: 120}
+      - {from_km: 20.15, to_km: 20.80, max_speed_kmh: 100}
+      - {from_km: 20.80, to_km: 21.45, max_speed_kmh:  90}
+      - {from_km: 21.45, to_km: 22.10, max_speed_kmh: 120}
+      - {from_km: 22.10, to_km: 22.75, max_speed_kmh:  80}
+      - {from_km: 22.75, to_km: 23.40, max_speed_kmh: 110}
+      - {from_km: 23.40, to_km: 24.05, max_speed_kmh: 120}
+      - {from_km: 24.05, to_km: 24.70, max_speed_kmh: 100}
+      - {from_km: 24.70, to_km: 25.35, max_speed_kmh: 120}
+      - {from_km: 25.35, to_km: 26.00, max_speed_kmh:  90}
+      - {from_km: 26.00, to_km: 26.65, max_speed_kmh: 110}
+      - {from_km: 26.65, to_km: 27.30, max_speed_kmh:  80}
+      - {from_km: 27.30, to_km: 27.95, max_speed_kmh: 120}
+      - {from_km: 27.95, to_km: 28.60, max_speed_kmh: 100}
+      - {from_km: 28.60, to_km: 29.25, max_speed_kmh:  90}
+      - {from_km: 29.25, to_km: 29.90, max_speed_kmh: 120}
+      - {from_km: 29.90, to_km: 30.55, max_speed_kmh:  80}
+      - {from_km: 30.55, to_km: 31.20, max_speed_kmh: 110}
+      - {from_km: 31.20, to_km: 31.85, max_speed_kmh: 120}
+      - {from_km: 31.85, to_km: 32.50, max_speed_kmh: 100}
+      - {from_km: 32.50, to_km: 33.15, max_speed_kmh: 120}
+      - {from_km: 33.15, to_km: 33.80, max_speed_kmh:  90}
+      - {from_km: 33.80, to_km: 34.45, max_speed_kmh: 110}
+      - {from_km: 34.45, to_km: 35.10, max_speed_kmh:  80}
+      - {from_km: 35.10, to_km: 35.75, max_speed_kmh: 120}
+      - {from_km: 35.75, to_km: 36.40, max_speed_kmh: 100}
+      - {from_km: 36.40, to_km: 37.05, max_speed_kmh:  90}
+      - {from_km: 37.05, to_km: 37.70, max_speed_kmh: 120}
+      - {from_km: 37.70, to_km: 38.35, max_speed_kmh:  80}
+      - {from_km: 38.35, to_km: 39.00, max_speed_kmh: 110}
+      - {from_km: 39.00, to_km: 39.65, max_speed_kmh: 120}
+      - {from_km: 39.65, to_km: 40.30, max_speed_kmh: 100}
+      - {from_km: 40.30, to_km: 40.95, max_speed_kmh: 120}
+      - {from_km: 40.95, to_km: 41.60, max_speed_kmh:  90}
+      - {from_km: 41.60, to_km: 42.25, max_speed_kmh: 110}
+      - {from_km: 42.25, to_km: 42.90, max_speed_kmh:  80}
+      - {from_km: 42.90, to_km: 43.55, max_speed_kmh: 120}
+      - {from_km: 43.55, to_km: 44.20, max_speed_kmh: 100}
+      - {from_km: 44.20, to_km: 44.85, max_speed_kmh:  90}
+      - {from_km: 44.85, to_km: 45.50, max_speed_kmh: 120}
+      - {from_km: 45.50, to_km: 46.15, max_speed_kmh:  80}
+      - {from_km: 46.15, to_km: 46.80, max_speed_kmh: 110}
+      - {from_km: 46.80, to_km: 47.45, max_speed_kmh: 120}
+      - {from_km: 47.45, to_km: 48.10, max_speed_kmh: 100}
+      - {from_km: 48.10, to_km: 48.75, max_speed_kmh: 120}
+      - {from_km: 48.75, to_km: 49.40, max_speed_kmh:  90}
+      - {from_km: 49.40, to_km: 50.05, max_speed_kmh: 110}
+      - {from_km: 50.05, to_km: 50.70, max_speed_kmh:  80}
+      - {from_km: 50.70, to_km: 51.35, max_speed_kmh: 120}
+      - {from_km: 51.35, to_km: 52.00, max_speed_kmh: 100}
+      - {from_km: 52.00, to_km: 52.65, max_speed_kmh:  90}
+      - {from_km: 52.65, to_km: 53.30, max_speed_kmh: 120}
+      - {from_km: 53.30, to_km: 53.95, max_speed_kmh:  80}
+      - {from_km: 53.95, to_km: 54.60, max_speed_kmh: 110}
+      - {from_km: 54.60, to_km: 55.25, max_speed_kmh: 120}
+      - {from_km: 55.25, to_km: 55.90, max_speed_kmh: 100}
+      - {from_km: 55.90, to_km: 56.55, max_speed_kmh: 120}
+      - {from_km: 56.55, to_km: 57.20, max_speed_kmh:  90}
+      - {from_km: 57.20, to_km: 57.85, max_speed_kmh: 110}
+      - {from_km: 57.85, to_km: 58.50, max_speed_kmh:  80}
+      - {from_km: 58.50, to_km: 59.15, max_speed_kmh: 120}
+      - {from_km: 59.15, to_km: 59.80, max_speed_kmh: 100}
+      - {from_km: 59.80, to_km: 60.00, max_speed_kmh:  90}
+      - {from_km: 10.00, to_km: 10.90, max_speed_kmh:  50}
+      - {from_km:  9.35, to_km: 10.00, max_speed_kmh:  70}
+      - {from_km: 10.90, to_km: 11.55, max_speed_kmh:  70}
+      - {from_km:  8.70, to_km:  9.35, max_speed_kmh:  90}
+      - {from_km: 11.55, to_km: 12.20, max_speed_kmh:  90}
+      - {from_km: 20.00, to_km: 20.90, max_speed_kmh:  50}
+      - {from_km: 19.35, to_km: 20.00, max_speed_kmh:  70}
+      - {from_km: 20.90, to_km: 21.55, max_speed_kmh:  70}
+      - {from_km: 18.70, to_km: 19.35, max_speed_kmh:  90}
+      - {from_km: 21.55, to_km: 22.20, max_speed_kmh:  90}
+      - {from_km: 40.00, to_km: 40.90, max_speed_kmh:  50}
+      - {from_km: 39.35, to_km: 40.00, max_speed_kmh:  70}
+      - {from_km: 40.90, to_km: 41.55, max_speed_kmh:  70}
+      - {from_km: 38.70, to_km: 39.35, max_speed_kmh:  90}
+      - {from_km: 41.55, to_km: 42.20, max_speed_kmh:  90}
+      - {from_km: 50.00, to_km: 50.90, max_speed_kmh:  50}
+      - {from_km: 49.35, to_km: 50.00, max_speed_kmh:  70}
+      - {from_km: 50.90, to_km: 51.55, max_speed_kmh:  70}
+      - {from_km: 48.70, to_km: 49.35, max_speed_kmh:  90}
+      - {from_km: 51.55, to_km: 52.20, max_speed_kmh:  90}
 
   - id: DN
     direction: down
@@ -93,6 +216,129 @@ tracks:
     max_speed_kmh: 120
     block_length_m: 1800
     serves: [EDEPOT, CALDER, BRAMLEY, LINFORD, WDEPOT]
+    # A new limit roughly every 650 m, from a repeating cycle of 80-120, with
+    # each crossover braced by a stepped approach - 90, 70, then 50 over the
+    # pointwork itself. Overlapping entries are allowed and the tightest wins,
+    # which is what lets the crossover braces simply be laid over the cycle.
+    #
+    # The kilometres are the same for both lines: a limit is a property of the
+    # rail, and the ranges are read without regard to order, so the up and the
+    # down line carry the same list even though their chainage runs opposite
+    # ways.
+    speed_limits:
+      - {from_km:  0.00, to_km:  0.65, max_speed_kmh: 120}
+      - {from_km:  0.65, to_km:  1.30, max_speed_kmh: 100}
+      - {from_km:  1.30, to_km:  1.95, max_speed_kmh: 120}
+      - {from_km:  1.95, to_km:  2.60, max_speed_kmh:  90}
+      - {from_km:  2.60, to_km:  3.25, max_speed_kmh: 110}
+      - {from_km:  3.25, to_km:  3.90, max_speed_kmh:  80}
+      - {from_km:  3.90, to_km:  4.55, max_speed_kmh: 120}
+      - {from_km:  4.55, to_km:  5.20, max_speed_kmh: 100}
+      - {from_km:  5.20, to_km:  5.85, max_speed_kmh:  90}
+      - {from_km:  5.85, to_km:  6.50, max_speed_kmh: 120}
+      - {from_km:  6.50, to_km:  7.15, max_speed_kmh:  80}
+      - {from_km:  7.15, to_km:  7.80, max_speed_kmh: 110}
+      - {from_km:  7.80, to_km:  8.45, max_speed_kmh: 120}
+      - {from_km:  8.45, to_km:  9.10, max_speed_kmh: 100}
+      - {from_km:  9.10, to_km:  9.75, max_speed_kmh: 120}
+      - {from_km:  9.75, to_km: 10.40, max_speed_kmh:  90}
+      - {from_km: 10.40, to_km: 11.05, max_speed_kmh: 110}
+      - {from_km: 11.05, to_km: 11.70, max_speed_kmh:  80}
+      - {from_km: 11.70, to_km: 12.35, max_speed_kmh: 120}
+      - {from_km: 12.35, to_km: 13.00, max_speed_kmh: 100}
+      - {from_km: 13.00, to_km: 13.65, max_speed_kmh:  90}
+      - {from_km: 13.65, to_km: 14.30, max_speed_kmh: 120}
+      - {from_km: 14.30, to_km: 14.95, max_speed_kmh:  80}
+      - {from_km: 14.95, to_km: 15.60, max_speed_kmh: 110}
+      - {from_km: 15.60, to_km: 16.25, max_speed_kmh: 120}
+      - {from_km: 16.25, to_km: 16.90, max_speed_kmh: 100}
+      - {from_km: 16.90, to_km: 17.55, max_speed_kmh: 120}
+      - {from_km: 17.55, to_km: 18.20, max_speed_kmh:  90}
+      - {from_km: 18.20, to_km: 18.85, max_speed_kmh: 110}
+      - {from_km: 18.85, to_km: 19.50, max_speed_kmh:  80}
+      - {from_km: 19.50, to_km: 20.15, max_speed_kmh: 120}
+      - {from_km: 20.15, to_km: 20.80, max_speed_kmh: 100}
+      - {from_km: 20.80, to_km: 21.45, max_speed_kmh:  90}
+      - {from_km: 21.45, to_km: 22.10, max_speed_kmh: 120}
+      - {from_km: 22.10, to_km: 22.75, max_speed_kmh:  80}
+      - {from_km: 22.75, to_km: 23.40, max_speed_kmh: 110}
+      - {from_km: 23.40, to_km: 24.05, max_speed_kmh: 120}
+      - {from_km: 24.05, to_km: 24.70, max_speed_kmh: 100}
+      - {from_km: 24.70, to_km: 25.35, max_speed_kmh: 120}
+      - {from_km: 25.35, to_km: 26.00, max_speed_kmh:  90}
+      - {from_km: 26.00, to_km: 26.65, max_speed_kmh: 110}
+      - {from_km: 26.65, to_km: 27.30, max_speed_kmh:  80}
+      - {from_km: 27.30, to_km: 27.95, max_speed_kmh: 120}
+      - {from_km: 27.95, to_km: 28.60, max_speed_kmh: 100}
+      - {from_km: 28.60, to_km: 29.25, max_speed_kmh:  90}
+      - {from_km: 29.25, to_km: 29.90, max_speed_kmh: 120}
+      - {from_km: 29.90, to_km: 30.55, max_speed_kmh:  80}
+      - {from_km: 30.55, to_km: 31.20, max_speed_kmh: 110}
+      - {from_km: 31.20, to_km: 31.85, max_speed_kmh: 120}
+      - {from_km: 31.85, to_km: 32.50, max_speed_kmh: 100}
+      - {from_km: 32.50, to_km: 33.15, max_speed_kmh: 120}
+      - {from_km: 33.15, to_km: 33.80, max_speed_kmh:  90}
+      - {from_km: 33.80, to_km: 34.45, max_speed_kmh: 110}
+      - {from_km: 34.45, to_km: 35.10, max_speed_kmh:  80}
+      - {from_km: 35.10, to_km: 35.75, max_speed_kmh: 120}
+      - {from_km: 35.75, to_km: 36.40, max_speed_kmh: 100}
+      - {from_km: 36.40, to_km: 37.05, max_speed_kmh:  90}
+      - {from_km: 37.05, to_km: 37.70, max_speed_kmh: 120}
+      - {from_km: 37.70, to_km: 38.35, max_speed_kmh:  80}
+      - {from_km: 38.35, to_km: 39.00, max_speed_kmh: 110}
+      - {from_km: 39.00, to_km: 39.65, max_speed_kmh: 120}
+      - {from_km: 39.65, to_km: 40.30, max_speed_kmh: 100}
+      - {from_km: 40.30, to_km: 40.95, max_speed_kmh: 120}
+      - {from_km: 40.95, to_km: 41.60, max_speed_kmh:  90}
+      - {from_km: 41.60, to_km: 42.25, max_speed_kmh: 110}
+      - {from_km: 42.25, to_km: 42.90, max_speed_kmh:  80}
+      - {from_km: 42.90, to_km: 43.55, max_speed_kmh: 120}
+      - {from_km: 43.55, to_km: 44.20, max_speed_kmh: 100}
+      - {from_km: 44.20, to_km: 44.85, max_speed_kmh:  90}
+      - {from_km: 44.85, to_km: 45.50, max_speed_kmh: 120}
+      - {from_km: 45.50, to_km: 46.15, max_speed_kmh:  80}
+      - {from_km: 46.15, to_km: 46.80, max_speed_kmh: 110}
+      - {from_km: 46.80, to_km: 47.45, max_speed_kmh: 120}
+      - {from_km: 47.45, to_km: 48.10, max_speed_kmh: 100}
+      - {from_km: 48.10, to_km: 48.75, max_speed_kmh: 120}
+      - {from_km: 48.75, to_km: 49.40, max_speed_kmh:  90}
+      - {from_km: 49.40, to_km: 50.05, max_speed_kmh: 110}
+      - {from_km: 50.05, to_km: 50.70, max_speed_kmh:  80}
+      - {from_km: 50.70, to_km: 51.35, max_speed_kmh: 120}
+      - {from_km: 51.35, to_km: 52.00, max_speed_kmh: 100}
+      - {from_km: 52.00, to_km: 52.65, max_speed_kmh:  90}
+      - {from_km: 52.65, to_km: 53.30, max_speed_kmh: 120}
+      - {from_km: 53.30, to_km: 53.95, max_speed_kmh:  80}
+      - {from_km: 53.95, to_km: 54.60, max_speed_kmh: 110}
+      - {from_km: 54.60, to_km: 55.25, max_speed_kmh: 120}
+      - {from_km: 55.25, to_km: 55.90, max_speed_kmh: 100}
+      - {from_km: 55.90, to_km: 56.55, max_speed_kmh: 120}
+      - {from_km: 56.55, to_km: 57.20, max_speed_kmh:  90}
+      - {from_km: 57.20, to_km: 57.85, max_speed_kmh: 110}
+      - {from_km: 57.85, to_km: 58.50, max_speed_kmh:  80}
+      - {from_km: 58.50, to_km: 59.15, max_speed_kmh: 120}
+      - {from_km: 59.15, to_km: 59.80, max_speed_kmh: 100}
+      - {from_km: 59.80, to_km: 60.00, max_speed_kmh:  90}
+      - {from_km: 10.00, to_km: 10.90, max_speed_kmh:  50}
+      - {from_km:  9.35, to_km: 10.00, max_speed_kmh:  70}
+      - {from_km: 10.90, to_km: 11.55, max_speed_kmh:  70}
+      - {from_km:  8.70, to_km:  9.35, max_speed_kmh:  90}
+      - {from_km: 11.55, to_km: 12.20, max_speed_kmh:  90}
+      - {from_km: 20.00, to_km: 20.90, max_speed_kmh:  50}
+      - {from_km: 19.35, to_km: 20.00, max_speed_kmh:  70}
+      - {from_km: 20.90, to_km: 21.55, max_speed_kmh:  70}
+      - {from_km: 18.70, to_km: 19.35, max_speed_kmh:  90}
+      - {from_km: 21.55, to_km: 22.20, max_speed_kmh:  90}
+      - {from_km: 40.00, to_km: 40.90, max_speed_kmh:  50}
+      - {from_km: 39.35, to_km: 40.00, max_speed_kmh:  70}
+      - {from_km: 40.90, to_km: 41.55, max_speed_kmh:  70}
+      - {from_km: 38.70, to_km: 39.35, max_speed_kmh:  90}
+      - {from_km: 41.55, to_km: 42.20, max_speed_kmh:  90}
+      - {from_km: 50.00, to_km: 50.90, max_speed_kmh:  50}
+      - {from_km: 49.35, to_km: 50.00, max_speed_kmh:  70}
+      - {from_km: 50.90, to_km: 51.55, max_speed_kmh:  70}
+      - {from_km: 48.70, to_km: 49.35, max_speed_kmh:  90}
+      - {from_km: 51.55, to_km: 52.20, max_speed_kmh:  90}
 
 platforms:
   # The through roads sit on the main alignment and the loops fan outward from
@@ -139,7 +385,7 @@ crossovers:
   # Four scissors crossovers, one either side of the middle three stations, each
   # usable in all four ways. These are what make both lines reversible: see the
   # spans listed at the top of this file.
-  - {id: XO_LINFORD_W, from: UP, to: DN, km: 10.0, length_m: 900, max_speed_kmh: 60, type: scissors}
-  - {id: XO_LINFORD_E, from: UP, to: DN, km: 20.0, length_m: 900, max_speed_kmh: 60, type: scissors}
-  - {id: XO_CALDER_W,  from: DN, to: UP, km: 40.0, length_m: 900, max_speed_kmh: 60, type: scissors}
-  - {id: XO_CALDER_E,  from: DN, to: UP, km: 50.0, length_m: 900, max_speed_kmh: 60, type: scissors}
+  - {id: XO_LINFORD_W, from: UP, to: DN, km: 10.0, length_m: 900, max_speed_kmh: 40, type: scissors}
+  - {id: XO_LINFORD_E, from: UP, to: DN, km: 20.0, length_m: 900, max_speed_kmh: 40, type: scissors}
+  - {id: XO_CALDER_W,  from: DN, to: UP, km: 40.0, length_m: 900, max_speed_kmh: 40, type: scissors}
+  - {id: XO_CALDER_E,  from: DN, to: UP, km: 50.0, length_m: 900, max_speed_kmh: 40, type: scissors}

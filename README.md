@@ -1617,6 +1617,9 @@ tracks:
     block_lengths:                                        # per-stretch override
       - {from: ALPHA, to: BETA,  block_length_m: 1500}
       - {from: BETA,  to: GAMMA, block_length_m: 2400}
+    speed_limits:                                         # permanent, by km
+      - {from_km:  4.0, to_km:  4.7, max_speed_kmh: 90}
+      - {from_km: 10.0, to_km: 10.9, max_speed_kmh: 50}   # over the crossover
 
 platforms:
   - {id: BETA_3, station: BETA, track: UP, length_m: 220,
@@ -1626,6 +1629,25 @@ platforms:
 Parallel platform roads are simply several segments sharing a pair of nodes. No
 switch model is needed for them to be safe: each road is its own block, and the
 single approach block ahead of the divergence can only ever hold one train.
+
+**On speed limits.** `speed_limits` are *infrastructure*, not disruptions: a
+curve is part of the railway, and putting it in a `disruptions:` block would have
+it reported as something that went wrong. Ranges are in schematic kilometres and
+are read without regard to order, so one list serves the up and the down line
+even though their chainage runs opposite ways; where entries overlap the tightest
+wins, which is how a real limit list behaves.
+
+A limit is free to change inside a block. The block is then laid as several
+segments end to end sharing one block id, so train detection, the interlocking
+and the aspect sequence still see one block while the driver reads the limit off
+whichever segment the train is on — `capacity` has 500 segments inside 192
+blocks. A signal is never placed at a limit board, because signals key off a
+block's entry node and an interior node has one road in and one out.
+
+And a limit binds until the **whole train** is clear of it, not until the driver
+has passed the end — which is why a temporary restriction's termination board
+stands a train length beyond the restricted rail. Reading it at the nose alone
+let a 160 m unit leave a 40 km/h depot road doing 66.
 
 **On berthing.** A train's position is its **front** — `chainage_m` is the
 distance its nose has run, and its rear is that minus its length. So where a

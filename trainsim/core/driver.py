@@ -54,7 +54,13 @@ class Driver:
         cfg = self.config
         limits = limits or self.limits
 
-        target = min(stock.max_speed_ms, limits.at(train, train.chainage_m))
+        # The limit under the *whole* train, not the one at its nose. A speed
+        # limit is released when the train is clear of it - which is why a
+        # temporary restriction's termination board stands a train length beyond
+        # the restricted rail - and reading it at the front alone let a 160 m
+        # unit leave a 40 km/h depot road doing 66.
+        target = min(stock.max_speed_ms,
+                     limits.over(train, train.rear_m, train.chainage_m))
         reason = "line speed"
 
         if authority.ceiling_speed_ms is not None and authority.ceiling_speed_ms < target:

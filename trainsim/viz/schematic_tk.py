@@ -947,7 +947,15 @@ class TkSchematicView(SchematicView):
 
     #: Shortest a train may be drawn. Below this it is a smear rather than a
     #: shape, and which end is its nose stops being readable.
-    MIN_TRAIN_PX = 12
+    #:
+    #: Three, not twelve. This is a *pixel* floor applied at whatever the local
+    #: scale happens to be, so its cost in metres is worst exactly where the
+    #: pixels are thinnest - open line, which gives up its share to
+    #: STATION_STRETCH. At twelve it drew a 160 m train as 807 m of open line
+    #: and swallowed the gaps between trains whole, which is what made virtually
+    #: coupled trains appear to run through each other. At three the same train
+    #: is drawn about 200 m long and two trains 33 m apart no longer merge.
+    MIN_TRAIN_PX = 3
 
     def _draw_trains(self) -> None:
         layout = self.layout
