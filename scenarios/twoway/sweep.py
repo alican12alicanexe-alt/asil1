@@ -108,6 +108,15 @@ HEADWAYS = (
     90,
     75,
     60,
+    # Below a minute a minute is no longer a sensible unit of dispatch, but the
+    # cab systems are still not in trouble at 60 s on this railway, and a sweep
+    # that stops before the thing it is measuring bends has measured nothing.
+    # These rows exist to find where virtual coupling actually gives way.
+    50,
+    45,
+    40,
+    35,
+    30,
 )
 
 
@@ -156,8 +165,14 @@ def stock_for(system):
 
     elif system == "etcs_moving_block":
 
+        # TIMS has to be ON here. Moving block follows the REAR of the train
+        # in front, and a train that cannot confirm its own integrity has no
+        # trustworthy rear - it might have left half of itself behind. The
+        # simulator does the honest thing and falls back to block granularity
+        # behind such a train, so with tims False this row measures Level 2
+        # under a moving-block label, not moving block.
         stock["etcs_level"] = "l3"
-        stock["tims"] = False
+        stock["tims"] = True
         stock["v2v"] = False
 
     elif system == "virtual_coupling":
