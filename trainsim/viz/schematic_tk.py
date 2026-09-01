@@ -35,6 +35,11 @@ class TkSchematicView(SchematicView):
         self.layout = SchematicLayout(scenario.infrastructure)
         self._pending_steps = 0.0
         self._single_step = False
+        #: Canvas items per block - a LIST, because a block split by a
+        #: speed limit is drawn as several segments and all of them have
+        #: to take the occupied or route-set colour. Holding one item per
+        #: block lit only the last piece: a block in two showed half of
+        #: itself set, a block in four a quarter.
         self._block_items = {}
         self._signal_items = {}
         self._branch_heads = {}
@@ -230,7 +235,7 @@ class TkSchematicView(SchematicView):
             )
             block_id = infra.block_of_segment.get(segment.id)
             if block_id:
-                self._block_items[block_id] = item
+                self._block_items.setdefault(block_id, []).append(item)
             if segment.is_platform:
                 self._draw_platform_face(segment, track_y, width, item)
                 mid_km = (segment.km_start + segment.km_end) / 2.0
@@ -905,7 +910,7 @@ class TkSchematicView(SchematicView):
 
         route_held = (sim.interlocking.route_blocks()
                       if sim.interlocking is not None else {})
-        for block_id, item in self._block_items.items():
+        for block_id, items in self._block_items.items():
             occupied = bool(sim.occupancy.trains_in(block_id))
             platform = infra.blocks[block_id].platform is not None
             if occupied and self.block_separated:
@@ -920,7 +925,8 @@ class TkSchematicView(SchematicView):
                 colour = PALETTE["route_set"]
             else:
                 colour = PALETTE["platform"] if platform else PALETTE["track"]
-            self.canvas.itemconfig(item, fill=colour)
+            for item in items:
+                self.canvas.itemconfig(item, fill=colour)
 
         dark = self._signals_out_of_use()
         for signal_id, item in self._signal_items.items():
