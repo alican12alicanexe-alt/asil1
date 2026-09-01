@@ -69,8 +69,14 @@ block spacing does. To measure it, sweep the flight:
 python scenarios/depotline/_sweep_headway.py            depotline: 210 s, 17.1 tph
 python scenarios/depotline/_sweep_headway.py etcs_l2    under any other system
 python scenarios/capacity/_sweep_headway.py             capacity: 240 s, 15.0 tph each way
+python scenarios/capacity/_sweep_headway.py virtual_coupling
 python scenarios/twoway/sweep.py                        all three systems, up trains only
 ```
+
+Three systems are compared: fixed block, moving block, virtual coupling. Both
+capacity sweeps declare the fitment per system, and moving block is run without
+integrity reporting, so its row is the block-granularity fallback rather than
+following by distance. Virtual coupling has the full fit.
 
 `scenarios/capacity` is the scenario built for that sweep: one stock type, one
 calling pattern, evenly spaced stations and a flat line speed, so that running it

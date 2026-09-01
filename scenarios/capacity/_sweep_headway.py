@@ -53,17 +53,18 @@ from trainsim.scenario.loader import build_timetable
 #: What the train is fitted with, per system: (etcs_level, tims, v2v).
 #:
 #: The physical train never changes - same length, same power, same brake. What
-#: changes is the equipment, and it has to change with the system or the sweep
-#: measures the wrong thing: full moving block falls back to block granularity
-#: unless the train in front can report its integrity, and virtual coupling
-#: needs both trains talking to each other. Running every system on an unfitted
-#: unit therefore reports the degraded fallback under three different names.
+#: changes is the equipment, and it has to change with the system or every
+#: system is measured on the same unfitted unit and reports the same fallback
+#: under three different names.
+#:
+#: Moving block runs here without integrity reporting, which is the fitment
+#: asked for. Read the row knowing what it is: a train whose rear cannot be
+#: confirmed cannot be followed by distance, so the system falls back to block
+#: granularity behind it. Virtual coupling has the full fit and does follow by
+#: distance.
 FITMENT = {
     "fixed_block_3aspect": ("none", False, False),
-    "etcs_l1":             ("l1",   False, False),
-    "etcs_l2":             ("l2",   False, False),
-    "etcs_hybrid_l3":      ("l3",   True,  False),
-    "etcs_moving_block":   ("l3",   True,  False),
+    "etcs_moving_block":   ("l3",   False, False),
     "virtual_coupling":    ("l3",   True,  True),
 }
 

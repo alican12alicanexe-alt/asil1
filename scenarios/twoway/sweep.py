@@ -165,14 +165,8 @@ def stock_for(system):
 
     elif system == "etcs_moving_block":
 
-        # TIMS has to be ON here. Moving block follows the REAR of the train
-        # in front, and a train that cannot confirm its own integrity has no
-        # trustworthy rear - it might have left half of itself behind. The
-        # simulator does the honest thing and falls back to block granularity
-        # behind such a train, so with tims False this row measures Level 2
-        # under a moving-block label, not moving block.
         stock["etcs_level"] = "l3"
-        stock["tims"] = True
+        stock["tims"] = False
         stock["v2v"] = False
 
     elif system == "virtual_coupling":

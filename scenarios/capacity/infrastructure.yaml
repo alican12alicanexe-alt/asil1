@@ -51,19 +51,18 @@
 #
 # So every platform road at all five stations has a road each way.
 #
-# THE BRANCHES ARE NOT USED YET
+# NO JUNCTIONS
 #
-# Two double junctions, one at Linford and one at Calder, each leading to an
-# outlying station. Nothing is booked over them. They are here so that later
-# work - a branch service joining the flight, a junction conflict, a flat
-# junction against a flyover - has somewhere to happen without the base layout
-# changing underneath the numbers already taken.
+# Nothing branches off this railway. Every train that starts on it runs the
+# whole length of it, so the only things that can hold a train up are the train
+# in front, a platform road and the signalling - which is the whole point of a
+# comparison base. A junction adds a conflict that belongs to the junction
+# rather than to the train control system, and there is nowhere on this layout
+# for that conflict to hide a difference between two systems.
 #
-# They are laid clear of everything: the up branches sit beyond the up platform
-# loops and the down branches beyond the down ones, so no connection crosses a
-# running line and there is no diamond anywhere on this railway. That is
-# deliberate too - a flat junction has a cost, and the base should not be paying
-# it before anyone asks for it.
+# The crossovers are not junctions in that sense: they connect the two lines of
+# this same railway to each other and lead nowhere else. They are what make both
+# lines reversible, and no booked service uses them either.
 
 name: capacity
 
@@ -80,10 +79,6 @@ stations:
   - {id: CALDER,  name: Calder,     km: 45.0}
   - {id: EDEPOT,  name: East Depot, km: 60.0}
 
-  # The two branch termini. Off the main line, drawn at their own level.
-  - {id: MERE,    name: Mere,       km: 8.0}
-  - {id: SANDON,  name: Sandon,     km: 52.0}
-
 tracks:
   - id: UP
     direction: up
@@ -98,45 +93,6 @@ tracks:
     max_speed_kmh: 120
     block_length_m: 1800
     serves: [EDEPOT, CALDER, BRAMLEY, LINFORD, WDEPOT]
-
-  # The Mere branch, off Linford. The up connection trails into the up main and
-  # the down connection faces out of the down main, which is what a double
-  # junction is. Both sit clear of the platform loops, so neither crosses
-  # anything on the level.
-  - id: BR_MERE_UP
-    direction: up
-    y: -1.6
-    max_speed_kmh: 100
-    block_length_m: 1600
-    serves: [MERE, LINFORD]
-    junction: {track: UP, at: LINFORD, length_m: 900, max_speed_kmh: 60}
-
-  - id: BR_MERE_DN
-    direction: down
-    y: 2.0
-    max_speed_kmh: 100
-    block_length_m: 1600
-    serves: [LINFORD, MERE]
-    junction: {track: DN, at: LINFORD, length_m: 900, max_speed_kmh: 60}
-
-  # The Sandon branch, off Calder. The mirror image: here the up connection
-  # faces out of the up main and the down connection trails into the down main,
-  # because Sandon is beyond Calder rather than short of it.
-  - id: BR_SANDON_UP
-    direction: up
-    y: -1.6
-    max_speed_kmh: 100
-    block_length_m: 1600
-    serves: [CALDER, SANDON]
-    junction: {track: UP, at: CALDER, length_m: 900, max_speed_kmh: 60}
-
-  - id: BR_SANDON_DN
-    direction: down
-    y: 2.0
-    max_speed_kmh: 100
-    block_length_m: 1600
-    serves: [SANDON, CALDER]
-    junction: {track: DN, at: CALDER, length_m: 900, max_speed_kmh: 60}
 
 platforms:
   # The through roads sit on the main alignment and the loops fan outward from
@@ -178,12 +134,6 @@ platforms:
   - {id: EDEPOT_UP_2, station: EDEPOT, track: UP, length_m: 240, max_speed_kmh: 40, y_offset: -0.4}
   - {id: EDEPOT_DN_1, station: EDEPOT, track: DN, length_m: 240, max_speed_kmh: 40, y_offset: 0.0}
   - {id: EDEPOT_DN_2, station: EDEPOT, track: DN, length_m: 240, max_speed_kmh: 40, y_offset: 0.4}
-
-  # One road each way at the branch termini.
-  - {id: MERE_UP_1,   station: MERE,   track: BR_MERE_UP,   length_m: 200, max_speed_kmh: 60, y_offset: 0.0}
-  - {id: MERE_DN_1,   station: MERE,   track: BR_MERE_DN,   length_m: 200, max_speed_kmh: 60, y_offset: 0.0}
-  - {id: SANDON_UP_1, station: SANDON, track: BR_SANDON_UP, length_m: 200, max_speed_kmh: 60, y_offset: 0.0}
-  - {id: SANDON_DN_1, station: SANDON, track: BR_SANDON_DN, length_m: 200, max_speed_kmh: 60, y_offset: 0.0}
 
 crossovers:
   # Four scissors crossovers, one either side of the middle three stations, each
