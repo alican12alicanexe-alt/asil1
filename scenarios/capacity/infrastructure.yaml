@@ -1,0 +1,195 @@
+# capacity - the comparison base.
+#
+# Sixty kilometres, a line each way, three intermediate stations and a depot at
+# each end. Everything about it is deliberately plain and deliberately
+# symmetric, because its job is to be the railway every other run is measured
+# against. If a figure moves between two runs on this layout, the layout is not
+# what moved it.
+#
+#   WDEPOT           LINFORD          BRAMLEY          CALDER           EDEPOT
+#   km 0             km 15            km 30            km 45            km 60
+#     |----------------|----------------|----------------|----------------|
+#   UP  <>-------------------------------------------------------------------->
+#   DN  <>--------------------------------------------------------------------<
+#         X         X                                  X         X
+#       km 10     km 20                              km 40     km 50
+#
+# <> is the direction each line is normally worked in, not the only one it can
+# be: both lines are signalled both ways end to end. X is a scissors crossover.
+#
+# WHY THE STATIONS ARE EVENLY SPACED
+#
+# Fifteen kilometres apart, every one of them, and the same dwell at each. A
+# capacity figure is a property of the tightest place on the line, so an uneven
+# layout answers a question about that one place rather than about the
+# signalling. Making every leg identical means the binding constraint is the
+# same everywhere, which is what lets the systems be compared against each other
+# rather than against the geography.
+#
+# WHY THE CROSSOVERS ARE 900 m
+#
+# A crossover puts a block boundary on the main line at each of its ends, so the
+# main-line block between them is exactly as long as the crossover. At 120 km/h
+# a train needs about 850 m to stop, and a block shorter than that cannot be
+# signalled: a train passing a yellow could not stop at the next signal. 400 m
+# would have been more realistic and would have left this railway unsignalable
+# from the first run, which is no way to start a measurement.
+#
+# THE REVERSIBLE STRETCHES
+#
+# A stretch is worked both ways where a train can get onto the other line and
+# off it again. Each neighbouring pair of crossovers brackets one, and so does
+# each outermost crossover against the end of the line - a train that runs to
+# the buffer stops leaves in the other direction anyway. Five spans, one per
+# station:
+#
+#    0.0 .. 10.9   brackets West Depot, against the end of the line
+#   10.0 .. 20.9   brackets Linford
+#   20.0 .. 40.9   brackets Bramley
+#   40.0 .. 50.9   brackets Calder
+#   50.0 .. 60.0   brackets East Depot, against the end of the line
+#
+# So every platform road at all five stations has a road each way.
+#
+# THE BRANCHES ARE NOT USED YET
+#
+# Two double junctions, one at Linford and one at Calder, each leading to an
+# outlying station. Nothing is booked over them. They are here so that later
+# work - a branch service joining the flight, a junction conflict, a flat
+# junction against a flyover - has somewhere to happen without the base layout
+# changing underneath the numbers already taken.
+#
+# They are laid clear of everything: the up branches sit beyond the up platform
+# loops and the down branches beyond the down ones, so no connection crosses a
+# running line and there is no diamond anywhere on this railway. That is
+# deliberate too - a flat junction has a cost, and the base should not be paying
+# it before anyone asks for it.
+
+name: capacity
+
+defaults:
+  platform_zone_m: 1200
+  block_length_m: 1800
+  max_speed_kmh: 120
+  stop_margin_m: 30
+
+stations:
+  - {id: WDEPOT,  name: West Depot, km: 0.0}
+  - {id: LINFORD, name: Linford,    km: 15.0}
+  - {id: BRAMLEY, name: Bramley,    km: 30.0}
+  - {id: CALDER,  name: Calder,     km: 45.0}
+  - {id: EDEPOT,  name: East Depot, km: 60.0}
+
+  # The two branch termini. Off the main line, drawn at their own level.
+  - {id: MERE,    name: Mere,       km: 8.0}
+  - {id: SANDON,  name: Sandon,     km: 52.0}
+
+tracks:
+  - id: UP
+    direction: up
+    y: 0.0
+    max_speed_kmh: 120
+    block_length_m: 1800
+    serves: [WDEPOT, LINFORD, BRAMLEY, CALDER, EDEPOT]
+
+  - id: DN
+    direction: down
+    y: 0.4
+    max_speed_kmh: 120
+    block_length_m: 1800
+    serves: [EDEPOT, CALDER, BRAMLEY, LINFORD, WDEPOT]
+
+  # The Mere branch, off Linford. The up connection trails into the up main and
+  # the down connection faces out of the down main, which is what a double
+  # junction is. Both sit clear of the platform loops, so neither crosses
+  # anything on the level.
+  - id: BR_MERE_UP
+    direction: up
+    y: -1.6
+    max_speed_kmh: 100
+    block_length_m: 1600
+    serves: [MERE, LINFORD]
+    junction: {track: UP, at: LINFORD, length_m: 900, max_speed_kmh: 60}
+
+  - id: BR_MERE_DN
+    direction: down
+    y: 2.0
+    max_speed_kmh: 100
+    block_length_m: 1600
+    serves: [LINFORD, MERE]
+    junction: {track: DN, at: LINFORD, length_m: 900, max_speed_kmh: 60}
+
+  # The Sandon branch, off Calder. The mirror image: here the up connection
+  # faces out of the up main and the down connection trails into the down main,
+  # because Sandon is beyond Calder rather than short of it.
+  - id: BR_SANDON_UP
+    direction: up
+    y: -1.6
+    max_speed_kmh: 100
+    block_length_m: 1600
+    serves: [CALDER, SANDON]
+    junction: {track: UP, at: CALDER, length_m: 900, max_speed_kmh: 60}
+
+  - id: BR_SANDON_DN
+    direction: down
+    y: 2.0
+    max_speed_kmh: 100
+    block_length_m: 1600
+    serves: [SANDON, CALDER]
+    junction: {track: DN, at: CALDER, length_m: 900, max_speed_kmh: 60}
+
+platforms:
+  # The through roads sit on the main alignment and the loops fan outward from
+  # them - the up loops negative, the down loops positive - so the drawing reads
+  # the way a track diagram does, with the through roads in the middle.
+  #
+  # Road 1 at each intermediate station is a through road at full line speed:
+  # a train that is not calling there is not checked for the station. Roads 2
+  # and 3 are loops at 60. That is what makes an overtake possible later without
+  # the layout having to change.
+  - {id: LINFORD_UP_1, station: LINFORD, track: UP, length_m: 240, max_speed_kmh: 120, y_offset: 0.0}
+  - {id: LINFORD_UP_2, station: LINFORD, track: UP, length_m: 240, max_speed_kmh: 60, y_offset: -0.4}
+  - {id: LINFORD_UP_3, station: LINFORD, track: UP, length_m: 240, max_speed_kmh: 60, y_offset: -0.8}
+  - {id: LINFORD_DN_1, station: LINFORD, track: DN, length_m: 240, max_speed_kmh: 120, y_offset: 0.0}
+  - {id: LINFORD_DN_2, station: LINFORD, track: DN, length_m: 240, max_speed_kmh: 60, y_offset: 0.4}
+  - {id: LINFORD_DN_3, station: LINFORD, track: DN, length_m: 240, max_speed_kmh: 60, y_offset: 0.8}
+
+  - {id: BRAMLEY_UP_1, station: BRAMLEY, track: UP, length_m: 240, max_speed_kmh: 120, y_offset: 0.0}
+  - {id: BRAMLEY_UP_2, station: BRAMLEY, track: UP, length_m: 240, max_speed_kmh: 60, y_offset: -0.4}
+  - {id: BRAMLEY_UP_3, station: BRAMLEY, track: UP, length_m: 240, max_speed_kmh: 60, y_offset: -0.8}
+  - {id: BRAMLEY_DN_1, station: BRAMLEY, track: DN, length_m: 240, max_speed_kmh: 120, y_offset: 0.0}
+  - {id: BRAMLEY_DN_2, station: BRAMLEY, track: DN, length_m: 240, max_speed_kmh: 60, y_offset: 0.4}
+  - {id: BRAMLEY_DN_3, station: BRAMLEY, track: DN, length_m: 240, max_speed_kmh: 60, y_offset: 0.8}
+
+  - {id: CALDER_UP_1, station: CALDER, track: UP, length_m: 240, max_speed_kmh: 120, y_offset: 0.0}
+  - {id: CALDER_UP_2, station: CALDER, track: UP, length_m: 240, max_speed_kmh: 60, y_offset: -0.4}
+  - {id: CALDER_UP_3, station: CALDER, track: UP, length_m: 240, max_speed_kmh: 60, y_offset: -0.8}
+  - {id: CALDER_DN_1, station: CALDER, track: DN, length_m: 240, max_speed_kmh: 120, y_offset: 0.0}
+  - {id: CALDER_DN_2, station: CALDER, track: DN, length_m: 240, max_speed_kmh: 60, y_offset: 0.4}
+  - {id: CALDER_DN_3, station: CALDER, track: DN, length_m: 240, max_speed_kmh: 60, y_offset: 0.8}
+
+  # Two roads at each depot on each line: a depot road is held for a minute at
+  # each end of the day's work and one of them would set the headway on its own.
+  - {id: WDEPOT_UP_1, station: WDEPOT, track: UP, length_m: 240, max_speed_kmh: 40, y_offset: 0.0}
+  - {id: WDEPOT_UP_2, station: WDEPOT, track: UP, length_m: 240, max_speed_kmh: 40, y_offset: -0.4}
+  - {id: WDEPOT_DN_1, station: WDEPOT, track: DN, length_m: 240, max_speed_kmh: 40, y_offset: 0.0}
+  - {id: WDEPOT_DN_2, station: WDEPOT, track: DN, length_m: 240, max_speed_kmh: 40, y_offset: 0.4}
+  - {id: EDEPOT_UP_1, station: EDEPOT, track: UP, length_m: 240, max_speed_kmh: 40, y_offset: 0.0}
+  - {id: EDEPOT_UP_2, station: EDEPOT, track: UP, length_m: 240, max_speed_kmh: 40, y_offset: -0.4}
+  - {id: EDEPOT_DN_1, station: EDEPOT, track: DN, length_m: 240, max_speed_kmh: 40, y_offset: 0.0}
+  - {id: EDEPOT_DN_2, station: EDEPOT, track: DN, length_m: 240, max_speed_kmh: 40, y_offset: 0.4}
+
+  # One road each way at the branch termini.
+  - {id: MERE_UP_1,   station: MERE,   track: BR_MERE_UP,   length_m: 200, max_speed_kmh: 60, y_offset: 0.0}
+  - {id: MERE_DN_1,   station: MERE,   track: BR_MERE_DN,   length_m: 200, max_speed_kmh: 60, y_offset: 0.0}
+  - {id: SANDON_UP_1, station: SANDON, track: BR_SANDON_UP, length_m: 200, max_speed_kmh: 60, y_offset: 0.0}
+  - {id: SANDON_DN_1, station: SANDON, track: BR_SANDON_DN, length_m: 200, max_speed_kmh: 60, y_offset: 0.0}
+
+crossovers:
+  # Four scissors crossovers, one either side of the middle three stations, each
+  # usable in all four ways. These are what make both lines reversible: see the
+  # spans listed at the top of this file.
+  - {id: XO_LINFORD_W, from: UP, to: DN, km: 10.0, length_m: 900, max_speed_kmh: 60, type: scissors}
+  - {id: XO_LINFORD_E, from: UP, to: DN, km: 20.0, length_m: 900, max_speed_kmh: 60, type: scissors}
+  - {id: XO_CALDER_W,  from: DN, to: UP, km: 40.0, length_m: 900, max_speed_kmh: 60, type: scissors}
+  - {id: XO_CALDER_E,  from: DN, to: UP, km: 50.0, length_m: 900, max_speed_kmh: 60, type: scissors}

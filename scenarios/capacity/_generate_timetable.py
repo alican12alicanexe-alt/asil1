@@ -1,15 +1,22 @@
-"""Regenerate scenarios/twoway/timetable.yaml - a service each way.
+"""Regenerate scenarios/capacity/timetable.yaml - the homogeneous base flight.
 
-Two lines, so for the first time the two directions are independent: an up train
-and a down train pass each other rather than queueing. What they share is the
-station throats and, if either is ever diverted, the rails themselves.
+Every train on this railway is the same train, calls everywhere, and dwells the
+same time at each call. That is the whole point of the base: with the stock
+identical and the layout symmetric, the only thing left that can move a number
+between two runs is the signalling system, which is the comparison the scenario
+exists to support.
 
 Booked times come from running each service unimpeded over its own roads, one
-probe per service, exactly as depotline does - the roads at each station are used
-in turn here too, and the loops are slower than the main road.
+probe per distinct set of roads. So every booked time is what that service
+achieves with the railway to itself, and any delay in a full run belongs to
+trains getting in each other's way rather than to a plan that was never
+possible.
 
-    python scenarios/twoway/_generate_timetable.py
-    python scenarios/twoway/_generate_timetable.py 300 timetable-close
+    python scenarios/capacity/_generate_timetable.py
+    python scenarios/capacity/_generate_timetable.py 240 timetable-close
+
+Nothing here is booked over the Mere or Sandon branches. They are laid in and
+left alone - see the head of infrastructure.yaml.
 
 Stdlib only, like everything else here.
 """
@@ -31,20 +38,22 @@ from trainsim.scenario.loader import build_timetable, read_data_file
 BASE = 7 * 3600
 DWELL = 45
 DEPOT = 60
-#: Services per direction. Six each way is enough to see them meet.
-COUNT = 6
-HEADWAY_S = 360
+#: Services per direction. Eight each way fills the line without booking it
+#: anywhere near the interval it can actually hold - that is what the sweep is
+#: for, and a base that is already fighting itself measures nothing.
+COUNT = 8
+HEADWAY_S = 300
 
 STOCK = {"id": "EMU", "name": "Line unit", "length_m": 160,
-         "max_speed_kmh": 100, "max_accel": 1.0, "service_brake": 0.8,
+         "max_speed_kmh": 120, "max_accel": 1.0, "service_brake": 0.8,
          "emergency_brake": 1.2, "etcs_level": "none", "tims": False}
 
 INFRA = build_infrastructure(
     read_data_file(os.path.join(HERE, "infrastructure.yaml")))
 
 #: (station, dwell) in the order each direction calls at them.
-UP_PATTERN = [("WDEPOT", DEPOT), ("KINGSFORD", DWELL), ("MARLOWE", DWELL),
-              ("ASHDOWN", DWELL), ("EDEPOT", DEPOT)]
+UP_PATTERN = [("WDEPOT", DEPOT), ("LINFORD", DWELL), ("BRAMLEY", DWELL),
+              ("CALDER", DWELL), ("EDEPOT", DEPOT)]
 DN_PATTERN = list(reversed(UP_PATTERN))
 
 
@@ -82,7 +91,7 @@ def signalling_for(system):
     return reg.create(system)
 
 
-def simulation(timetable, duration_s=7200, system="fixed_block_3aspect"):
+def simulation(timetable, duration_s=9000, system="fixed_block_3aspect"):
     return Simulation(
         network=INFRA.network, blocks=INFRA.blocks, signals=INFRA.signals,
         block_of_segment=INFRA.block_of_segment, crossings=INFRA.crossings,
@@ -102,7 +111,7 @@ def probe(line, pattern, index=0):
          "services": [{"id": "P", "stock": "EMU", "departure": format_clock(BASE),
                        "ready_lead_s": 60,
                        "calls": calls(line, pattern, index=index)}]}, INFRA)
-    sim = simulation(timetable, duration_s=5400)
+    sim = simulation(timetable, duration_s=6000)
     while not sim.finished:
         sim.step()
         if sim.trains.get("P") is not None and sim.trains["P"].state == "finished":
@@ -114,7 +123,11 @@ def probe(line, pattern, index=0):
 
 
 def probe_all(count=COUNT):
-    """An unimpeded run per service, per direction, keyed (line, index)."""
+    """An unimpeded run per service, per direction, keyed (line, index).
+
+    Two services taking the same roads get the same answer, so the probe is run
+    once per distinct set of roads rather than once per service.
+    """
     times = {}
     seen = {}
     for line, pattern in (("UP", UP_PATTERN), ("DN", DN_PATTERN)):
@@ -126,12 +139,21 @@ def probe_all(count=COUNT):
     return times
 
 
-def flight_spec(times, headway_s, count=COUNT):
-    """Both directions, interleaved: the up flight and the down flight."""
+#: (line, pattern, id prefix, name) for each direction, in report order.
+DIRECTIONS = (("UP", UP_PATTERN, "U", "West Depot - East Depot"),
+              ("DN", DN_PATTERN, "D", "East Depot - West Depot"))
+
+
+def flight_spec(times, headway_s, count=COUNT, indices=None):
+    """Both flights as a timetable spec: ``count`` trains each way.
+
+    ``indices`` restricts the spec to particular services while leaving them
+    booked where they would be in the full flight - which is how the sweep
+    prices the flight running alone.
+    """
     services = []
-    for line, pattern, prefix, name in (("UP", UP_PATTERN, "U", "West Depot - East Depot"),
-                                        ("DN", DN_PATTERN, "D", "East Depot - West Depot")):
-        for n in range(count):
+    for line, pattern, prefix, name in DIRECTIONS:
+        for n in range(count) if indices is None else indices:
             shift = n * headway_s
             entries = []
             for station, dwell in pattern:
@@ -151,16 +173,16 @@ def flight_spec(times, headway_s, count=COUNT):
     return {"stock": [STOCK], "services": services}
 
 
-HEADER = '''# twoway timetable - generated, do not edit by hand.
+HEADER = '''# capacity timetable - generated, do not edit by hand.
 #
-#   python scenarios/twoway/_generate_timetable.py
+#   python scenarios/capacity/_generate_timetable.py
 #
-# %d trains each way, booked %d seconds apart, taking the roads at each station
-# in turn. Every booked time is what that service achieves with the railway to
-# itself, over its own roads.
+# %d trains each way, booked %d seconds apart, all of them the same unit calling
+# everywhere and taking the roads at each station in turn. Every booked time is
+# what that service achieves with the railway to itself, over its own roads.
 #
-# Nothing here uses a crossover. They are for when something is in the way - see
-# scenario-blocked.yaml.
+# This is the homogeneous base. Heterogeneous stock, mixed speeds and branch
+# services are variations on it, not edits to it.
 
 '''
 
@@ -170,7 +192,7 @@ def stock_yaml():
   - id: EMU
     name: Line unit
     length_m: 160
-    max_speed_kmh: 100
+    max_speed_kmh: 120
     max_accel: 1.0
     service_brake: 0.8
     emergency_brake: 1.2

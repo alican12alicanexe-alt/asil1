@@ -87,6 +87,8 @@ scenarios/depotline/         a single line between two depots: 60 km, three
                              stations, and every road used in turn
 scenarios/twoway/            the same railway with a line each way, and the
                              crossovers that let a train work either one
+scenarios/capacity/          the comparison base: a symmetric two-way railway
+                             built to hold everything but the signalling still
 trainsim/
   core/
     units.py                 SI conversions and the braking-curve formulae

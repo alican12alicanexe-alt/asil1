@@ -106,11 +106,26 @@ def calls(shift=0, index=0):
     return entries
 
 
+def signalling_for(system):
+    """Build a signalling system, giving it only settings it has.
+
+    Sighting distance is how far off a driver reads a *lineside* signal, so it
+    belongs to lineside signalling and to nothing else - the cab systems put the
+    authority on the desk and rightly refuse the argument. Passing it to all of
+    them turned every sweep of another system into a TypeError. This is what the
+    CLI does when ``--compare`` switches systems: the setting goes with the
+    system it was written for, and the others use their own defaults.
+    """
+    if system == "fixed_block_3aspect":
+        return reg.create(system, sighting_distance_m=250)
+    return reg.create(system)
+
+
 def simulation(timetable, duration_s=7200, system="fixed_block_3aspect"):
     return Simulation(
         network=INFRA.network, blocks=INFRA.blocks, signals=INFRA.signals,
         block_of_segment=INFRA.block_of_segment,
-        signalling=reg.create(system, sighting_distance_m=250),
+        signalling=signalling_for(system),
         # These two must track scenario.yaml, or the timetable is generated
         # against a different railway from the one that runs it. depotline has
         # no automatic signals: every signal waits on a route, so the signaller

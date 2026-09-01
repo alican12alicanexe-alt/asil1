@@ -1,0 +1,111 @@
+# capacity - the base every signalling comparison is measured against.
+#
+#   python run.py scenarios/capacity              (live schematic)
+#   python run.py scenarios/capacity --headless
+#   python run.py scenarios/capacity --check      (the layout, and the plan)
+#   python run.py scenarios/capacity --compare    (all six systems, one table)
+#   python scenarios/capacity/_sweep_headway.py   (what the line actually holds)
+#
+# WHAT THIS SCENARIO IS FOR
+#
+# The question is how much railway a signalling system buys you: fixed block,
+# moving block and virtual coupling put trains at different distances from each
+# other, and the difference is worth a number rather than an opinion. That
+# number is only worth having if nothing else moved, so this scenario is built
+# to hold everything else still.
+#
+#   - one stock type. Every train is the same unit, so no train is ever waiting
+#     for a slower one.
+#   - one stopping pattern. Every train calls everywhere, with the same dwell.
+#   - one geometry. Five stations, fifteen kilometres apart, the same platform
+#     arrangement at each of the middle three and the same at each depot.
+#   - one line speed, flat throughout. No gradients, no restrictions.
+#
+# Vary any one of those and you have the next experiment - heterogeneous stock,
+# mixed stopping patterns, a speed restriction - and this run is what it gets
+# compared against. That is why the base is worth building carefully and then
+# leaving alone.
+#
+# BOTH LINES ARE SIGNALLED BOTH WAYS
+#
+# Four scissors crossovers bracket five reversible spans, one per station, so
+# every platform road has a road each way. Neither direction is the wrong one: a
+# line signalled both ways is signalled both ways, and which way it is set is a
+# state of the railway. The booked service uses none of it - both flights run on
+# their own line throughout - but the capability is there for a diversion, and
+# for the reversible working an incident scenario would need.
+#
+# THE JUNCTIONS ARE THERE AND UNUSED
+#
+# Two double junctions, at Linford and at Calder, each to an outlying station.
+# Nothing is booked over them. A junction changes capacity by taking the main
+# line away from main-line trains, and that is a separate measurement from this
+# one: putting the pointwork in now means the layout does not change underneath
+# the base figures when it is time to take it.
+#
+# WHAT THE BOOKED SERVICE IS
+#
+# Eight trains each way, five minutes apart, taking the roads at each station in
+# turn. Five minutes is deliberately loose - the base run is meant to complete
+# clean, with nothing checked by a signal, so that it says what the railway does
+# when it is not fighting itself. The interval it actually holds is what
+# _sweep_headway.py measures, one signalling system at a time.
+#
+# WHAT THE BASE MEASURES, AS BUILT
+#
+# The booked run finishes 16 of 16 on time under every system, which is the
+# point of it: nothing is being obstructed, so any later run that is not clean
+# has a reason that can be named. The systems separate in two places, and only
+# two:
+#
+#   system                 all-green headway        mean authority
+#   fixed_block_3aspect     240 s  (15.0 an hour each way)   2491 m
+#   etcs_l1                 210 s  (17.1)                    3344 m
+#   etcs_hybrid_l3          195 s  (18.5)                    3585 m
+#   etcs_l2                 180 s  (20.0)                    3586 m
+#   etcs_moving_block       180 s  (20.0)                    3586 m
+#   virtual_coupling        180 s  (20.0)                    3586 m
+#
+# Read that carefully, because it is the most useful thing the base says. Moving
+# block and virtual coupling do not beat Level 2 here, and they are not supposed
+# to: every train on this railway calls at every station, so what sets the
+# headway is how long a platform is held, not how close two trains may run
+# between platforms. Shortening the separation cannot help once the binding
+# constraint has moved into the station. The authority column is where those
+# systems are still doing something - a train is told about 1.1 km more railway
+# than under fixed block - and the headway column is where it stops paying.
+#
+# That is the base's first real result and the reason the later experiments are
+# worth running: to show virtual coupling doing what it is for, the constraint
+# has to be somewhere it can reach. Trains that do not all stop everywhere, a
+# mix of speeds, a flight closer than a platform can turn round.
+
+name: capacity
+description: "Sixty kilometres, a line each way, three stations between two depots - the homogeneous base a signalling comparison is measured against."
+
+infrastructure: infrastructure.yaml
+timetable: timetable.yaml
+
+simulation:
+  dt: 1.0
+  start_time: "06:57:00"
+  duration_s: 9000
+  strict: false
+
+signalling:
+  system: fixed_block_3aspect
+  sighting_distance_m: 250
+
+interlocking:
+  route_request_distance_m: 2000
+  route_request_lead_s: 60
+  automatic_signals: false
+  route_lookahead: 2
+
+driver:
+  reaction_time_s: 2.0
+  safety_margin_m: 25.0
+
+view:
+  title: "capacity - the comparison base"
+  speed: 20
