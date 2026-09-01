@@ -702,6 +702,14 @@ class TkSchematicView(SchematicView):
         own road is what makes it unapproachable, not the road ahead, so asking
         only about the road ahead left it lit, and lit at danger: a red lamp at
         the far end of an occupied platform, for a train that cannot exist.
+
+        A signal with NO road behind it is dark always. That is the lamp at a
+        buffer stop: the depot roads are worked both ways like a platform, but
+        one end of them is the end of the railway, and the model still puts a
+        signal there reading into the road from beyond the blocks. Nothing is
+        beyond the blocks. Nothing can ever approach it and no route is ever set
+        from it, so it stood at danger for the whole run - eight red lamps at
+        the two depots saying stop to the buffers.
         """
         sim = self.sim
         interlocking = sim.interlocking
@@ -718,6 +726,9 @@ class TkSchematicView(SchematicView):
 
         dark = set()
         for signal in infra.signals.values():
+            if not signal.from_segment:
+                dark.add(signal.id)
+                continue
             behind = infra.block_of_segment.get(signal.from_segment)
             if opposed(signal.block_id) or (behind and opposed(behind)):
                 dark.add(signal.id)
