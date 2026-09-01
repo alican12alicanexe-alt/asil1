@@ -45,9 +45,39 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(os.path.dirname(HERE)))
 sys.path.insert(0, HERE)
 
-from _generate_timetable import COUNT, flight_spec, probe_all, simulation, INFRA
+from _generate_timetable import (COUNT, flight_spec, probe_all, simulation,
+                                 INFRA, STOCK)
 from trainsim.analysis.kpi import measure
 from trainsim.scenario.loader import build_timetable
+
+#: What the train is fitted with, per system: (etcs_level, tims, v2v).
+#:
+#: The physical train never changes - same length, same power, same brake. What
+#: changes is the equipment, and it has to change with the system or the sweep
+#: measures the wrong thing: full moving block falls back to block granularity
+#: unless the train in front can report its integrity, and virtual coupling
+#: needs both trains talking to each other. Running every system on an unfitted
+#: unit therefore reports the degraded fallback under three different names.
+FITMENT = {
+    "fixed_block_3aspect": ("none", False, False),
+    "etcs_l1":             ("l1",   False, False),
+    "etcs_l2":             ("l2",   False, False),
+    "etcs_hybrid_l3":      ("l3",   True,  False),
+    "etcs_moving_block":   ("l3",   True,  False),
+    "virtual_coupling":    ("l3",   True,  True),
+}
+
+
+def stock_for(system):
+    """A copy of :data:`STOCK` fitted for ``system``."""
+    try:
+        level, tims, v2v = FITMENT[system]
+    except KeyError:
+        raise SystemExit(
+            "no fitment declared for %r - add it to FITMENT" % (system,))
+    unit = dict(STOCK)
+    unit["etcs_level"], unit["tims"], unit["v2v"] = level, tims, v2v
+    return unit
 
 #: Wide enough at the top to start clear of anything this line might hold, and
 #: fine enough at the bottom to show it degrading rather than simply failing.
@@ -56,7 +86,8 @@ HEADWAYS = (300, 270, 240, 210, 195, 180, 165, 150, 135, 120, 105, 90, 75, 60)
 
 def run(times, headway_s, system, count=COUNT, indices=None):
     timetable = build_timetable(
-        flight_spec(times, headway_s, count, indices), INFRA)
+        flight_spec(times, headway_s, count, indices,
+                    stock=stock_for(system)), INFRA)
     sim = simulation(timetable, duration_s=headway_s * count + 4200,
                      system=system)
     # measure() drives the run itself, one tick at a time, because the numbers

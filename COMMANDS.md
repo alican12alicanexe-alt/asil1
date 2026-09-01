@@ -69,11 +69,20 @@ block spacing does. To measure it, sweep the flight:
 python scenarios/depotline/_sweep_headway.py            depotline: 210 s, 17.1 tph
 python scenarios/depotline/_sweep_headway.py etcs_l2    under any other system
 python scenarios/capacity/_sweep_headway.py             capacity: 240 s, 15.0 tph each way
+python scenarios/twoway/sweep.py                        all three systems, up trains only
 ```
 
 `scenarios/capacity` is the scenario built for that sweep: one stock type, one
 calling pattern, evenly spaced stations and a flat line speed, so that running it
 under each system in turn measures the system and nothing else.
+
+Both sweeps fit the train to the system as well as switching the system. That is
+not a detail: full moving block falls back to block granularity unless the train
+in front reports its integrity, and virtual coupling needs both trains talking to
+each other, so a sweep run on one unfitted unit reports the same fallback under
+three different names. `--compare` does *not* do this — it runs the scenario's
+own timetable, so on a scenario with an unfitted fleet its table is the value of
+each system to that fleet. Quote the sweeps for capacity.
 
 ## Tests
 

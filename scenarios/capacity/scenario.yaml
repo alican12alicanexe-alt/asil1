@@ -55,30 +55,45 @@
 #
 # The booked run finishes 16 of 16 on time under every system, which is the
 # point of it: nothing is being obstructed, so any later run that is not clean
-# has a reason that can be named. The systems separate in two places, and only
-# two:
+# has a reason that can be named. Tighten the interval and the systems separate.
+# Measured by _sweep_headway.py - the widest interval at which no train is ever
+# checked by a signal:
 #
-#   system                 all-green headway        mean authority
-#   fixed_block_3aspect     240 s  (15.0 an hour each way)   2491 m
-#   etcs_l1                 210 s  (17.1)                    3344 m
-#   etcs_hybrid_l3          195 s  (18.5)                    3585 m
-#   etcs_l2                 180 s  (20.0)                    3586 m
-#   etcs_moving_block       180 s  (20.0)                    3586 m
-#   virtual_coupling        180 s  (20.0)                    3586 m
+#   system                 all-green headway, each way
+#   fixed_block_3aspect     240 s   15.0 an hour
+#   etcs_l1                 210 s   17.1
+#   etcs_l2                 180 s   20.0
+#   etcs_hybrid_l3          150 s   24.0
+#   etcs_moving_block       135 s   26.7
+#   virtual_coupling        135 s   26.7
 #
-# Read that carefully, because it is the most useful thing the base says. Moving
-# block and virtual coupling do not beat Level 2 here, and they are not supposed
-# to: every train on this railway calls at every station, so what sets the
-# headway is how long a platform is held, not how close two trains may run
-# between platforms. Shortening the separation cannot help once the binding
-# constraint has moved into the station. The authority column is where those
-# systems are still doing something - a train is told about 1.1 km more railway
-# than under fixed block - and the headway column is where it stops paying.
+# THE TRAIN HAS TO BE FITTED FOR THE SYSTEM
 #
-# That is the base's first real result and the reason the later experiments are
-# worth running: to show virtual coupling doing what it is for, the constraint
-# has to be somewhere it can reach. Trains that do not all stop everywhere, a
-# mix of speeds, a flight closer than a platform can turn round.
+# Those figures only mean anything because the sweep changes what the train is
+# fitted with along with the signalling. The physical train never changes -
+# same length, same power, same brake - but the equipment must, because full
+# moving block falls back to block granularity unless the train in front can
+# report its integrity, and virtual coupling needs both trains talking to each
+# other. Sweeping every system on one unfitted unit reports that same fallback
+# under three different names, and makes moving block and virtual coupling look
+# as though they buy nothing over Level 2. They were measured that way once
+# here, and the answer was wrong.
+#
+# So note what `--compare` on this scenario is showing you. It runs the
+# scenario's own timetable, and this railway's fleet is unfitted - a 3-aspect
+# railway with lineside signals, which is a coherent thing to be. Its table is
+# therefore the value of each system TO THIS FLEET, which is nearly nothing
+# past Level 1. _sweep_headway.py is the one that fits the train to the system,
+# and it is the one to quote for capacity.
+#
+# Virtual coupling ties moving block here, and that is a real result rather
+# than a fault: every train on this railway calls at every station, so by 135 s
+# the binding constraint has moved into the platform, and closing the gap
+# between trains cannot help once what they are queueing for is a road to stand
+# on. To see virtual coupling do what it is for, the constraint has to be
+# somewhere it can still reach - trains that do not all stop everywhere, a mix
+# of speeds, a flight closer than a platform can turn round. That is the next
+# experiment, and this is what it gets compared against.
 
 name: capacity
 description: "Sixty kilometres, a line each way, three stations between two depots - the homogeneous base a signalling comparison is measured against."
