@@ -137,6 +137,8 @@ class Simulation(object):
 
         # Move.
         for train, accel, target, reason, authority in decisions:
+            train.authority_point_m = min(
+                train.path.total_m, train.chainage_m + authority.end_distance_m)
             train.advance(accel, self.dt)
             train.target_speed_ms = target
             train.authority_reason = reason

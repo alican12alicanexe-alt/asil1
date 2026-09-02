@@ -64,6 +64,12 @@ PALETTE = {
     # train carries about its own authority - a second one, a tick at the end of
     # the authority itself, said the same thing a tick later and is gone.
     "braking_zone": "#b8433a",
+    # The other half of that pair: the braking zone is how much railway a
+    # train NEEDS, the limit of authority is how much it HAS. Deliberately
+    # not a colour anything else uses - it is neither a lamp nor a road nor
+    # a train, and reading it as any of those would be worse than not
+    # seeing it.
+    "authority_limit": "#e8eef6",
     "marker_board": "#5a6472",
     # The end of the railway. Not a signal and not track: a buffer stop is
     # structure, so it takes a structure grey rather than any of the colours

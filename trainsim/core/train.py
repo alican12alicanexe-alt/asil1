@@ -447,6 +447,15 @@ class Train:
     authority_reason: str = "not started"
     #: Distance the last movement authority extended to, for metrics and the view.
     last_authority_m: Optional[float] = None
+    #: WHERE that authority ended, as a chainage on this train's own path.
+    #:
+    #: Not the same fact as ``last_authority_m`` and not derivable from it once
+    #: the train has moved. An authority is issued as a distance from the nose,
+    #: so adding it to the nose after the move puts the end point a tick's
+    #: travel too far along - 44 m at 160 km/h, which is enough to draw a limit
+    #: beyond the signal that set it. This is taken before the move, from the
+    #: nose the authority was measured from.
+    authority_point_m: Optional[float] = None
     #: Gradient under the train, for the view and the event log.
     grade_permille: float = 0.0
     target_speed_ms: float = 0.0
