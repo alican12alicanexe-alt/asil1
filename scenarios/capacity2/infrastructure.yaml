@@ -1,104 +1,111 @@
-# capacity2 - the comparison base, with the line limit raised.
+# capacity2 - the same railway with one station taken out of the middle.
 #
-# Sixty kilometres, a line each way, three intermediate stations and a depot at
-# each end. Everything about it is deliberately plain and deliberately
-# symmetric, because its job is to be the railway every other run is measured
-# against. If a figure moves between two runs on this layout, the layout is not
-# what moved it.
+# A clone of scenarios/capacity with Bramley removed and NOTHING else changed:
+# same sixty kilometres, same eight crossovers at the same kilometres, same
+# speed limit profile, same stock, same dwells. One station less is the only
+# variable, which is what makes the two scenarios comparable line for line.
 #
-#   WDEPOT           LINFORD          BRAMLEY          CALDER           EDEPOT
-#   km 0             km 15            km 30            km 45            km 60
-#     |----------------|----------------|----------------|----------------|
+#   WDEPOT           LINFORD                           CALDER           EDEPOT
+#   km 0             km 15                             km 45            km 60
+#     |----------------|----------------------------------|----------------|
 #   UP  <>-------------------------------------------------------------------->
 #   DN  <>--------------------------------------------------------------------<
-#         X         X                                  X         X
-#       km 10     km 20                              km 40     km 50
+#      X        X     X              X     X              X     X        X
+#    km 3      km 12 km 18          km 27 km 33          km 42 km 48    km 57
 #
 # <> is the direction each line is normally worked in, not the only one it can
 # be: both lines are signalled both ways end to end. X is a scissors crossover.
 #
-# WHY THE STATIONS ARE EVENLY SPACED
+# WHAT THIS ONE IS FOR
 #
-# Fifteen kilometres apart, every one of them, and the same dwell at each. A
-# capacity figure is a property of the tightest place on the line, so an uneven
-# layout answers a question about that one place rather than about the
-# signalling. Making every leg identical means the binding constraint is the
-# same everywhere, which is what lets the systems be compared against each other
-# rather than against the geography.
+# The base books every train to call everywhere, fifteen kilometres between
+# stops. A train that stops every fifteen kilometres spends its journey braking
+# and accelerating, and a pair of trains running close together is pulled apart
+# at every one of those stops: the leader brakes for the platform while the
+# follower is still at line speed, then the leader stands there with nothing
+# left for a follower to borrow. Measured on the base under virtual coupling, a
+# coupled pair's gap swings from 178 m to 400 m, and the bottom of that swing is
+# always a station.
 #
-# WHY THE CROSSOVERS ARE 1000 m
+# So the question is what happens to that when a stop is taken out. The middle
+# leg here is THIRTY kilometres of unbroken running - twice anything on the base
+# - which is the first stretch on either scenario long enough for two trains to
+# settle to a steady distance apart and stay there.
 #
-# A crossover puts a block boundary on the main line at each of its ends, so the
-# main-line block between them is exactly as long as the crossover. A block
-# shorter than the braking distance from line speed cannot be signalled: a train
-# passing a yellow could not stop at the next signal. 400 m would have been more
-# realistic and would have left this railway unsignalable from the first run,
-# which is no way to start a measurement.
+# They do not, and not for the reason expected: booked at 60 s, no pair of
+# trains gets within 200 m of each other ANYWHERE on that leg, where the base
+# has close approaches either side of Bramley. A follower only closes on a
+# leader that is going slower, and on a homogeneous fleet at line speed there
+# is no such difference to close with. The full result is at the head of
+# scenario.yaml.
 #
-# The base gets away with 900 m because its worst stock is a 120 km/h unit
-# needing 786 m. The fast unit here needs 939 m from 150, so 900 m blocks would
-# have left sixteen sections that a train passing a yellow could not stop in,
-# and --check says so. 1000 m is the smallest round figure that clears it. This
-# is the one piece of geometry that had to move with the fleet, and it is worth
-# knowing when comparing back to the base: four blocks on each line are 100 m
-# longer here than they are there.
+# WHY BRAMLEY AND NOT A RESPACING
 #
-# WHY THE LINE LIMIT IS 150 AND NOT 160
+# Taking the middle station out leaves legs of 15, 30 and 15 km, which is not
+# the even spacing the base argues for at length. That is deliberate. Respacing
+# the remaining stations to 20 km each would have been symmetric, but it would
+# have moved every station relative to the crossovers and the speed limits, and
+# then no figure could be attributed to the missing stop rather than to the new
+# geography. Leaving Linford and Calder exactly where the base has them means
+# the two outer legs are the same railway in both scenarios and act as the
+# control: if a number moves on those, the missing station is not what moved it.
 #
-# This is the one thing changed from scenarios/capacity, and it is changed in
-# service of the fleet rather than for its own sake: at a 120 limit a 160 km/h
-# unit is only a 120 km/h unit with better brakes, and the experiment has no
-# variable. 150 rather than 160 for two reasons. A train held down by the road
-# rather than by itself is the ordinary case on a real railway and the more
-# interesting one to signal. And braking distance goes up with the square of
-# speed: the 900 m crossover blocks are signalable at 150 and are not at 160,
-# so 160 would have meant moving the pointwork, and then the layout would have
-# changed too and the experiment would be measuring two things at once.
+# The cost is that the tightest place on the line is still a fifteen-kilometre
+# leg, so the headway figures this scenario reports are set by the same
+# constraint the base's are. That is the point rather than a flaw - the sweep
+# answers "does removing a stop buy headway", and the honest answer to that has
+# to come from a line whose binding constraint has not been quietly changed too.
 #
-# Everything slower stays exactly where the base put it - loops at 60, depot
-# roads at 40, crossovers at 60 - so the only limit that moved is line speed.
+# THE CROSSOVERS ARE UNMOVED
+#
+# All eight, at the same kilometres, including the pair at 27 and 33 that used
+# to bracket Bramley. They are renamed XO_MIDLINE_W and XO_MIDLINE_E because a
+# crossover cannot be named after a station that is not there, but they are the
+# same 900 m of railway in the same place. Keeping them means the reversible
+# spans, the block boundaries they impose and the 50 km/h braces over them are
+# identical between the two scenarios, so the middle leg differs from the base's
+# two middle legs by the stop and by nothing else.
 #
 # THE REVERSIBLE STRETCHES
 #
 # A stretch is worked both ways where a train can get onto the other line and
 # off it again. Each neighbouring pair of crossovers brackets one, and so does
-# each outermost crossover against the end of the line - a train that runs to
-# the buffer stops leaves in the other direction anyway. Five spans, one per
-# station:
+# each outermost crossover against the end of the line.
 #
-#    0.0 .. 11.0   brackets West Depot, against the end of the line
-#   10.0 .. 21.0   brackets Linford
-#   20.0 .. 41.0   brackets Bramley
-#   40.0 .. 51.0   brackets Calder
-#   50.0 .. 60.0   brackets East Depot, against the end of the line
+#    0.0 ..  3.9   brackets West Depot, against the end of the line
+#    3.9 .. 12.9   brackets nothing
+#   12.9 .. 18.9   brackets Linford
+#   18.9 .. 27.9   brackets nothing
+#   27.9 .. 33.9   brackets nothing - it used to bracket Bramley
+#   33.9 .. 42.9   brackets nothing
+#   42.9 .. 48.9   brackets Calder
+#   48.9 .. 57.9   brackets nothing
+#   57.9 .. 60.0   brackets East Depot, against the end of the line
 #
-# So every platform road at all five stations has a road each way.
+# WHY THE CROSSOVERS ARE 900 m
+#
+# A crossover puts a block boundary on the main line at each of its ends, so the
+# main-line block between them is exactly as long as the crossover. At 120 km/h
+# a train needs about 850 m to stop, and a block shorter than that cannot be
+# signalled: a train passing a yellow could not stop at the next signal.
 #
 # NO JUNCTIONS
 #
-# Nothing branches off this railway. Every train that starts on it runs the
-# whole length of it, so the only things that can hold a train up are the train
-# in front, a platform road and the signalling - which is the whole point of a
-# comparison base. A junction adds a conflict that belongs to the junction
-# rather than to the train control system, and there is nowhere on this layout
-# for that conflict to hide a difference between two systems.
-#
-# The crossovers are not junctions in that sense: they connect the two lines of
-# this same railway to each other and lead nowhere else. They are what make both
-# lines reversible, and no booked service uses them either.
+# Nothing branches off this railway, exactly as on the base. Every train that
+# starts on it runs the whole length of it, so the only things that can hold a
+# train up are the train in front, a platform road and the signalling.
 
-name: capacity
+name: capacity2
 
 defaults:
   platform_zone_m: 1200
   block_length_m: 1800
-  max_speed_kmh: 150
+  max_speed_kmh: 120
   stop_margin_m: 30
 
 stations:
   - {id: WDEPOT,  name: West Depot, km: 0.0}
   - {id: LINFORD, name: Linford,    km: 15.0}
-  - {id: BRAMLEY, name: Bramley,    km: 30.0}
   - {id: CALDER,  name: Calder,     km: 45.0}
   - {id: EDEPOT,  name: East Depot, km: 60.0}
 
@@ -106,16 +113,302 @@ tracks:
   - id: UP
     direction: up
     y: 0.0
-    max_speed_kmh: 150
+    max_speed_kmh: 120
     block_length_m: 1800
-    serves: [WDEPOT, LINFORD, BRAMLEY, CALDER, EDEPOT]
+    serves: [WDEPOT, LINFORD, CALDER, EDEPOT]
+    # A new limit roughly every 650 m, from a repeating cycle of 80-120, with
+    # each crossover braced by a stepped approach - 90, 70, then 50 over the
+    # pointwork itself. Overlapping entries are allowed and the tightest wins,
+    # which is what lets the crossover braces simply be laid over the cycle.
+    #
+    # The kilometres are the same for both lines: a limit is a property of the
+    # rail, and the ranges are read without regard to order, so the up and the
+    # down line carry the same list even though their chainage runs opposite
+    # ways.
+    speed_limits:
+      - {from_km:  0.00, to_km:  0.65, max_speed_kmh: 120}
+      - {from_km:  0.65, to_km:  1.30, max_speed_kmh: 100}
+      - {from_km:  1.30, to_km:  1.95, max_speed_kmh: 120}
+      - {from_km:  1.95, to_km:  2.60, max_speed_kmh:  90}
+      - {from_km:  2.60, to_km:  3.25, max_speed_kmh: 110}
+      - {from_km:  3.25, to_km:  3.90, max_speed_kmh:  80}
+      - {from_km:  3.90, to_km:  4.55, max_speed_kmh: 120}
+      - {from_km:  4.55, to_km:  5.20, max_speed_kmh: 100}
+      - {from_km:  5.20, to_km:  5.85, max_speed_kmh:  90}
+      - {from_km:  5.85, to_km:  6.50, max_speed_kmh: 120}
+      - {from_km:  6.50, to_km:  7.15, max_speed_kmh:  80}
+      - {from_km:  7.15, to_km:  7.80, max_speed_kmh: 110}
+      - {from_km:  7.80, to_km:  8.45, max_speed_kmh: 120}
+      - {from_km:  8.45, to_km:  9.10, max_speed_kmh: 100}
+      - {from_km:  9.10, to_km:  9.75, max_speed_kmh: 120}
+      - {from_km:  9.75, to_km: 10.40, max_speed_kmh:  90}
+      - {from_km: 10.40, to_km: 11.05, max_speed_kmh: 110}
+      - {from_km: 11.05, to_km: 11.70, max_speed_kmh:  80}
+      - {from_km: 11.70, to_km: 12.35, max_speed_kmh: 120}
+      - {from_km: 12.35, to_km: 13.00, max_speed_kmh: 100}
+      - {from_km: 13.00, to_km: 13.65, max_speed_kmh:  90}
+      - {from_km: 13.65, to_km: 14.30, max_speed_kmh: 120}
+      - {from_km: 14.30, to_km: 14.95, max_speed_kmh:  80}
+      - {from_km: 14.95, to_km: 15.60, max_speed_kmh: 110}
+      - {from_km: 15.60, to_km: 16.25, max_speed_kmh: 120}
+      - {from_km: 16.25, to_km: 16.90, max_speed_kmh: 100}
+      - {from_km: 16.90, to_km: 17.55, max_speed_kmh: 120}
+      - {from_km: 17.55, to_km: 18.20, max_speed_kmh:  90}
+      - {from_km: 18.20, to_km: 18.85, max_speed_kmh: 110}
+      - {from_km: 18.85, to_km: 19.50, max_speed_kmh:  80}
+      - {from_km: 19.50, to_km: 20.15, max_speed_kmh: 120}
+      - {from_km: 20.15, to_km: 20.80, max_speed_kmh: 100}
+      - {from_km: 20.80, to_km: 21.45, max_speed_kmh:  90}
+      - {from_km: 21.45, to_km: 22.10, max_speed_kmh: 120}
+      - {from_km: 22.10, to_km: 22.75, max_speed_kmh:  80}
+      - {from_km: 22.75, to_km: 23.40, max_speed_kmh: 110}
+      - {from_km: 23.40, to_km: 24.05, max_speed_kmh: 120}
+      - {from_km: 24.05, to_km: 24.70, max_speed_kmh: 100}
+      - {from_km: 24.70, to_km: 25.35, max_speed_kmh: 120}
+      - {from_km: 25.35, to_km: 26.00, max_speed_kmh:  90}
+      - {from_km: 26.00, to_km: 26.65, max_speed_kmh: 110}
+      - {from_km: 26.65, to_km: 27.30, max_speed_kmh:  80}
+      - {from_km: 27.30, to_km: 27.95, max_speed_kmh: 120}
+      - {from_km: 27.95, to_km: 28.60, max_speed_kmh: 100}
+      - {from_km: 28.60, to_km: 29.25, max_speed_kmh:  90}
+      - {from_km: 29.25, to_km: 29.90, max_speed_kmh: 120}
+      - {from_km: 29.90, to_km: 30.55, max_speed_kmh:  80}
+      - {from_km: 30.55, to_km: 31.20, max_speed_kmh: 110}
+      - {from_km: 31.20, to_km: 31.85, max_speed_kmh: 120}
+      - {from_km: 31.85, to_km: 32.50, max_speed_kmh: 100}
+      - {from_km: 32.50, to_km: 33.15, max_speed_kmh: 120}
+      - {from_km: 33.15, to_km: 33.80, max_speed_kmh:  90}
+      - {from_km: 33.80, to_km: 34.45, max_speed_kmh: 110}
+      - {from_km: 34.45, to_km: 35.10, max_speed_kmh:  80}
+      - {from_km: 35.10, to_km: 35.75, max_speed_kmh: 120}
+      - {from_km: 35.75, to_km: 36.40, max_speed_kmh: 100}
+      - {from_km: 36.40, to_km: 37.05, max_speed_kmh:  90}
+      - {from_km: 37.05, to_km: 37.70, max_speed_kmh: 120}
+      - {from_km: 37.70, to_km: 38.35, max_speed_kmh:  80}
+      - {from_km: 38.35, to_km: 39.00, max_speed_kmh: 110}
+      - {from_km: 39.00, to_km: 39.65, max_speed_kmh: 120}
+      - {from_km: 39.65, to_km: 40.30, max_speed_kmh: 100}
+      - {from_km: 40.30, to_km: 40.95, max_speed_kmh: 120}
+      - {from_km: 40.95, to_km: 41.60, max_speed_kmh:  90}
+      - {from_km: 41.60, to_km: 42.25, max_speed_kmh: 110}
+      - {from_km: 42.25, to_km: 42.90, max_speed_kmh:  80}
+      - {from_km: 42.90, to_km: 43.55, max_speed_kmh: 120}
+      - {from_km: 43.55, to_km: 44.20, max_speed_kmh: 100}
+      - {from_km: 44.20, to_km: 44.85, max_speed_kmh:  90}
+      - {from_km: 44.85, to_km: 45.50, max_speed_kmh: 120}
+      - {from_km: 45.50, to_km: 46.15, max_speed_kmh:  80}
+      - {from_km: 46.15, to_km: 46.80, max_speed_kmh: 110}
+      - {from_km: 46.80, to_km: 47.45, max_speed_kmh: 120}
+      - {from_km: 47.45, to_km: 48.10, max_speed_kmh: 100}
+      - {from_km: 48.10, to_km: 48.75, max_speed_kmh: 120}
+      - {from_km: 48.75, to_km: 49.40, max_speed_kmh:  90}
+      - {from_km: 49.40, to_km: 50.05, max_speed_kmh: 110}
+      - {from_km: 50.05, to_km: 50.70, max_speed_kmh:  80}
+      - {from_km: 50.70, to_km: 51.35, max_speed_kmh: 120}
+      - {from_km: 51.35, to_km: 52.00, max_speed_kmh: 100}
+      - {from_km: 52.00, to_km: 52.65, max_speed_kmh:  90}
+      - {from_km: 52.65, to_km: 53.30, max_speed_kmh: 120}
+      - {from_km: 53.30, to_km: 53.95, max_speed_kmh:  80}
+      - {from_km: 53.95, to_km: 54.60, max_speed_kmh: 110}
+      - {from_km: 54.60, to_km: 55.25, max_speed_kmh: 120}
+      - {from_km: 55.25, to_km: 55.90, max_speed_kmh: 100}
+      - {from_km: 55.90, to_km: 56.55, max_speed_kmh: 120}
+      - {from_km: 56.55, to_km: 57.20, max_speed_kmh:  90}
+      - {from_km: 57.20, to_km: 57.85, max_speed_kmh: 110}
+      - {from_km: 57.85, to_km: 58.50, max_speed_kmh:  80}
+      - {from_km: 58.50, to_km: 59.15, max_speed_kmh: 120}
+      - {from_km: 59.15, to_km: 59.80, max_speed_kmh: 100}
+      - {from_km: 59.80, to_km: 60.00, max_speed_kmh:  90}
+      - {from_km:  3.00, to_km:  3.90, max_speed_kmh:  50}
+      - {from_km:  2.35, to_km:  3.00, max_speed_kmh:  70}
+      - {from_km:  3.90, to_km:  4.55, max_speed_kmh:  70}
+      - {from_km:  1.70, to_km:  2.35, max_speed_kmh:  90}
+      - {from_km:  4.55, to_km:  5.20, max_speed_kmh:  90}
+      - {from_km: 12.00, to_km: 12.90, max_speed_kmh:  50}
+      - {from_km: 11.35, to_km: 12.00, max_speed_kmh:  70}
+      - {from_km: 12.90, to_km: 13.55, max_speed_kmh:  70}
+      - {from_km: 10.70, to_km: 11.35, max_speed_kmh:  90}
+      - {from_km: 13.55, to_km: 14.20, max_speed_kmh:  90}
+      - {from_km: 18.00, to_km: 18.90, max_speed_kmh:  50}
+      - {from_km: 17.35, to_km: 18.00, max_speed_kmh:  70}
+      - {from_km: 18.90, to_km: 19.55, max_speed_kmh:  70}
+      - {from_km: 16.70, to_km: 17.35, max_speed_kmh:  90}
+      - {from_km: 19.55, to_km: 20.20, max_speed_kmh:  90}
+      - {from_km: 27.00, to_km: 27.90, max_speed_kmh:  50}
+      - {from_km: 26.35, to_km: 27.00, max_speed_kmh:  70}
+      - {from_km: 27.90, to_km: 28.55, max_speed_kmh:  70}
+      - {from_km: 25.70, to_km: 26.35, max_speed_kmh:  90}
+      - {from_km: 28.55, to_km: 29.20, max_speed_kmh:  90}
+      - {from_km: 33.00, to_km: 33.90, max_speed_kmh:  50}
+      - {from_km: 32.35, to_km: 33.00, max_speed_kmh:  70}
+      - {from_km: 33.90, to_km: 34.55, max_speed_kmh:  70}
+      - {from_km: 31.70, to_km: 32.35, max_speed_kmh:  90}
+      - {from_km: 34.55, to_km: 35.20, max_speed_kmh:  90}
+      - {from_km: 42.00, to_km: 42.90, max_speed_kmh:  50}
+      - {from_km: 41.35, to_km: 42.00, max_speed_kmh:  70}
+      - {from_km: 42.90, to_km: 43.55, max_speed_kmh:  70}
+      - {from_km: 40.70, to_km: 41.35, max_speed_kmh:  90}
+      - {from_km: 43.55, to_km: 44.20, max_speed_kmh:  90}
+      - {from_km: 48.00, to_km: 48.90, max_speed_kmh:  50}
+      - {from_km: 47.35, to_km: 48.00, max_speed_kmh:  70}
+      - {from_km: 48.90, to_km: 49.55, max_speed_kmh:  70}
+      - {from_km: 46.70, to_km: 47.35, max_speed_kmh:  90}
+      - {from_km: 49.55, to_km: 50.20, max_speed_kmh:  90}
+      - {from_km: 57.00, to_km: 57.90, max_speed_kmh:  50}
+      - {from_km: 56.35, to_km: 57.00, max_speed_kmh:  70}
+      - {from_km: 57.90, to_km: 58.55, max_speed_kmh:  70}
+      - {from_km: 55.70, to_km: 56.35, max_speed_kmh:  90}
+      - {from_km: 58.55, to_km: 59.20, max_speed_kmh:  90}
 
   - id: DN
     direction: down
     y: 0.4
-    max_speed_kmh: 150
+    max_speed_kmh: 120
     block_length_m: 1800
-    serves: [EDEPOT, CALDER, BRAMLEY, LINFORD, WDEPOT]
+    serves: [EDEPOT, CALDER, LINFORD, WDEPOT]
+    # A new limit roughly every 650 m, from a repeating cycle of 80-120, with
+    # each crossover braced by a stepped approach - 90, 70, then 50 over the
+    # pointwork itself. Overlapping entries are allowed and the tightest wins,
+    # which is what lets the crossover braces simply be laid over the cycle.
+    #
+    # The kilometres are the same for both lines: a limit is a property of the
+    # rail, and the ranges are read without regard to order, so the up and the
+    # down line carry the same list even though their chainage runs opposite
+    # ways.
+    speed_limits:
+      - {from_km:  0.00, to_km:  0.65, max_speed_kmh: 120}
+      - {from_km:  0.65, to_km:  1.30, max_speed_kmh: 100}
+      - {from_km:  1.30, to_km:  1.95, max_speed_kmh: 120}
+      - {from_km:  1.95, to_km:  2.60, max_speed_kmh:  90}
+      - {from_km:  2.60, to_km:  3.25, max_speed_kmh: 110}
+      - {from_km:  3.25, to_km:  3.90, max_speed_kmh:  80}
+      - {from_km:  3.90, to_km:  4.55, max_speed_kmh: 120}
+      - {from_km:  4.55, to_km:  5.20, max_speed_kmh: 100}
+      - {from_km:  5.20, to_km:  5.85, max_speed_kmh:  90}
+      - {from_km:  5.85, to_km:  6.50, max_speed_kmh: 120}
+      - {from_km:  6.50, to_km:  7.15, max_speed_kmh:  80}
+      - {from_km:  7.15, to_km:  7.80, max_speed_kmh: 110}
+      - {from_km:  7.80, to_km:  8.45, max_speed_kmh: 120}
+      - {from_km:  8.45, to_km:  9.10, max_speed_kmh: 100}
+      - {from_km:  9.10, to_km:  9.75, max_speed_kmh: 120}
+      - {from_km:  9.75, to_km: 10.40, max_speed_kmh:  90}
+      - {from_km: 10.40, to_km: 11.05, max_speed_kmh: 110}
+      - {from_km: 11.05, to_km: 11.70, max_speed_kmh:  80}
+      - {from_km: 11.70, to_km: 12.35, max_speed_kmh: 120}
+      - {from_km: 12.35, to_km: 13.00, max_speed_kmh: 100}
+      - {from_km: 13.00, to_km: 13.65, max_speed_kmh:  90}
+      - {from_km: 13.65, to_km: 14.30, max_speed_kmh: 120}
+      - {from_km: 14.30, to_km: 14.95, max_speed_kmh:  80}
+      - {from_km: 14.95, to_km: 15.60, max_speed_kmh: 110}
+      - {from_km: 15.60, to_km: 16.25, max_speed_kmh: 120}
+      - {from_km: 16.25, to_km: 16.90, max_speed_kmh: 100}
+      - {from_km: 16.90, to_km: 17.55, max_speed_kmh: 120}
+      - {from_km: 17.55, to_km: 18.20, max_speed_kmh:  90}
+      - {from_km: 18.20, to_km: 18.85, max_speed_kmh: 110}
+      - {from_km: 18.85, to_km: 19.50, max_speed_kmh:  80}
+      - {from_km: 19.50, to_km: 20.15, max_speed_kmh: 120}
+      - {from_km: 20.15, to_km: 20.80, max_speed_kmh: 100}
+      - {from_km: 20.80, to_km: 21.45, max_speed_kmh:  90}
+      - {from_km: 21.45, to_km: 22.10, max_speed_kmh: 120}
+      - {from_km: 22.10, to_km: 22.75, max_speed_kmh:  80}
+      - {from_km: 22.75, to_km: 23.40, max_speed_kmh: 110}
+      - {from_km: 23.40, to_km: 24.05, max_speed_kmh: 120}
+      - {from_km: 24.05, to_km: 24.70, max_speed_kmh: 100}
+      - {from_km: 24.70, to_km: 25.35, max_speed_kmh: 120}
+      - {from_km: 25.35, to_km: 26.00, max_speed_kmh:  90}
+      - {from_km: 26.00, to_km: 26.65, max_speed_kmh: 110}
+      - {from_km: 26.65, to_km: 27.30, max_speed_kmh:  80}
+      - {from_km: 27.30, to_km: 27.95, max_speed_kmh: 120}
+      - {from_km: 27.95, to_km: 28.60, max_speed_kmh: 100}
+      - {from_km: 28.60, to_km: 29.25, max_speed_kmh:  90}
+      - {from_km: 29.25, to_km: 29.90, max_speed_kmh: 120}
+      - {from_km: 29.90, to_km: 30.55, max_speed_kmh:  80}
+      - {from_km: 30.55, to_km: 31.20, max_speed_kmh: 110}
+      - {from_km: 31.20, to_km: 31.85, max_speed_kmh: 120}
+      - {from_km: 31.85, to_km: 32.50, max_speed_kmh: 100}
+      - {from_km: 32.50, to_km: 33.15, max_speed_kmh: 120}
+      - {from_km: 33.15, to_km: 33.80, max_speed_kmh:  90}
+      - {from_km: 33.80, to_km: 34.45, max_speed_kmh: 110}
+      - {from_km: 34.45, to_km: 35.10, max_speed_kmh:  80}
+      - {from_km: 35.10, to_km: 35.75, max_speed_kmh: 120}
+      - {from_km: 35.75, to_km: 36.40, max_speed_kmh: 100}
+      - {from_km: 36.40, to_km: 37.05, max_speed_kmh:  90}
+      - {from_km: 37.05, to_km: 37.70, max_speed_kmh: 120}
+      - {from_km: 37.70, to_km: 38.35, max_speed_kmh:  80}
+      - {from_km: 38.35, to_km: 39.00, max_speed_kmh: 110}
+      - {from_km: 39.00, to_km: 39.65, max_speed_kmh: 120}
+      - {from_km: 39.65, to_km: 40.30, max_speed_kmh: 100}
+      - {from_km: 40.30, to_km: 40.95, max_speed_kmh: 120}
+      - {from_km: 40.95, to_km: 41.60, max_speed_kmh:  90}
+      - {from_km: 41.60, to_km: 42.25, max_speed_kmh: 110}
+      - {from_km: 42.25, to_km: 42.90, max_speed_kmh:  80}
+      - {from_km: 42.90, to_km: 43.55, max_speed_kmh: 120}
+      - {from_km: 43.55, to_km: 44.20, max_speed_kmh: 100}
+      - {from_km: 44.20, to_km: 44.85, max_speed_kmh:  90}
+      - {from_km: 44.85, to_km: 45.50, max_speed_kmh: 120}
+      - {from_km: 45.50, to_km: 46.15, max_speed_kmh:  80}
+      - {from_km: 46.15, to_km: 46.80, max_speed_kmh: 110}
+      - {from_km: 46.80, to_km: 47.45, max_speed_kmh: 120}
+      - {from_km: 47.45, to_km: 48.10, max_speed_kmh: 100}
+      - {from_km: 48.10, to_km: 48.75, max_speed_kmh: 120}
+      - {from_km: 48.75, to_km: 49.40, max_speed_kmh:  90}
+      - {from_km: 49.40, to_km: 50.05, max_speed_kmh: 110}
+      - {from_km: 50.05, to_km: 50.70, max_speed_kmh:  80}
+      - {from_km: 50.70, to_km: 51.35, max_speed_kmh: 120}
+      - {from_km: 51.35, to_km: 52.00, max_speed_kmh: 100}
+      - {from_km: 52.00, to_km: 52.65, max_speed_kmh:  90}
+      - {from_km: 52.65, to_km: 53.30, max_speed_kmh: 120}
+      - {from_km: 53.30, to_km: 53.95, max_speed_kmh:  80}
+      - {from_km: 53.95, to_km: 54.60, max_speed_kmh: 110}
+      - {from_km: 54.60, to_km: 55.25, max_speed_kmh: 120}
+      - {from_km: 55.25, to_km: 55.90, max_speed_kmh: 100}
+      - {from_km: 55.90, to_km: 56.55, max_speed_kmh: 120}
+      - {from_km: 56.55, to_km: 57.20, max_speed_kmh:  90}
+      - {from_km: 57.20, to_km: 57.85, max_speed_kmh: 110}
+      - {from_km: 57.85, to_km: 58.50, max_speed_kmh:  80}
+      - {from_km: 58.50, to_km: 59.15, max_speed_kmh: 120}
+      - {from_km: 59.15, to_km: 59.80, max_speed_kmh: 100}
+      - {from_km: 59.80, to_km: 60.00, max_speed_kmh:  90}
+      - {from_km:  3.00, to_km:  3.90, max_speed_kmh:  50}
+      - {from_km:  2.35, to_km:  3.00, max_speed_kmh:  70}
+      - {from_km:  3.90, to_km:  4.55, max_speed_kmh:  70}
+      - {from_km:  1.70, to_km:  2.35, max_speed_kmh:  90}
+      - {from_km:  4.55, to_km:  5.20, max_speed_kmh:  90}
+      - {from_km: 12.00, to_km: 12.90, max_speed_kmh:  50}
+      - {from_km: 11.35, to_km: 12.00, max_speed_kmh:  70}
+      - {from_km: 12.90, to_km: 13.55, max_speed_kmh:  70}
+      - {from_km: 10.70, to_km: 11.35, max_speed_kmh:  90}
+      - {from_km: 13.55, to_km: 14.20, max_speed_kmh:  90}
+      - {from_km: 18.00, to_km: 18.90, max_speed_kmh:  50}
+      - {from_km: 17.35, to_km: 18.00, max_speed_kmh:  70}
+      - {from_km: 18.90, to_km: 19.55, max_speed_kmh:  70}
+      - {from_km: 16.70, to_km: 17.35, max_speed_kmh:  90}
+      - {from_km: 19.55, to_km: 20.20, max_speed_kmh:  90}
+      - {from_km: 27.00, to_km: 27.90, max_speed_kmh:  50}
+      - {from_km: 26.35, to_km: 27.00, max_speed_kmh:  70}
+      - {from_km: 27.90, to_km: 28.55, max_speed_kmh:  70}
+      - {from_km: 25.70, to_km: 26.35, max_speed_kmh:  90}
+      - {from_km: 28.55, to_km: 29.20, max_speed_kmh:  90}
+      - {from_km: 33.00, to_km: 33.90, max_speed_kmh:  50}
+      - {from_km: 32.35, to_km: 33.00, max_speed_kmh:  70}
+      - {from_km: 33.90, to_km: 34.55, max_speed_kmh:  70}
+      - {from_km: 31.70, to_km: 32.35, max_speed_kmh:  90}
+      - {from_km: 34.55, to_km: 35.20, max_speed_kmh:  90}
+      - {from_km: 42.00, to_km: 42.90, max_speed_kmh:  50}
+      - {from_km: 41.35, to_km: 42.00, max_speed_kmh:  70}
+      - {from_km: 42.90, to_km: 43.55, max_speed_kmh:  70}
+      - {from_km: 40.70, to_km: 41.35, max_speed_kmh:  90}
+      - {from_km: 43.55, to_km: 44.20, max_speed_kmh:  90}
+      - {from_km: 48.00, to_km: 48.90, max_speed_kmh:  50}
+      - {from_km: 47.35, to_km: 48.00, max_speed_kmh:  70}
+      - {from_km: 48.90, to_km: 49.55, max_speed_kmh:  70}
+      - {from_km: 46.70, to_km: 47.35, max_speed_kmh:  90}
+      - {from_km: 49.55, to_km: 50.20, max_speed_kmh:  90}
+      - {from_km: 57.00, to_km: 57.90, max_speed_kmh:  50}
+      - {from_km: 56.35, to_km: 57.00, max_speed_kmh:  70}
+      - {from_km: 57.90, to_km: 58.55, max_speed_kmh:  70}
+      - {from_km: 55.70, to_km: 56.35, max_speed_kmh:  90}
+      - {from_km: 58.55, to_km: 59.20, max_speed_kmh:  90}
 
 platforms:
   # The through roads sit on the main alignment and the loops fan outward from
@@ -126,24 +419,17 @@ platforms:
   # a train that is not calling there is not checked for the station. Roads 2
   # and 3 are loops at 60. That is what makes an overtake possible later without
   # the layout having to change.
-  - {id: LINFORD_UP_1, station: LINFORD, track: UP, length_m: 240, max_speed_kmh: 150, y_offset: 0.0}
+  - {id: LINFORD_UP_1, station: LINFORD, track: UP, length_m: 240, max_speed_kmh: 120, y_offset: 0.0}
   - {id: LINFORD_UP_2, station: LINFORD, track: UP, length_m: 240, max_speed_kmh: 60, y_offset: -0.4}
   - {id: LINFORD_UP_3, station: LINFORD, track: UP, length_m: 240, max_speed_kmh: 60, y_offset: -0.8}
-  - {id: LINFORD_DN_1, station: LINFORD, track: DN, length_m: 240, max_speed_kmh: 150, y_offset: 0.0}
+  - {id: LINFORD_DN_1, station: LINFORD, track: DN, length_m: 240, max_speed_kmh: 120, y_offset: 0.0}
   - {id: LINFORD_DN_2, station: LINFORD, track: DN, length_m: 240, max_speed_kmh: 60, y_offset: 0.4}
   - {id: LINFORD_DN_3, station: LINFORD, track: DN, length_m: 240, max_speed_kmh: 60, y_offset: 0.8}
 
-  - {id: BRAMLEY_UP_1, station: BRAMLEY, track: UP, length_m: 240, max_speed_kmh: 150, y_offset: 0.0}
-  - {id: BRAMLEY_UP_2, station: BRAMLEY, track: UP, length_m: 240, max_speed_kmh: 60, y_offset: -0.4}
-  - {id: BRAMLEY_UP_3, station: BRAMLEY, track: UP, length_m: 240, max_speed_kmh: 60, y_offset: -0.8}
-  - {id: BRAMLEY_DN_1, station: BRAMLEY, track: DN, length_m: 240, max_speed_kmh: 150, y_offset: 0.0}
-  - {id: BRAMLEY_DN_2, station: BRAMLEY, track: DN, length_m: 240, max_speed_kmh: 60, y_offset: 0.4}
-  - {id: BRAMLEY_DN_3, station: BRAMLEY, track: DN, length_m: 240, max_speed_kmh: 60, y_offset: 0.8}
-
-  - {id: CALDER_UP_1, station: CALDER, track: UP, length_m: 240, max_speed_kmh: 150, y_offset: 0.0}
+  - {id: CALDER_UP_1, station: CALDER, track: UP, length_m: 240, max_speed_kmh: 120, y_offset: 0.0}
   - {id: CALDER_UP_2, station: CALDER, track: UP, length_m: 240, max_speed_kmh: 60, y_offset: -0.4}
   - {id: CALDER_UP_3, station: CALDER, track: UP, length_m: 240, max_speed_kmh: 60, y_offset: -0.8}
-  - {id: CALDER_DN_1, station: CALDER, track: DN, length_m: 240, max_speed_kmh: 150, y_offset: 0.0}
+  - {id: CALDER_DN_1, station: CALDER, track: DN, length_m: 240, max_speed_kmh: 120, y_offset: 0.0}
   - {id: CALDER_DN_2, station: CALDER, track: DN, length_m: 240, max_speed_kmh: 60, y_offset: 0.4}
   - {id: CALDER_DN_3, station: CALDER, track: DN, length_m: 240, max_speed_kmh: 60, y_offset: 0.8}
 
@@ -159,10 +445,22 @@ platforms:
   - {id: EDEPOT_DN_2, station: EDEPOT, track: DN, length_m: 240, max_speed_kmh: 40, y_offset: 0.4}
 
 crossovers:
-  # Four scissors crossovers, one either side of the middle three stations, each
-  # usable in all four ways. These are what make both lines reversible: see the
-  # spans listed at the top of this file.
-  - {id: XO_LINFORD_W, from: UP, to: DN, km: 10.0, length_m: 1000, max_speed_kmh: 60, type: scissors}
-  - {id: XO_LINFORD_E, from: UP, to: DN, km: 20.0, length_m: 1000, max_speed_kmh: 60, type: scissors}
-  - {id: XO_CALDER_W,  from: DN, to: UP, km: 40.0, length_m: 1000, max_speed_kmh: 60, type: scissors}
-  - {id: XO_CALDER_E,  from: DN, to: UP, km: 50.0, length_m: 1000, max_speed_kmh: 60, type: scissors}
+  # Eight scissors crossovers, each usable in all four ways: one either side of
+  # each of the middle three stations, three kilometres out, and one on the
+  # inner side of each depot, three kilometres out again. The depots need only
+  # the one - their other side is the buffer stops, and a train that runs to the
+  # buffers leaves in the other direction anyway. These are what make both lines
+  # reversible: see the spans listed at the top of this file.
+  #
+  # Three kilometres rather than five. The distance decides how much railway a
+  # reversal takes out, and a station's own span is all of it that a reversal
+  # AT that station needs; the rest was open line held for nothing. Five gave
+  # each station a ten-kilometre span, three gives six.
+  - {id: XO_WDEPOT,    from: UP, to: DN, km:  3.0, length_m: 900, max_speed_kmh: 40, type: scissors}
+  - {id: XO_LINFORD_W, from: UP, to: DN, km: 12.0, length_m: 900, max_speed_kmh: 40, type: scissors}
+  - {id: XO_LINFORD_E, from: UP, to: DN, km: 18.0, length_m: 900, max_speed_kmh: 40, type: scissors}
+  - {id: XO_MIDLINE_W, from: UP, to: DN, km: 27.0, length_m: 900, max_speed_kmh: 40, type: scissors}
+  - {id: XO_MIDLINE_E, from: DN, to: UP, km: 33.0, length_m: 900, max_speed_kmh: 40, type: scissors}
+  - {id: XO_CALDER_W,  from: DN, to: UP, km: 42.0, length_m: 900, max_speed_kmh: 40, type: scissors}
+  - {id: XO_CALDER_E,  from: DN, to: UP, km: 48.0, length_m: 900, max_speed_kmh: 40, type: scissors}
+  - {id: XO_EDEPOT,    from: DN, to: UP, km: 57.0, length_m: 900, max_speed_kmh: 40, type: scissors}
