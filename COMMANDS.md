@@ -72,6 +72,47 @@ exactly the same results as an untraced one.
 The `.xlsx` writer is built in — the format is a zip of XML parts, and writing
 those is smaller than taking on a spreadsheet dependency for a debug log.
 
+## Graphing a run
+
+`graph.py` runs a scenario and draws what happened, as SVG:
+
+```
+python graph.py --system virtual_coupling U03
+python graph.py --system virtual_coupling U03 U08
+python graph.py --scenario scenarios/express/scenario-tight.yaml \
+                --system etcs_moving_block U03 U08 -o mb.svg
+python graph.py --system virtual_coupling            # fleet mean only
+```
+
+Name the trains you want and they are drawn individually; every panel also
+carries the fleet mean over all services in grey, so a train reads against what
+the rest of the railway was doing in the same place. Six panels: speed against
+distance and against time, the gap to the train ahead, time headway, and the
+fleet mean speed and gap on their own.
+
+The separation panel is the one a signalling comparison lives in. The solid line
+is the gap to the rear of the train ahead; the dashed line beneath it is the
+distance that train needs to stop from its current speed. Under moving block the
+gap tracks the dashed line — that *is* the authority. Under virtual coupling it
+sits below it, because the follower may plan on the leader stopping too.
+
+| option | |
+|---|---|
+| `--scenario PATH` | which scenario (default `scenarios/express`) |
+| `--system NAME` | signalling system; the fleet is fitted for it, as `run.py` does |
+| `--as-fitted` | do not re-equip the fleet |
+| `--every N` | trace sampling interval in simulated seconds (default 2) |
+| `--bin KM` | bin width for the fleet means (default 0.5 km) |
+| `-o FILE` | output file (default `graph.svg`) |
+| `--log FILE` | also write the underlying trace as `.xlsx`/`.csv` |
+
+It prints a summary table too — journey time, mean and max speed, minimum and
+mean gap, minimum time headway per train.
+
+The graphs come from the same per-tick trace `--log` writes, so a picture and a
+spreadsheet of the same run agree by construction. `_plot_curves.py` draws the
+stock's acceleration and braking envelope through the same renderer.
+
 ## The fleet is fitted to the system
 
 Name a system with `--system` or `--compare` and the fleet is re-equipped for it
@@ -267,7 +308,14 @@ brace the plain line — a crossover's 40 applies to the train that takes it.
 python run.py scenarios/express --headless
 python run.py scenarios/express --headless --system virtual_coupling --log vc.xlsx
 python scenarios/express/_sweep_headway.py virtual_coupling
+python graph.py --scenario scenarios/express/scenario-tight.yaml \
+                --system virtual_coupling U03 U08
 ```
+
+`scenario-tight.yaml` is the same flight booked at 25 s instead of 240 s —
+below what moving block holds and above what virtual coupling holds, so the two
+systems draw visibly different pictures. At the default 240 s the trains are
+seven kilometres apart and the separation panel says nothing.
 
 It exists because the base scenario cannot separate the two cab systems: every
 train there calls at every station, so past about 120 s the binding constraint

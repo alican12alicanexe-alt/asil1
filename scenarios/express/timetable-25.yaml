@@ -1,0 +1,168 @@
+# express timetable - generated, do not edit by hand.
+#
+#   python scenarios/express/_generate_timetable.py
+#
+# 8 trains each way, booked 25 seconds apart, all of them the same unit, none of
+# them calling anywhere. Depot to depot in one run: the three stations in
+# between are passed at line speed. Every booked time is what that service
+# achieves with the railway to itself.
+#
+# Same stock and same layout as scenarios/capacity - what differs is that
+# nothing stops, and the speed profile it runs over.
+
+stock:
+  - id: EMU
+    name: Line unit
+    length_m: 160
+    max_speed_kmh: 120
+    max_accel: 0.9
+    service_brake: 1.0
+    emergency_brake: 1.5
+    etcs_level: none
+    tims: false
+
+services:
+
+  - id: U01
+    name: 07:00 West Depot - East Depot
+    stock: EMU
+    departure: "07:00:00"
+    ready_lead_s: 30
+    calls:
+      - {station: WDEPOT, platform: WDEPOT_UP_1, departure: "07:00:00", dwell_s: 20}
+      - {station: EDEPOT, platform: EDEPOT_UP_1, arrival: "07:32:29", dwell_s: 20}
+
+  - id: U02
+    name: 07:00 West Depot - East Depot
+    stock: EMU
+    departure: "07:00:25"
+    ready_lead_s: 30
+    calls:
+      - {station: WDEPOT, platform: WDEPOT_UP_2, departure: "07:00:25", dwell_s: 20}
+      - {station: EDEPOT, platform: EDEPOT_UP_2, arrival: "07:32:54", dwell_s: 20}
+
+  - id: U03
+    name: 07:00 West Depot - East Depot
+    stock: EMU
+    departure: "07:00:50"
+    ready_lead_s: 30
+    calls:
+      - {station: WDEPOT, platform: WDEPOT_UP_3, departure: "07:00:50", dwell_s: 20}
+      - {station: EDEPOT, platform: EDEPOT_UP_3, arrival: "07:33:19", dwell_s: 20}
+
+  - id: U04
+    name: 07:01 West Depot - East Depot
+    stock: EMU
+    departure: "07:01:15"
+    ready_lead_s: 30
+    calls:
+      - {station: WDEPOT, platform: WDEPOT_UP_4, departure: "07:01:15", dwell_s: 20}
+      - {station: EDEPOT, platform: EDEPOT_UP_4, arrival: "07:33:44", dwell_s: 20}
+
+  - id: U05
+    name: 07:01 West Depot - East Depot
+    stock: EMU
+    departure: "07:01:40"
+    ready_lead_s: 30
+    calls:
+      - {station: WDEPOT, platform: WDEPOT_UP_1, departure: "07:01:40", dwell_s: 20}
+      - {station: EDEPOT, platform: EDEPOT_UP_1, arrival: "07:34:09", dwell_s: 20}
+
+  - id: U06
+    name: 07:02 West Depot - East Depot
+    stock: EMU
+    departure: "07:02:05"
+    ready_lead_s: 30
+    calls:
+      - {station: WDEPOT, platform: WDEPOT_UP_2, departure: "07:02:05", dwell_s: 20}
+      - {station: EDEPOT, platform: EDEPOT_UP_2, arrival: "07:34:34", dwell_s: 20}
+
+  - id: U07
+    name: 07:02 West Depot - East Depot
+    stock: EMU
+    departure: "07:02:30"
+    ready_lead_s: 30
+    calls:
+      - {station: WDEPOT, platform: WDEPOT_UP_3, departure: "07:02:30", dwell_s: 20}
+      - {station: EDEPOT, platform: EDEPOT_UP_3, arrival: "07:34:59", dwell_s: 20}
+
+  - id: U08
+    name: 07:02 West Depot - East Depot
+    stock: EMU
+    departure: "07:02:55"
+    ready_lead_s: 30
+    calls:
+      - {station: WDEPOT, platform: WDEPOT_UP_4, departure: "07:02:55", dwell_s: 20}
+      - {station: EDEPOT, platform: EDEPOT_UP_4, arrival: "07:35:24", dwell_s: 20}
+
+  - id: D01
+    name: 07:00 East Depot - West Depot
+    stock: EMU
+    departure: "07:00:00"
+    ready_lead_s: 30
+    calls:
+      - {station: EDEPOT, platform: EDEPOT_DN_1, departure: "07:00:00", dwell_s: 20}
+      - {station: WDEPOT, platform: WDEPOT_DN_1, arrival: "07:32:28", dwell_s: 20}
+
+  - id: D02
+    name: 07:00 East Depot - West Depot
+    stock: EMU
+    departure: "07:00:25"
+    ready_lead_s: 30
+    calls:
+      - {station: EDEPOT, platform: EDEPOT_DN_2, departure: "07:00:25", dwell_s: 20}
+      - {station: WDEPOT, platform: WDEPOT_DN_2, arrival: "07:32:53", dwell_s: 20}
+
+  - id: D03
+    name: 07:00 East Depot - West Depot
+    stock: EMU
+    departure: "07:00:50"
+    ready_lead_s: 30
+    calls:
+      - {station: EDEPOT, platform: EDEPOT_DN_3, departure: "07:00:50", dwell_s: 20}
+      - {station: WDEPOT, platform: WDEPOT_DN_3, arrival: "07:33:18", dwell_s: 20}
+
+  - id: D04
+    name: 07:01 East Depot - West Depot
+    stock: EMU
+    departure: "07:01:15"
+    ready_lead_s: 30
+    calls:
+      - {station: EDEPOT, platform: EDEPOT_DN_4, departure: "07:01:15", dwell_s: 20}
+      - {station: WDEPOT, platform: WDEPOT_DN_4, arrival: "07:33:43", dwell_s: 20}
+
+  - id: D05
+    name: 07:01 East Depot - West Depot
+    stock: EMU
+    departure: "07:01:40"
+    ready_lead_s: 30
+    calls:
+      - {station: EDEPOT, platform: EDEPOT_DN_1, departure: "07:01:40", dwell_s: 20}
+      - {station: WDEPOT, platform: WDEPOT_DN_1, arrival: "07:34:08", dwell_s: 20}
+
+  - id: D06
+    name: 07:02 East Depot - West Depot
+    stock: EMU
+    departure: "07:02:05"
+    ready_lead_s: 30
+    calls:
+      - {station: EDEPOT, platform: EDEPOT_DN_2, departure: "07:02:05", dwell_s: 20}
+      - {station: WDEPOT, platform: WDEPOT_DN_2, arrival: "07:34:33", dwell_s: 20}
+
+  - id: D07
+    name: 07:02 East Depot - West Depot
+    stock: EMU
+    departure: "07:02:30"
+    ready_lead_s: 30
+    calls:
+      - {station: EDEPOT, platform: EDEPOT_DN_3, departure: "07:02:30", dwell_s: 20}
+      - {station: WDEPOT, platform: WDEPOT_DN_3, arrival: "07:34:58", dwell_s: 20}
+
+  - id: D08
+    name: 07:02 East Depot - West Depot
+    stock: EMU
+    departure: "07:02:55"
+    ready_lead_s: 30
+    calls:
+      - {station: EDEPOT, platform: EDEPOT_DN_4, departure: "07:02:55", dwell_s: 20}
+      - {station: WDEPOT, platform: WDEPOT_DN_4, arrival: "07:35:23", dwell_s: 20}

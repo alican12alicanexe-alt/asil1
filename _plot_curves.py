@@ -13,16 +13,18 @@ Four panels: acceleration against time and against distance, then braking
 against each. Speed against distance is the one that matters for headway - it
 says how much of a section a train spends getting up to line speed.
 
-SVG is written by hand rather than through a plotting library because the
-simulator has no plotting dependency and this is not worth acquiring one for.
+SVG comes out of trainsim.analysis.chart, which writes the markup directly:
+the simulator has no plotting dependency and this is not worth acquiring one
+for.
 """
 
 import sys
 import os
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from trainsim.core.train import RollingStock
+from trainsim.analysis.chart import Chart, document
 from trainsim.core import dynamics
+from trainsim.core.train import RollingStock
 
 S = RollingStock(id="EMU", name="Line unit", length_m=160.0,
                  max_speed_ms=120/3.6, max_accel=0.9,
@@ -64,89 +66,50 @@ svc = run(S.max_speed_ms, -S.service_brake, 0)
 emg = run(S.max_speed_ms, -S.emergency_brake, 0)
 
 # ------------------------------------------------------------------ svg
-W, H = 1180, 760
-PW, PH = 470, 250
-def panel(ox, oy, series, xi, title, xlabel, note):
-    """series: list of (label, points, colour, dash)"""
-    xs = max(max(p[xi] for p in pts) for _, pts, _, _ in series)
-    ys = max(max(p[2] for p in pts) for _, pts, _, _ in series)*3.6
-    xs = xs*1.02 or 1.0
-    ys = 130.0
-    def px(v): return ox + v/xs*PW
-    def py(v): return oy + PH - v/ys*PH
-    o = ['<text x="%d" y="%d" class="ti">%s</text>' % (ox, oy-24, title)]
-    o.append('<text x="%d" y="%d" class="no">%s</text>' % (ox, oy-8, note))
-    # grid
-    steps = 5
-    for i in range(steps+1):
-        gx = ox + i*PW/steps
-        o.append('<line x1="%.1f" y1="%d" x2="%.1f" y2="%d" class="g"/>'
-                 % (gx, oy, gx, oy+PH))
-        o.append('<text x="%.1f" y="%d" class="ax" text-anchor="middle">%s</text>'
-                 % (gx, oy+PH+16, ("%.0f" % (i*xs/steps))))
-    for sp in range(0, 131, 20):
-        gy = py(sp)
-        o.append('<line x1="%d" y1="%.1f" x2="%d" y2="%.1f" class="g"/>'
-                 % (ox, gy, ox+PW, gy))
-        o.append('<text x="%d" y="%.1f" class="ax" text-anchor="end">%d</text>'
-                 % (ox-6, gy+4, sp))
-    o.append('<line x1="%d" y1="%d" x2="%d" y2="%d" class="ln"/>' % (ox, oy, ox, oy+PH))
-    o.append('<line x1="%d" y1="%d" x2="%d" y2="%d" class="ln"/>'
-             % (ox, oy+PH, ox+PW, oy+PH))
-    o.append('<text x="%.0f" y="%d" class="ax" text-anchor="middle">%s</text>'
-             % (ox+PW/2, oy+PH+36, xlabel))
-    o.append('<text x="%d" y="%.0f" class="ax" text-anchor="middle" '
-             'transform="rotate(-90 %d %.0f)">speed  km/h</text>'
-             % (ox-40, oy+PH/2, ox-40, oy+PH/2))
-    ly = oy + 14
-    for label, pts, col, dash in series:
-        d = " ".join("%s%.1f,%.1f" % ("M" if i == 0 else "L", px(p[xi]), py(p[2]*3.6))
-                     for i, p in enumerate(pts))
-        o.append('<path d="%s" fill="none" stroke="%s" stroke-width="2.2" %s/>'
-                 % (d, col, 'stroke-dasharray="6 4"' if dash else ''))
-        o.append('<text x="%d" y="%d" class="lg" fill="%s">%s</text>'
-                 % (ox+PW-8, ly, col, label))
-        ly += 16
-    return "\n".join(o)
 
-def fmt(pts):
-    return pts[-1][0], pts[-1][1]
+def kmh(points, xi):
+    """(x, speed in km/h) from the tick records, x taken from column ``xi``."""
+    return [(p[xi], p[2] * 3.6) for p in points]
 
-svg = ['<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" '
-       'viewBox="0 0 %d %d">' % (W, H, W, H),
-       '<style>text{font-family:ui-sans-serif,system-ui,sans-serif}'
-       '.ti{font-size:15px;font-weight:600;fill:#111}'
-       '.no{font-size:11px;fill:#666}.ax{font-size:11px;fill:#555}'
-       '.lg{font-size:11px;text-anchor:end}'
-       '.g{stroke:#e6e6e6;stroke-width:1}.ln{stroke:#999;stroke-width:1}'
-       '.h{font-size:19px;font-weight:700;fill:#111}'
-       '.s{font-size:12px;fill:#444}</style>',
-       '<rect width="100%" height="100%" fill="#fff"/>']
-svg.append('<text x="70" y="34" class="h">EMU  160 m  288 t  0.9 / 1.0 / 1.5 m/s2  120 km/h</text>')
-svg.append('<text x="70" y="54" class="s">Run through the simulator\'s own dynamics: '
-           'traction curve, Davis resistance, adhesion cap, jerk limit, trapezoidal integration. Level track.</text>')
 
-ta, xa = fmt(acc)
-ts, xs_ = fmt(svc)
-te, xe = fmt(emg)
-svg.append(panel(120, 130, [("power on", acc, "#1a6dcc", 0)], 0,
-                 "Acceleration from rest", "time  s",
-                 "0 to 120 km/h in %.0f s, %.0f m" % (ta, xa)))
-svg.append(panel(690, 130, [("power on", acc, "#1a6dcc", 0)], 1,
-                 "Acceleration from rest", "distance  m",
-                 "base speed 48 km/h - traction falls as P/v above it"))
-svg.append(panel(120, 500, [("service 1.0", svc, "#c0392b", 0),
-                            ("emergency 1.5", emg, "#e08b1a", 1)], 0,
-                 "Braking from 120 km/h", "time  s",
-                 "service %.0f s / %.0f m,  emergency %.0f s / %.0f m"
-                 % (ts, xs_, te, xe)))
-svg.append(panel(690, 500, [("service 1.0", svc, "#c0392b", 0),
-                            ("emergency 1.5", emg, "#e08b1a", 1)], 1,
-                 "Braking from 120 km/h", "distance  m",
-                 "first ~2 s is brake build-up, not full rate"))
-svg.append('</svg>')
+def ends(points):
+    return points[-1][0], points[-1][1]
+
+
+ta, xa = ends(acc)
+ts, xs_ = ends(svc)
+te, xe = ends(emg)
+
+power, service, emergency = "#1a6dcc", "#c0392b", "#e08b1a"
+
+accel_t = Chart("Acceleration from rest", "time  s", "speed  km/h",
+                note="0 to 120 km/h in %.0f s, %.0f m" % (ta, xa), y_max=130)
+accel_t.line("power on", kmh(acc, 0), power)
+
+accel_x = Chart("Acceleration from rest", "distance  m", "speed  km/h",
+                note="base speed 48 km/h - traction falls as P/v above it",
+                y_max=130)
+accel_x.line("power on", kmh(acc, 1), power)
+
+brake_t = Chart("Braking from 120 km/h", "time  s", "speed  km/h",
+                note="service %.0f s / %.0f m,  emergency %.0f s / %.0f m"
+                     % (ts, xs_, te, xe), y_max=130)
+brake_t.line("service 1.0", kmh(svc, 0), service)
+brake_t.line("emergency 1.5", kmh(emg, 0), emergency, dash=True)
+
+brake_x = Chart("Braking from 120 km/h", "distance  m", "speed  km/h",
+                note="first ~2 s is brake build-up, not full rate", y_max=130)
+brake_x.line("service 1.0", kmh(svc, 1), service)
+brake_x.line("emergency 1.5", kmh(emg, 1), emergency, dash=True)
+
 out = sys.argv[1] if len(sys.argv) > 1 else "curves.svg"
-open(out, "w").write("\n".join(svg))
+with open(out, "w") as handle:
+    handle.write(document(
+        [accel_t, accel_x, brake_t, brake_x],
+        heading="EMU  160 m  288 t  0.9 / 1.0 / 1.5 m/s2  120 km/h",
+        subheading="Run through the simulator's own dynamics: traction curve, "
+                   "Davis resistance, adhesion cap, jerk limit, trapezoidal "
+                   "integration. Level track."))
 
 print("accel   0->120 km/h : %5.1f s  %6.1f m" % (ta, xa))
 print("service 120->0 km/h : %5.1f s  %6.1f m" % (ts, xs_))

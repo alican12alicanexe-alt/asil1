@@ -1,0 +1,61 @@
+# express, booked at twenty-five seconds - the variant to look at a run on.
+#
+#   python graph.py --scenario scenarios/express/scenario-tight.yaml \
+#                   --system virtual_coupling U03 U08
+#   python run.py scenarios/express/scenario-tight.yaml --headless
+#
+# The default express timetable books trains four minutes apart, which is loose
+# on purpose: the base run is meant to complete clean so that anything that is
+# not clean later has a reason that can be named. It also means the trains are
+# seven kilometres apart all the way, and a graph of the separation between
+# them says nothing at all.
+#
+# This books the same flight at twenty-five seconds, which is inside what every
+# system here can hold. Now the trains are actually following each other, the
+# separation panel has something in it, and the difference between the systems
+# is visible in one picture rather than only in a sweep:
+#
+#   python graph.py --scenario scenarios/express/scenario-tight.yaml \
+#                   --system etcs_moving_block -o mb.svg
+#   python graph.py --scenario scenarios/express/scenario-tight.yaml \
+#                   --system virtual_coupling -o vc.svg
+#
+# Twenty-five seconds is below what moving block holds and above what virtual
+# coupling holds - 27 s against 20 s keeping time, measured in scenario.yaml -
+# so the two pictures are not both of a railway working properly. That is the
+# point of looking at them side by side: under moving block the speed trace
+# sags where followers are checked, and under virtual coupling it does not.
+#
+# Regenerate the timetable with:
+#
+#   python scenarios/express/_generate_timetable.py 25 timetable-25
+
+name: express (25 s)
+description: "The express flight booked at twenty-five seconds - tight enough that trains are actually following each other."
+
+infrastructure: infrastructure.yaml
+timetable: timetable-25.yaml
+
+simulation:
+  dt: 1.0
+  start_time: "06:57:00"
+  duration_s: 9000
+  strict: false
+
+signalling:
+  system: fixed_block_3aspect
+  sighting_distance_m: 250
+
+interlocking:
+  route_request_distance_m: 2000
+  route_request_lead_s: 60
+  automatic_signals: false
+  route_lookahead: 2
+
+driver:
+  reaction_time_s: 2.0
+  safety_margin_m: 25.0
+
+view:
+  title: "express - non-stop over a fast profile"
+  speed: 20
