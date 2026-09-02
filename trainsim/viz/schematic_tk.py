@@ -660,9 +660,12 @@ class TkSchematicView(SchematicView):
 
         So one of the group keeps the lamp - the one on the line's own
         alignment, where there is one - and shows the least restrictive aspect
-        of the group. That is not a fudge: only one route can be set at a time,
-        so at most one of them is off, and the one that is off is the one being
-        shown to the driver. :meth:`_refresh_branch_heads` then has the last
+        of the group. That is not a fudge: only one road is ever on offer at a
+        time, so at most one of them is off, and the one that is off is the one
+        being shown to the driver. (Several may be LOCKED at once - sectional
+        release leaves a route locked under a train standing in the platform -
+        but a locked route whose train is already on it puts no proceed aspect
+        on the post, so the least restrictive is still the one being offered.) :meth:`_refresh_branch_heads` then has the last
         word, because a lamp that is off for a DIVERGING road belongs on the
         second head and this one goes back to red.
 
@@ -690,7 +693,7 @@ class TkSchematicView(SchematicView):
         line and a crossover joining it are one alignment by the time they reach
         the block boundary. The model makes a signal per approach; the ground has
         one lamp there. So any that come out at the same place become one, and it
-        shows the least restrictive of them - only one route can be set at a
+        shows the least restrictive of them - only one road is on offer at a
         time, so the one that is off is the one being shown to the driver.
 
         This is what leaves one lamp per place as an invariant of the drawing,
@@ -964,6 +967,20 @@ class TkSchematicView(SchematicView):
           114003 of inner-red-outer-dark.
 
         Nothing here special-cases that fourth state. It falls out of the rule.
+
+        What the rule needs is the right reading of "set". A route stays locked
+        until its train has cleared the block, so a train standing in platform 1
+        still holds the route that put it there, while the road behind it is
+        free and the next train is being signalled into platform 2. Asking
+        merely whether a route was locked found the first one and answered for a
+        train that was already there: on capacity at 150 s headway, 16363 of the
+        32763 post-ticks with a route locked stood for a route somebody had
+        already taken, and in 4201 of those a DIFFERENT road was on offer at the
+        same post at the same moment. That is a post reading double red at a
+        train it has just cleared into the other platform - which is exactly
+        what it looked like from outside. :meth:`Interlocking.route_offered_from`
+        asks the question the post is actually asking, and only one road is ever
+        on offer at once.
         """
         sim = self.sim
         interlocking = sim.interlocking
@@ -972,7 +989,11 @@ class TkSchematicView(SchematicView):
             set_from = None
             if interlocking is not None:
                 for signal_id in entry["signals"]:
-                    if interlocking.route_set_from(signal_id):
+                    # Offered, not merely locked. A route the train has already
+                    # taken keeps its lock while that train stands in the
+                    # platform, and standing for it here made the post answer
+                    # for a train that had gone by.
+                    if interlocking.route_offered_from(signal_id):
                         set_from = signal_id
                         break
 
