@@ -1,0 +1,153 @@
+# express - the same railway, run non-stop, to put the constraint back on the
+# signalling.
+#
+#   python run.py scenarios/express              (live schematic)
+#   python run.py scenarios/express --headless
+#   python run.py scenarios/express --check      (the layout, and the plan)
+#   python run.py scenarios/express --compare    (the ladder, one table)
+#   python scenarios/express/_sweep_headway.py   (what the line actually holds)
+#
+# WHAT THIS SCENARIO IS FOR
+#
+# scenarios/capacity ends by naming its own limitation. Every train on it calls
+# at every station, so once the interval is tight enough the binding constraint
+# is a platform road rather than the distance between trains, and a signalling
+# system that closes that distance has nothing left to buy. Virtual coupling
+# came out two seconds better than moving block there - a tie in everything but
+# arithmetic.
+#
+# This is that experiment run properly. Three things change from the base, and
+# nothing else does:
+#
+#   - nothing stops. A service is booked at its origin depot and its
+#     destination depot; the three stations between are run through.
+#   - the speed profile is fast and slow-changing. Long runs at 120 with two
+#     easings every twelve kilometres - a deep one to 100 for a kilometre, a
+#     shallow one to 110 - instead of a new limit every 650 m cycling 80 to 120.
+#   - the crossovers no longer brace the plain line. A crossover carries its own
+#     40 for the train that takes it, and a train staying on its own line runs
+#     past the pointwork at line speed.
+#
+# Same sixty kilometres, same five stations, same eight crossovers, same blocks,
+# same unit. So the comparison against the base is a comparison of what trains
+# are asked to do, not of where the railway goes.
+#
+# WHY THIS SHOULD FAVOUR RELATIVE BRAKING, BEFORE MEASURING IT
+#
+# Worth writing down first, so the measurement can disagree.
+#
+# Under moving block the follower must stop short of where the leader is now,
+# so its separation is its own braking distance plus a margin. Under virtual
+# coupling it may stop where the leader will stop, so it gives back the
+# leader's braking distance. In time, at speed v, the difference is about
+#
+#     v/2 x (1/b - 1/b_emergency)
+#
+# which for this unit is v/2 x (1/1.0 - 1/1.5), or about 0.17 v. At 120 km/h
+# that is 5.6 s of headway; at 60 km/h it is 2.8 s; at a stand it is nothing.
+# The benefit is bought with speed, and it is bought only where the train in
+# front is the thing limiting the follower - approaching a restriction, every
+# system brakes at the same place and they all measure the same.
+#
+# So: keep the trains fast, hold each speed long enough that a follower is
+# watching the train ahead rather than the next board, and take the platforms
+# out of the argument entirely.
+#
+# WHAT IT MEASURES, AS BUILT
+#
+# _sweep_headway.py, which fits the train to the system as well as changing the
+# system. Two intervals per system: the tightest that runs all-green, and the
+# tightest that still keeps time. Eight trains each way.
+#
+#   system                all-green   keeps time   each way, keeping time
+#   fixed_block_3aspect      140 s       140 s       25.7 an hour
+#   etcs_moving_block         37 s        27 s      133.3
+#   virtual_coupling          34 s        20 s      180.0
+#
+# Against the base scenario, where the same three systems measured 259 / 121 /
+# 114 s all-green and 206 / 78 / 72 s keeping time:
+#
+#   - fixed block improves from 259 s to 140 s. A block is occupied for a lot
+#     less time by a train that never stops and never crawls over a crossover.
+#   - moving block improves from 121 s to 37 s, and virtual coupling from 114 s
+#     to 34 s.
+#   - keeping time, virtual coupling's margin over moving block goes from 8 %
+#     (78 s against 72 s) to 26 % (27 s against 20 s).
+#
+# That last line is the result this scenario was built to get. On the base
+# railway the two cab systems were within arithmetic of each other; here they
+# are not, because the constraint is now something relative braking can reach.
+#
+# WHY THE ALL-GREEN FIGURES DO NOT SEPARATE THE SAME WAY
+#
+# All-green improves only from 37 s to 34 s - 8 %, against 26 % for keeping
+# time - and that is worth understanding rather than smoothing over.
+#
+# All-green asks that no train is ever checked at all, anywhere, once. What
+# checks the first one is not the following distance out on the line: it is the
+# despatch sequence at the depot, where trains start from rest, take a road
+# each, and need most of a kilometre to reach line speed. No signalling system
+# changes how long a train takes to accelerate from nothing, so that part of
+# the interval is common to all of them and the first check appears at nearly
+# the same place under both cab systems.
+#
+# Keeping time asks the operator's question instead - are they all still on
+# their booked arrival - and that is set by the following distance out on the
+# line, which is exactly what relative braking shortens. Hence the difference.
+#
+# The depots were given four roads apiece at 60 km/h rather than the base
+# scenario's two at 40 for the same reason: with two, the road occupancy alone
+# floored the interval above the point where the cab systems separate, and the
+# sweep was measuring the depot and calling it a signalling limit. See the note
+# in the platforms block of infrastructure.yaml.
+#
+# WHAT IS NOT CLAIMED
+#
+# This is a favourable case, deliberately chosen and built to be one. A railway
+# where nothing stops is not a railway anybody runs; it is the upper end of
+# what relative-braking separation is worth, and the base scenario is the lower
+# end. A real service is somewhere between the two, and the honest reading of
+# the pair is that virtual coupling pays where trains run fast and do not
+# queue, and pays almost nothing where they stop.
+#
+# The stock, the driver model and the block layout are held at the base
+# scenario's values throughout. The depot roads are not - see above - so the
+# difference between the two railways belongs to the stopping pattern, the
+# speed profile and the depot capacity together, and not to any one of them
+# alone.
+#
+# Nor are 27 s and 20 s intervals an operable service. They are 133 and 180
+# trains an hour on one line, which no railway signals for and no depot could
+# feed; what they are is where this model stops being able to fit another train
+# in, which is the quantity a signalling comparison needs. Read them against
+# each other, not on their own.
+
+name: express
+description: "The capacity railway run non-stop over a fast profile - the case where relative-braking separation has something to buy."
+
+infrastructure: infrastructure.yaml
+timetable: timetable.yaml
+
+simulation:
+  dt: 1.0
+  start_time: "06:57:00"
+  duration_s: 9000
+  strict: false
+
+signalling:
+  system: fixed_block_3aspect
+  sighting_distance_m: 250
+
+interlocking:
+  route_request_distance_m: 2000
+  route_request_lead_s: 60
+  automatic_signals: false
+  route_lookahead: 2
+
+driver:
+  reaction_time_s: 2.0
+  safety_margin_m: 25.0
+
+view:
+  title: "express - non-stop over a fast profile"
+  speed: 20

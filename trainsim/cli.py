@@ -41,6 +41,12 @@ def main(argv=None) -> int:
         help="print the full event log after a headless run",
     )
     parser.add_argument(
+        "--as-fitted", action="store_true",
+        help="run every system on the equipment the timetable declares, "
+             "instead of fitting the fleet to the system being run. Says what "
+             "each system is worth TO THIS FLEET rather than what it is worth",
+    )
+    parser.add_argument(
         "--log", metavar="FILE", default=None,
         help="record a time-based trace of every train to FILE - speed, "
              "acceleration, braking distances, movement authority and the gap "
@@ -87,6 +93,7 @@ def main(argv=None) -> int:
                   % (args.system, ", ".join(signalling.LADDER)), file=sys.stderr)
             return 2
         scenario.signalling_spec = {"system": args.system}
+        _fit(scenario, args.system, args.as_fitted)
 
     overrides = {}
     if args.duration is not None:
@@ -114,11 +121,12 @@ def main(argv=None) -> int:
         systems = None
         if args.compare is not None:
             systems = args.compare or list(signalling.LADDER)
-        return _run_propagation(scenario, systems, overrides)
+        return _run_propagation(scenario, systems, overrides,
+                                as_fitted=args.as_fitted)
 
     if args.compare is not None:
         return _run_comparison(scenario, args.compare or list(signalling.LADDER),
-                               overrides)
+                               overrides, as_fitted=args.as_fitted)
 
     for warning in (checks.warn_if_unsignalable(scenario),
                     checks.warn_about_timetable(scenario),
@@ -140,6 +148,31 @@ def main(argv=None) -> int:
         recorder.write(args.log)
         print("wrote %d trace rows to %s" % (len(recorder.rows), args.log))
     return status
+
+
+def _fit(scenario, system, as_fitted):
+    """Equip the scenario's fleet for the system it is about to run under.
+
+    A signalling system is only worth what the train can use. Moving block
+    behind a train that cannot report its integrity falls back to block
+    granularity; virtual coupling without the radio link falls back to moving
+    block. Run the ladder over one unfitted fleet and every system reports the
+    same fallback under a different name - and it reports it quietly, because
+    every run completes and the table looks reasonable.
+
+    So the fleet is re-equipped by default whenever a system is named, and
+    ``--as-fitted`` turns that off for the other question: what is each system
+    worth to the fleet this timetable actually declares.
+    """
+    if as_fitted:
+        return
+    changed = signalling.fit_timetable(scenario.timetable, system)
+    if changed:
+        level, tims, v2v = signalling.fitment_for(system)
+        print("fitted %s for %s: ETCS %s, %s integrity report, %s radio link"
+              % (", ".join(changed), system, level,
+                 "with" if tims else "no", "with" if v2v else "no"),
+              file=sys.stderr)
 
 
 # ----------------------------------------------------------------------- modes
@@ -164,7 +197,7 @@ def _run_headless(sim, show_events: bool) -> int:
     return 0
 
 
-def _run_comparison(scenario, systems, overrides) -> int:
+def _run_comparison(scenario, systems, overrides, as_fitted=False) -> int:
     """Run one timetable under several signalling systems and tabulate the result.
 
     The infrastructure, the timetable, the rolling stock, the driver model and the
@@ -182,13 +215,15 @@ def _run_comparison(scenario, systems, overrides) -> int:
         # timetable must not carry anything over from the previous run.
         fresh = load_scenario(scenario.source or scenario.directory)
         fresh.signalling_spec = {"system": name}
+        _fit(fresh, name, as_fitted)
         sim = build_simulation(fresh, overrides)
         print("running %-22s %s" % (name, sim.signalling.describe()), file=sys.stderr)
         results.append(kpi.measure(sim))
 
     print()
     print("same infrastructure, same timetable, same trains - only the train")
-    print("control system differs")
+    print("control system differs%s"
+          % ("" if as_fitted else ", and the equipment it needs",))
     print()
     print(kpi.compare_table(results))
 
@@ -203,7 +238,7 @@ def _run_comparison(scenario, systems, overrides) -> int:
     return 1 if any(r.violations for r in results) else 0
 
 
-def _run_propagation(scenario, systems, overrides) -> int:
+def _run_propagation(scenario, systems, overrides, as_fitted=False) -> int:
     """Account for what a declared incident cost, optionally under every level.
 
     Always two runs per system - the same railway with the incident and without
@@ -231,6 +266,7 @@ def _run_propagation(scenario, systems, overrides) -> int:
                   % (name, ", ".join(signalling.LADDER)), file=sys.stderr)
             return 2
         fresh = load_scenario(scenario.source or scenario.directory)
+        _fit(fresh, name, as_fitted)
         print("running %-22s clean and disrupted" % (name,), file=sys.stderr)
         results.append(propagation.measure_propagation(
             fresh, build_simulation, system=name, overrides=overrides))

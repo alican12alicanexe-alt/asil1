@@ -160,12 +160,13 @@
 # of that, because it plans to stop where the leader will stop rather than
 # where the leader currently stands.
 #
-# So note what `--compare` on this scenario is showing you. It runs the
-# scenario's own timetable, and this railway's fleet is unfitted - a 3-aspect
-# railway with lineside signals, which is a coherent thing to be. Its table is
-# therefore the value of each system TO THIS FLEET. _sweep_headway.py is the
-# one that fits the train to the system, and it is the one to quote for
-# capacity.
+# `--compare` and `--system` do the same fitting, from the FITMENT table in
+# trainsim/core/signalling: name a system on the command line and the fleet is
+# re-equipped for it before the run, and the CLI says on stderr what it
+# changed. `--as-fitted` turns that off and runs every system on the equipment
+# this timetable declares - which for this railway is an unfitted fleet on a
+# 3-aspect railway, a coherent thing to be - and answers the other question:
+# what each system would be worth TO THIS FLEET, rather than what it is worth.
 #
 # Virtual coupling is two seconds better than moving block here, which is a tie
 # in everything but arithmetic, and that is a result rather than a fault: every

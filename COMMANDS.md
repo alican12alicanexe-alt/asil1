@@ -29,6 +29,7 @@ specific **scenario file**, so `scenarios/metro` and
 |---|---|
 | `--system NAME` | Override the signalling system for this run. |
 | `--compare A B` | Compare only the named systems instead of the whole ladder. |
+| `--as-fitted` | Run every system on the equipment the timetable declares, instead of fitting the fleet to the system being run. |
 | `--events` | After a headless run, print the full event log — every route set, refused, released, every arrival and departure. |
 | `--log FILE` | Record a time-based trace of every train to a spreadsheet — `.xlsx`, `.csv` or `.tsv`, picked from the extension. |
 | `--log-every N` | Sample the trace every N simulated seconds instead of every timestep. |
@@ -70,6 +71,37 @@ exactly the same results as an untraced one.
 
 The `.xlsx` writer is built in — the format is a zip of XML parts, and writing
 those is smaller than taking on a spreadsheet dependency for a debug log.
+
+## The fleet is fitted to the system
+
+Name a system with `--system` or `--compare` and the fleet is re-equipped for it
+before the run — ETCS level, train integrity monitoring, V2V radio link — from
+the `FITMENT` table in `trainsim/core/signalling`. The CLI says on stderr what
+it changed:
+
+```
+$ python run.py scenarios/express --headless --system virtual_coupling
+fitted EMU for virtual_coupling: ETCS l3, with integrity report, with radio link
+```
+
+This matters more than it looks. A signalling system is only worth what the
+train can use: moving block behind a train that cannot report its integrity
+falls back to block granularity, and virtual coupling without the radio link
+falls back to moving block. Run the whole ladder over one unfitted fleet and
+every system reports the same fallback under a different name — quietly, because
+every run completes and the table looks reasonable.
+
+`--as-fitted` turns the fitting off and answers the other question instead: what
+is each system worth *to the fleet this timetable declares*.
+
+| system | ETCS | integrity report | radio link |
+|---|---|---|---|
+| `fixed_block_3aspect` | — | no | no |
+| `etcs_l1` | L1 | no | no |
+| `etcs_l2` | L2 | no | no |
+| `etcs_hybrid_l3` | L3 | yes | no |
+| `etcs_moving_block` | L3 | yes | no |
+| `virtual_coupling` | L3 | yes | yes |
 
 ## Signalling systems
 
@@ -212,6 +244,39 @@ python run.py scenarios/fourtrack --headless --events | grep XO_UP
 Beta has platforms on the slow lines only, so a semi-fast has to call there on
 the slow line and then cross to the fast line at km 17 to run on. That move is a
 flat junction in the middle of a fast line, and it behaves like one.
+
+### `scenarios/capacity` — the comparison base
+
+Sixty kilometres, a line each way, three stations between two depots. Every
+train the same unit, calling everywhere, so the only thing that can move a
+number between two runs is the signalling.
+
+```
+python run.py scenarios/capacity --compare
+python scenarios/capacity/_sweep_headway.py virtual_coupling
+```
+
+### `scenarios/express` — the same railway, non-stop
+
+The capacity layout with three things changed: nothing calls anywhere, the
+speed profile is long runs at 120 with two gentle easings every twelve
+kilometres instead of a new limit every 650 m, and the crossovers no longer
+brace the plain line — a crossover's 40 applies to the train that takes it.
+
+```
+python run.py scenarios/express --headless
+python run.py scenarios/express --headless --system virtual_coupling --log vc.xlsx
+python scenarios/express/_sweep_headway.py virtual_coupling
+```
+
+It exists because the base scenario cannot separate the two cab systems: every
+train there calls at every station, so past about 120 s the binding constraint
+is a platform road and closing the gap between trains buys nothing. Take the
+stops out and keep the trains fast and it does separate — keeping time, virtual
+coupling goes from 8 % better than moving block to 26 %.
+
+Read the two together. The base is the lower end of what relative-braking
+separation is worth and this is the upper end; a real service is in between.
 
 ---
 
