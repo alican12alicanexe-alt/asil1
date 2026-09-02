@@ -10,6 +10,7 @@ say yes, and it says yes only when every condition holds:
 4. its block is clear of trains
 5. anything it crosses on the level is clear and unheld
 6. its overlap, if overlaps are in use, is clear
+7. no other train stands between the asking train and the signal it asks from
 
 Then and only then does it set and lock the points, lock the route, and let the
 signal clear.
@@ -43,6 +44,7 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from .points import Point
 from .routes import Route, conflicting_routes
+from .train import nearest_ahead
 
 
 @dataclass(frozen=True)
@@ -251,6 +253,10 @@ class Interlocking(object):
         if against is not None:
             return RouteDecision(False, route_id, against)
 
+        queued = self._someone_nearer(route, train_id, sim)
+        if queued is not None:
+            return RouteDecision(False, route_id, queued)
+
         for point_id, leg in route.points.items():
             locked_by = self.point_locked_by.get(point_id)
             if locked_by is not None and self.point_position[point_id] != leg:
@@ -354,6 +360,54 @@ class Interlocking(object):
         sim.log_event("route_released", lock.train_id, "%s (%s)" % (route_id, why))
 
     # ----------------------------------------------------------------- internals
+
+    def _someone_nearer(self, route: Route, train_id: str,
+                        sim) -> Optional[str]:
+        """Whether another train stands between this one and the signal it asks from.
+
+        A route is set for the train that is about to pass the signal. Under
+        fixed block that goes without saying: one train to a block means the
+        train at the signal is the only one who can be asking. Under distance
+        separation it stops being true - several trains share a block, and they
+        are all reading the same signal from different places on the same
+        stretch of rail.
+
+        Nothing here used to notice, so the route went to whoever asked first,
+        and that could be the one at the BACK. Measured on capacity at 114 s
+        headway under moving block: D04 was given Linford platform 1 while D03
+        stood in front of it waiting for platform 3. One facing point cannot
+        lie two ways, so D03 could never be routed; D04 could not move because
+        D03 was in front of it; and nothing released the point, because the
+        train holding it was the one that could not go. Six services never
+        reached Linford. The same timetable ran to completion under fixed block
+        and L2, which is the shape of a fault that only appears where a block
+        holds more than one train.
+
+        So: refuse a route to anybody who is not first in the queue for its
+        signal. The train in front asks a moment later and gets it, and the
+        follower gets its own road when its turn comes.
+
+        The rear of the train in front is what counts, not its nose. A train
+        whose rear is past the signal has cleared it and is no longer in the
+        way of the movement being asked for.
+        """
+        train = sim.trains.get(train_id)
+        if train is None:
+            return None
+        signal_m = None
+        for signal_id, start_m in train.path.signals:
+            if signal_id == route.entry_signal:
+                signal_m = start_m
+                break
+        if signal_m is None or signal_m <= train.chainage_m:
+            # Already past it - this is a route being set from under the train,
+            # which is the dispatcher looking ahead rather than a train queueing.
+            return None
+        nearest = nearest_ahead(train, sim.trains.values())
+        if nearest is None or nearest[0] > signal_m:
+            return None
+        return "%s is nearer %s and has not passed it" % (
+            nearest[1], route.entry_signal)
 
     def _worked_the_other_way(self, block_id: str, train_id: str,
                               sim) -> Optional[str]:
