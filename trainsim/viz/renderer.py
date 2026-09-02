@@ -65,6 +65,10 @@ PALETTE = {
     # the authority itself, said the same thing a tick later and is gone.
     "braking_zone": "#b8433a",
     "marker_board": "#5a6472",
+    # The end of the railway. Not a signal and not track: a buffer stop is
+    # structure, so it takes a structure grey rather than any of the colours
+    # that mean something is set, occupied or lit.
+    "buffer_stop": "#7d8899",
     # Interlocking
     "route_set": "#5ad2c8",       # a route locked but not yet occupied
     # An unlit lamp. A signal with a choice of road ahead has two heads - the

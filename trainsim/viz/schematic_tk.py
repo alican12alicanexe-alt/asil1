@@ -44,6 +44,7 @@ class TkSchematicView(SchematicView):
         self._signal_items = {}
         self._branch_heads = {}
         self._lamp_groups = {}
+        self._dead_ends = set()
         self._lamp_owner = {}
         self._sharing_lamp = set()
         self._train_items = {}
@@ -211,6 +212,7 @@ class TkSchematicView(SchematicView):
         tracks = infra.tracks
 
         self._draw_ruler()
+        self._dead_ends = self._dead_end_nodes(infra)
 
         for station in infra.network.stations.values():
             x = layout.x(station.km)
@@ -223,6 +225,7 @@ class TkSchematicView(SchematicView):
                 fill=PALETTE["station"], font=self.heading, tags="static",
             )
 
+        drawn_buffers = set()
         for segment in infra.network.segments.values():
             track_y = tracks.get(segment.track, {}).get("y", segment.y)
             points = self._segment_points(segment, track_y)
@@ -236,6 +239,7 @@ class TkSchematicView(SchematicView):
             block_id = infra.block_of_segment.get(segment.id)
             if block_id:
                 self._block_items.setdefault(block_id, []).append(item)
+            self._draw_buffer_stops(segment, points, width, drawn_buffers)
             if segment.is_platform:
                 self._draw_platform_face(segment, track_y, width, item)
                 mid_km = (segment.km_start + segment.km_end) / 2.0
@@ -296,6 +300,60 @@ class TkSchematicView(SchematicView):
         """
         full = float(SchematicLayout.PX_PER_Y)
         return max(0.5, min(1.0, self.layout.y_scale / full))
+
+    def _dead_end_nodes(self, infra):
+        """Where the railway stops - the nodes with nothing on the far side.
+
+        A node is a dead end when every road that touches it lies on the same
+        side of it. Anywhere else, some road carries on: even the last block of
+        a plain through line has the next one beyond it. At a depot road's inner
+        end there is nothing beyond, in either direction, and that is what makes
+        it a depot road rather than a platform.
+
+        Read off the layout rather than declared, so a scenario gets its buffer
+        stops from where its roads actually end.
+        """
+        sides = {}
+        for segment in infra.network.segments.values():
+            reach = segment.km_end - segment.km_start
+            for node, side in ((segment.start_node, reach),
+                               (segment.end_node, -reach)):
+                if abs(side) < 1e-9:
+                    continue
+                sides.setdefault(node, set()).add(side > 0)
+        return {node for node, ways in sides.items() if len(ways) == 1}
+
+    def _draw_buffer_stops(self, segment, points, road_width, drawn) -> None:
+        """The mark at the end of a road that has no beyond.
+
+        This is what a depot road has where a through platform has its second
+        signal, and drawing it is what makes the two read differently. A
+        platform in a station can be left in either direction, so it carries a
+        starting signal at each end of its concrete. A depot road can only be
+        left the way the train came in, so it carries one - and the far end,
+        with nothing drawn on it, looked like a signal that had been forgotten
+        rather than an end of the line.
+
+        Drawn from the road's own polyline rather than from its chainage, so the
+        bar sits on the rail even where the road is drawn off the running line.
+        A road and the twin that works it the other way are the same rails and
+        end at the same place, so the mark is drawn once per place.
+        """
+        ends = []
+        if segment.start_node in self._dead_ends:
+            ends.append((points[0], points[1]))
+        if segment.end_node in self._dead_ends:
+            ends.append((points[-2], points[-1]))
+        half = max(3.0, (road_width / 2.0 + 4.0) * self._vscale)
+        for x, y in ends:
+            key = (round(x, 1), round(y, 1))
+            if key in drawn:
+                continue
+            drawn.add(key)
+            self.canvas.create_line(
+                x, y - half, x, y + half, fill=PALETTE["buffer_stop"],
+                width=2, tags="static",
+            )
 
     def _draw_platform_face(self, segment, track_y, road_width, road_item) -> None:
         """The platform itself - the concrete, not the road it runs along.
@@ -542,6 +600,13 @@ class TkSchematicView(SchematicView):
         one post on the ground, and :meth:`_plan_shared_lamps` has already
         picked which of them carries it.
 
+        Neither is a signal with no road behind it. Those stand at the buffer
+        stops, reading into a depot road from beyond the end of the railway,
+        and no train can ever be where one would be read from. They were drawn
+        dark, which was better than the red they used to show, but a lamp at a
+        buffer stop is not a lamp that is out of use - there is no signal there
+        at all. :meth:`_draw_buffer_stops` draws what IS there instead.
+
         Every signal on a stretch worked both ways IS drawn, each on its own
         road at its own end. They used to share one lamp per boundary that moved
         to whichever side was in force, which was true but hid the layout: a
@@ -551,7 +616,7 @@ class TkSchematicView(SchematicView):
         ends. Which of them is in force is carried by
         :meth:`_signals_out_of_use` darkening the rest.
         """
-        if signal.id in self._sharing_lamp:
+        if signal.id in self._sharing_lamp or not signal.from_segment:
             return
         layout = self.layout
         x = signal_x.get(signal.id, layout.x(signal.km))
@@ -627,7 +692,10 @@ class TkSchematicView(SchematicView):
         """
         places = {}
         for signal in infra.signals.values():
-            if signal.id in self._sharing_lamp:
+            if signal.id in self._sharing_lamp or not signal.from_segment:
+                # A signal with no approach is not drawn, so it must not be the
+                # one that keeps a place's lamp either - that would take a real
+                # signal off the schematic with it.
                 continue
             key = (round(signal_x.get(signal.id, 0.0), 1),
                    round(self._signal_y(signal), 1))
@@ -707,9 +775,9 @@ class TkSchematicView(SchematicView):
         buffer stop: the depot roads are worked both ways like a platform, but
         one end of them is the end of the railway, and the model still puts a
         signal there reading into the road from beyond the blocks. Nothing is
-        beyond the blocks. Nothing can ever approach it and no route is ever set
-        from it, so it stood at danger for the whole run - eight red lamps at
-        the two depots saying stop to the buffers.
+        beyond the blocks, so nothing can ever approach it. Those are no longer
+        drawn at all - a buffer stop is drawn where they were - and this line
+        stays as the guard that says what they are worth if they ever are.
         """
         sim = self.sim
         interlocking = sim.interlocking
@@ -773,6 +841,12 @@ class TkSchematicView(SchematicView):
         """
         groups = {}
         for signal in infra.signals.values():
+            if not signal.from_segment:
+                # No approach, so no train standing on one, so no choice being
+                # offered to anybody. Two of these at a depot share a node and a
+                # track and an approach of None, which grouped them into a
+                # facing divergence and hung a second head off a buffer stop.
+                continue
             key = (signal.node_id, signal.track, signal.from_segment)
             groups.setdefault(key, []).append(signal)
         return {key: members for key, members in groups.items()
