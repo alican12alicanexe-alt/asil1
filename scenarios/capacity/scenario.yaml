@@ -28,10 +28,12 @@
 #
 # BOTH LINES ARE SIGNALLED BOTH WAYS
 #
-# Six scissors crossovers, one either side of each of the middle three stations,
+# Eight scissors crossovers - one either side of each of the middle three
+# stations, and one on the inner side of each depot, all three kilometres out -
 # bracket a reversible span at every station, so every platform road has a road
-# each way - and every one of those five spans is the same ten kilometres of
-# railway to lock as the others. Neither direction is the wrong one: a
+# each way. The three intermediate stations are the same six kilometres of
+# railway to lock as each other; a depot is shorter still, because its other
+# side is the end of the line. Neither direction is the wrong one: a
 # line signalled both ways is signalled both ways, and which way it is set is a
 # state of the railway. The booked service uses none of it - both flights run on
 # their own line throughout - but the capability is there for a diversion, and
