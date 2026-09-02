@@ -99,7 +99,9 @@ def simulation(timetable, duration_s=9000, system="fixed_block_3aspect"):
         block_of_segment=INFRA.block_of_segment, crossings=INFRA.crossings,
         signalling=signalling_for(system),
         dispatcher=TimetableDispatcher(timetable, route_lookahead=2),
-        driver=Driver(DriverConfig(reaction_time_s=2.0, safety_margin_m=25.0)),
+        driver=Driver(reg.fit_driver(
+            DriverConfig(reaction_time_s=2.0, safety_margin_m=25.0),
+            system)),
         config=SimConfig(dt=1.0, start_time_s=BASE - 180, duration_s=duration_s),
         interlocking=Interlocking(network=INFRA.network, blocks=INFRA.blocks,
                                   signals=INFRA.signals, points=INFRA.points,

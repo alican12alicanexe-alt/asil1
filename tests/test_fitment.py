@@ -72,5 +72,39 @@ class TestFitment(unittest.TestCase):
                          ("none", False, False))
 
 
+class TestDrivingProfile(unittest.TestCase):
+    """Who is driving follows from the system, the same way the equipment does."""
+
+    def test_every_system_in_the_ladder_declares_a_profile(self):
+        for name in signalling.LADDER:
+            self.assertIn(name, signalling.DRIVING, name)
+
+    def test_lineside_signalling_is_read_by_a_person(self):
+        self.assertGreater(
+            signalling.driving_for("fixed_block_3aspect")["reaction_time_s"], 0.0)
+
+    def test_the_ato_systems_carry_no_reaction_time(self):
+        """Not a claim of instant response: the control cycle is the timestep,
+        the radio delay is the signalling system's own, and the brake build-up
+        is in the stock. This term is the human, and there is not one."""
+        for name in ("etcs_moving_block", "virtual_coupling"):
+            self.assertEqual(signalling.driving_for(name)["reaction_time_s"],
+                             0.0, name)
+
+    def test_fitting_a_driver_leaves_what_the_system_has_no_opinion_on(self):
+        from trainsim.core.driver import DriverConfig
+        declared = DriverConfig(reaction_time_s=2.0, safety_margin_m=40.0,
+                                stop_tolerance_m=2.5, speed_deadband_ms=0.7)
+        fitted = signalling.fit_driver(declared, "virtual_coupling")
+        self.assertEqual(fitted.reaction_time_s, 0.0)
+        self.assertEqual(fitted.safety_margin_m, 40.0)
+        self.assertEqual(fitted.stop_tolerance_m, 2.5)
+        self.assertEqual(fitted.speed_deadband_ms, 0.7)
+
+    def test_an_unknown_system_has_no_default_driver(self):
+        with self.assertRaises(ValueError):
+            signalling.driving_for("telepathy")
+
+
 if __name__ == "__main__":
     unittest.main()

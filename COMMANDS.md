@@ -29,7 +29,7 @@ specific **scenario file**, so `scenarios/metro` and
 |---|---|
 | `--system NAME` | Override the signalling system for this run. |
 | `--compare A B` | Compare only the named systems instead of the whole ladder. |
-| `--as-fitted` | Run every system on the equipment the timetable declares, instead of fitting the fleet to the system being run. |
+| `--as-fitted` | Run every system on the equipment and driver the timetable declares, instead of fitting both to the system being run. |
 | `--events` | After a headless run, print the full event log — every route set, refused, released, every arrival and departure. |
 | `--log FILE` | Record a time-based trace of every train to a spreadsheet — `.xlsx`, `.csv` or `.tsv`, picked from the extension. |
 | `--log-every N` | Sample the trace every N simulated seconds instead of every timestep. |
@@ -100,7 +100,7 @@ sits below it, because the follower may plan on the leader stopping too.
 |---|---|
 | `--scenario PATH` | which scenario (default `scenarios/express`) |
 | `--system NAME` | signalling system; the fleet is fitted for it, as `run.py` does |
-| `--as-fitted` | do not re-equip the fleet |
+| `--as-fitted` | do not re-equip the fleet or change the driver |
 | `--every N` | trace sampling interval in simulated seconds (default 2) |
 | `--bin KM` | bin width for the fleet means (default 0.5 km) |
 | `-o FILE` | output file (default `graph.svg`) |
@@ -132,8 +132,15 @@ falls back to moving block. Run the whole ladder over one unfitted fleet and
 every system reports the same fallback under a different name — quietly, because
 every run completes and the table looks reasonable.
 
-`--as-fitted` turns the fitting off and answers the other question instead: what
-is each system worth *to the fleet this timetable declares*.
+The driver goes the same way. Lineside signalling and ETCS Levels 1 and 2 are
+read by a person and carry a two-second reaction time; Level 3 and virtual
+coupling are driven by ATO and carry none. That is not a claim of instant
+response — the control cycle is the simulation timestep, the radio delay is
+`v2v_latency_s`, and the brake takes `brake_buildup_s` to come on. The reaction
+time is the human, and there isn't one.
+
+`--as-fitted` turns both off and answers the other question instead: what is
+each system worth *to the fleet this timetable declares*.
 
 | system | ETCS | integrity report | radio link |
 |---|---|---|---|

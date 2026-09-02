@@ -82,6 +82,15 @@
 #   etcs_moving_block        121 s        78 s      29.8 / 46.2
 #   virtual_coupling         114 s        72 s      31.6 / 50.0
 #
+# STALE, in one respect. These were measured with a two-second driver reaction
+# time under every system. Level 3 and virtual coupling are now driven by ATO
+# with no reaction time - see DRIVING in trainsim/core/signalling - which moves
+# the two cab rows and leaves the fixed-block row alone. Re-run the sweep before
+# quoting them:
+#
+#   python scenarios/capacity/_sweep_headway.py etcs_moving_block
+#   python scenarios/capacity/_sweep_headway.py virtual_coupling
+#
 # WHAT THE SPEED LIMITS DID TO THAT
 #
 # They cost fixed block a great deal and the cab systems nothing. On the flat

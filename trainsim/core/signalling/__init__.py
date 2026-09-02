@@ -14,6 +14,7 @@ comparison.
 
 import dataclasses
 
+from ..driver import DriverConfig
 from .base import MovementAuthority, SignallingSystem
 from .etcs import ETCSLevel1, ETCSLevel2, MovingBlock
 from .fixed_block import ThreeAspectFixedBlock
@@ -101,6 +102,59 @@ def fit_timetable(timetable, name):
     return changed
 
 
+#: Who is driving, per system: driver settings that follow from the system
+#: rather than from the railway.
+#:
+#: Lineside signalling and ETCS Levels 1 and 2 are driven by a person reading a
+#: signal or a screen, so they carry a reaction time. Level 3 and virtual
+#: coupling are driven by ATO - virtual coupling has to be, because the
+#: separations it works at are shorter than a person can safely hold - and an
+#: ATO has no reaction time in the sense this term means.
+#:
+#: That does not make the response instantaneous, and nothing here claims it
+#: is. What a train still pays for is modelled elsewhere and would be counted
+#: twice here: the control cycle is the simulation timestep, so a train runs a
+#: whole tick on its last decision whatever this says; the radio delay is
+#: ``v2v_latency_s`` in virtual coupling; and the brake takes
+#: ``brake_buildup_s`` to come on, which the jerk limit applies and the
+#: driver's braking curves already allow for. This term is the human, and with
+#: no human it is zero.
+#:
+#: Moving block is the one to watch. It is given ATO here, following the
+#: literature, but it has no latency term of its own - so it is being credited
+#: with instant radio updates that virtual coupling pays for. That is
+#: conservative in the direction this project cares about: it flatters moving
+#: block in the comparison against virtual coupling, not the other way round.
+DRIVING = {
+    "fixed_block_3aspect": {"reaction_time_s": 2.0},
+    "etcs_l1":             {"reaction_time_s": 2.0},
+    "etcs_l2":             {"reaction_time_s": 2.0},
+    "etcs_hybrid_l3":      {"reaction_time_s": 2.0},
+    "etcs_moving_block":   {"reaction_time_s": 0.0},
+    "virtual_coupling":    {"reaction_time_s": 0.0},
+}
+
+
+def driving_for(name):
+    """Driver settings that follow from the signalling system ``name``."""
+    try:
+        return dict(DRIVING[name])
+    except KeyError:
+        raise ValueError(
+            "no driving profile declared for signalling system %r - add it to "
+            "DRIVING" % (name,))
+
+
+def fit_driver(config, name):
+    """``config`` with the settings ``name`` decides overridden.
+
+    Everything the scenario declared and the system has no opinion about -
+    stopping tolerance, the speed deadband, the standing safety margin - comes
+    through untouched.
+    """
+    return dataclasses.replace(config, **driving_for(name))
+
+
 def create(name, **kwargs):
     """Build a signalling system by its scenario-file name."""
     try:
@@ -125,7 +179,10 @@ __all__ = [
     "REGISTRY",
     "LADDER",
     "FITMENT",
+    "DRIVING",
     "create",
     "fitment_for",
     "fit_timetable",
+    "driving_for",
+    "fit_driver",
 ]

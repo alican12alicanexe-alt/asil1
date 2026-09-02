@@ -153,12 +153,20 @@ def main(argv=None) -> int:
 def _fit(scenario, system, as_fitted):
     """Equip the scenario's fleet for the system it is about to run under.
 
+    Two things follow from the system rather than from the railway: what the
+    train carries, and who is driving it.
+
     A signalling system is only worth what the train can use. Moving block
     behind a train that cannot report its integrity falls back to block
     granularity; virtual coupling without the radio link falls back to moving
     block. Run the ladder over one unfitted fleet and every system reports the
     same fallback under a different name - and it reports it quietly, because
     every run completes and the table looks reasonable.
+
+    The driver goes the same way. Lineside signalling is read by a person and
+    carries their reaction time; Level 3 and virtual coupling are driven by
+    ATO, which has none - see DRIVING in trainsim.core.signalling for what that
+    does and does not claim.
 
     So the fleet is re-equipped by default whenever a system is named, and
     ``--as-fitted`` turns that off for the other question: what is each system
@@ -173,6 +181,11 @@ def _fit(scenario, system, as_fitted):
               % (", ".join(changed), system, level,
                  "with" if tims else "no", "with" if v2v else "no"),
               file=sys.stderr)
+    driver = signalling.fit_driver(scenario.driver_config, system)
+    if driver != scenario.driver_config:
+        scenario.driver_config = driver
+        print("driving %s: reaction time %.1f s"
+              % (system, driver.reaction_time_s), file=sys.stderr)
 
 
 # ----------------------------------------------------------------------- modes

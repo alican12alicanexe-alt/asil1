@@ -61,18 +61,27 @@
 #
 #   system                all-green   keeps time   each way, keeping time
 #   fixed_block_3aspect      140 s       140 s       25.7 an hour
-#   etcs_moving_block         37 s        27 s      133.3
-#   virtual_coupling          34 s        20 s      180.0
+#   etcs_moving_block         35 s        25 s      144.0
+#   virtual_coupling          33 s        18 s      200.0
 #
 # Against the base scenario, where the same three systems measured 259 / 121 /
 # 114 s all-green and 206 / 78 / 72 s keeping time:
 #
 #   - fixed block improves from 259 s to 140 s. A block is occupied for a lot
 #     less time by a train that never stops and never crawls over a crossover.
-#   - moving block improves from 121 s to 37 s, and virtual coupling from 114 s
-#     to 34 s.
+#   - moving block improves from 121 s to 35 s, and virtual coupling from 114 s
+#     to 33 s.
 #   - keeping time, virtual coupling's margin over moving block goes from 8 %
-#     (78 s against 72 s) to 26 % (27 s against 20 s).
+#     (78 s against 72 s) to 28 % (25 s against 18 s).
+#
+# The two cab systems are driven by ATO here and the fixed-block one by a
+# person - see DRIVING in trainsim/core/signalling. That is a difference
+# between fixed block and the other two, and it is not a difference between
+# moving block and virtual coupling, which is the comparison this scenario is
+# for. The base scenario's figures above were measured before the driving
+# profile existed and were taken with a two-second reaction time throughout;
+# re-run its sweep before quoting the two railways against each other to the
+# second.
 #
 # That last line is the result this scenario was built to get. On the base
 # railway the two cab systems were within arithmetic of each other; here they
@@ -80,7 +89,7 @@
 #
 # WHY THE ALL-GREEN FIGURES DO NOT SEPARATE THE SAME WAY
 #
-# All-green improves only from 37 s to 34 s - 8 %, against 26 % for keeping
+# All-green improves only from 35 s to 33 s - 6 %, against 28 % for keeping
 # time - and that is worth understanding rather than smoothing over.
 #
 # All-green asks that no train is ever checked at all, anywhere, once. What

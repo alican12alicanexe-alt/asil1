@@ -217,6 +217,8 @@ def main(argv=None) -> int:
             if changed:
                 print("fitted %s for %s" % (", ".join(changed), system),
                       file=sys.stderr)
+            scenario.driver_config = signalling.fit_driver(
+                scenario.driver_config, system)
     else:
         system = scenario.signalling_spec.get("system", "fixed_block_3aspect")
 
