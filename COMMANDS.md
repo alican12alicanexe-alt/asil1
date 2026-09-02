@@ -30,9 +30,46 @@ specific **scenario file**, so `scenarios/metro` and
 | `--system NAME` | Override the signalling system for this run. |
 | `--compare A B` | Compare only the named systems instead of the whole ladder. |
 | `--events` | After a headless run, print the full event log — every route set, refused, released, every arrival and departure. |
+| `--log FILE` | Record a time-based trace of every train to a spreadsheet — `.xlsx`, `.csv` or `.tsv`, picked from the extension. |
+| `--log-every N` | Sample the trace every N simulated seconds instead of every timestep. |
 | `--duration N` | Override the run length in simulated seconds. |
 | `--speed N` | Simulated seconds per real second in the view. `--speed 1` is real time; the scenarios default to 20–30. |
 | `--strict` | Raise on a block-exclusivity violation instead of logging it. Use it when changing the kernel: it turns a silent wrong answer into a stack trace. |
+
+## The run trace
+
+The summary says how a run came out; `--log` says how it got there. One row per
+train per sample:
+
+```
+python run.py scenarios/capacity --headless --log run.xlsx --log-every 5
+python run.py scenarios/capacity --system etcs_moving_block --log mb.csv
+```
+
+| column | |
+|---|---|
+| `time_s`, `clock` | simulated time, and the same as a wall clock |
+| `train`, `state` | which unit, and whether it is running or dwelling |
+| `km`, `chainage_m` | where it is on its path |
+| `speed_kmh`, `accel_ms2` | current speed, and the acceleration actually applied that tick — after traction limits, resistance and the jerk limit |
+| `target_kmh`, `limit_kmh` | what the driver was aiming at, and the line speed under the train |
+| `grade_permille` | gradient at the front |
+| `authority_m` | distance left in the movement authority |
+| `service_brake_m`, `emergency_brake_m` | room needed to stop from the current speed at each rate |
+| `ahead`, `gap_m`, `headway_s` | the train in front, the gap to its rear, and that gap at the current speed |
+| `delay_s`, `next_stop` | how late, and where it is going next |
+| `reason` | what the authority was limited by, in the signalling system's own words |
+
+Comparing `gap_m` against `service_brake_m` is the quickest way to see a
+signalling system's behaviour: under moving block the gap tracks the braking
+distance, under virtual coupling it sits inside it, and under fixed block it
+steps between block boundaries.
+
+The recorder only reads state after a tick has finished, so a traced run gives
+exactly the same results as an untraced one.
+
+The `.xlsx` writer is built in — the format is a zip of XML parts, and writing
+those is smaller than taking on a spreadsheet dependency for a debug log.
 
 ## Signalling systems
 

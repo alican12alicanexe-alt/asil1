@@ -85,6 +85,10 @@ class Simulation(object):
         self.occupancy = Occupancy(blocks)
         self.events: List[Event] = []
         self.violations: List[str] = []
+        #: Callables run at the end of every completed tick, in order. Read-only
+        #: observers - a trace recorder, a plot, a progress bar - so that
+        #: watching a run cannot change it.
+        self.step_hooks: List = []
         self.aspects = self.refresh_aspects()
 
     # -------------------------------------------------------------------- clock
@@ -153,6 +157,9 @@ class Simulation(object):
 
         self.time_s += self.dt
         self._check_invariants()
+
+        for hook in self.step_hooks:
+            hook(self)
 
     def run(self, until_s: Optional[float] = None,
             stop_when_idle: bool = False) -> None:

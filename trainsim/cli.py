@@ -4,7 +4,7 @@ import argparse
 import os
 import sys
 
-from .analysis import kpi, propagation
+from .analysis import kpi, propagation, trace
 from .core import signalling
 from .core.units import format_clock, format_delay, ms_to_kmh
 from .scenario import checks
@@ -39,6 +39,18 @@ def main(argv=None) -> int:
     parser.add_argument(
         "--events", action="store_true",
         help="print the full event log after a headless run",
+    )
+    parser.add_argument(
+        "--log", metavar="FILE", default=None,
+        help="record a time-based trace of every train to FILE - speed, "
+             "acceleration, braking distances, movement authority and the gap "
+             "to the train ahead, one row per train per sample. Writes .xlsx, "
+             ".csv or .tsv, chosen from the extension",
+    )
+    parser.add_argument(
+        "--log-every", type=float, default=0.0, metavar="SECONDS",
+        help="sample the trace this often in simulated seconds "
+             "(default: every timestep)",
     )
     parser.add_argument(
         "--check", action="store_true",
@@ -114,9 +126,20 @@ def main(argv=None) -> int:
         if warning:
             print(warning, file=sys.stderr)
 
+    recorder = None
+    if args.log:
+        recorder = trace.TraceRecorder(interval_s=args.log_every)
+        sim.step_hooks.append(recorder)
+
     if args.headless:
-        return _run_headless(sim, show_events=args.events)
-    return _run_view(scenario, sim, speed=args.speed)
+        status = _run_headless(sim, show_events=args.events)
+    else:
+        status = _run_view(scenario, sim, speed=args.speed)
+
+    if recorder is not None:
+        recorder.write(args.log)
+        print("wrote %d trace rows to %s" % (len(recorder.rows), args.log))
+    return status
 
 
 # ----------------------------------------------------------------------- modes
