@@ -41,6 +41,16 @@ def main(argv=None) -> int:
         help="print the full event log after a headless run",
     )
     parser.add_argument(
+        "--leader-brake", choices=("emergency", "service"), default=None,
+        metavar="RATE",
+        help="virtual coupling only: which brake the follower credits the "
+             "train in front with. 'emergency' (the default) assumes it can "
+             "stop as short as it possibly can; 'service' assumes the convoy "
+             "braking rule of the literature, that a leader may not out-brake "
+             "what is coupled behind it. The second is worth a great deal of "
+             "separation and rests on a rule rather than on physics",
+    )
+    parser.add_argument(
         "--as-fitted", action="store_true",
         help="run every system on the equipment the timetable declares, "
              "instead of fitting the fleet to the system being run. Says what "
@@ -93,6 +103,7 @@ def main(argv=None) -> int:
                   % (args.system, ", ".join(signalling.LADDER)), file=sys.stderr)
             return 2
         scenario.signalling_spec = {"system": args.system}
+        _leader_brake(scenario, args.system, args.leader_brake)
         _fit(scenario, args.system, args.as_fitted)
 
     overrides = {}
@@ -126,7 +137,8 @@ def main(argv=None) -> int:
 
     if args.compare is not None:
         return _run_comparison(scenario, args.compare or list(signalling.LADDER),
-                               overrides, as_fitted=args.as_fitted)
+                               overrides, as_fitted=args.as_fitted,
+                               leader_brake=args.leader_brake)
 
     for warning in (checks.warn_if_unsignalable(scenario),
                     checks.warn_about_timetable(scenario),
@@ -148,6 +160,19 @@ def main(argv=None) -> int:
         recorder.write(args.log)
         print("wrote %d trace rows to %s" % (len(recorder.rows), args.log))
     return status
+
+
+def _leader_brake(scenario, system, choice):
+    """Apply ``--leader-brake`` to the one system that has such a thing.
+
+    Silently skipped for every other system rather than refused, so that
+    ``--compare --leader-brake service`` means "run the ladder, and let virtual
+    coupling have the convoy rule" instead of being an error about the five
+    systems the setting cannot apply to.
+    """
+    if choice is None or system != "virtual_coupling":
+        return
+    scenario.signalling_spec["leader_brake"] = choice
 
 
 def _fit(scenario, system, as_fitted):
@@ -210,7 +235,8 @@ def _run_headless(sim, show_events: bool) -> int:
     return 0
 
 
-def _run_comparison(scenario, systems, overrides, as_fitted=False) -> int:
+def _run_comparison(scenario, systems, overrides, as_fitted=False,
+                    leader_brake=None) -> int:
     """Run one timetable under several signalling systems and tabulate the result.
 
     The infrastructure, the timetable, the rolling stock, the driver model and the
@@ -228,6 +254,7 @@ def _run_comparison(scenario, systems, overrides, as_fitted=False) -> int:
         # timetable must not carry anything over from the previous run.
         fresh = load_scenario(scenario.source or scenario.directory)
         fresh.signalling_spec = {"system": name}
+        _leader_brake(fresh, name, leader_brake)
         _fit(fresh, name, as_fitted)
         sim = build_simulation(fresh, overrides)
         print("running %-22s %s" % (name, sim.signalling.describe()), file=sys.stderr)

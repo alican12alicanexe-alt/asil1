@@ -184,6 +184,10 @@ def main(argv=None) -> int:
     parser.add_argument("--system", default=None,
                         help="signalling system to run under; the fleet is "
                              "fitted for it, as run.py does")
+    parser.add_argument("--leader-brake", choices=("emergency", "service"),
+                        default=None, metavar="RATE",
+                        help="virtual coupling only: which brake the follower "
+                             "credits the train in front with")
     parser.add_argument("--as-fitted", action="store_true",
                         help="do not re-equip the fleet for --system")
     parser.add_argument("--duration", type=float, default=None,
@@ -212,6 +216,8 @@ def main(argv=None) -> int:
                   % (system, ", ".join(signalling.LADDER)), file=sys.stderr)
             return 2
         scenario.signalling_spec = {"system": system}
+        if args.leader_brake and system == "virtual_coupling":
+            scenario.signalling_spec["leader_brake"] = args.leader_brake
         if not args.as_fitted:
             changed = signalling.fit_timetable(scenario.timetable, system)
             if changed:

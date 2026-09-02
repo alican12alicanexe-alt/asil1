@@ -41,11 +41,23 @@ class VirtualCoupling(SignallingSystem):
     # handing back a moving danger point is a bug, and the kernel says so.
     permits_relative_braking = True
 
+    #: What the follower may credit the leader's brake with. Not a tuning
+    #: knob: the two answers rest on different safety cases, and which one is
+    #: defensible is the open question in the concept.
+    LEADER_BRAKE = ("emergency", "service")
+
     def __init__(self, safety_margin_m: float = 50.0,
                  fallback_margin_m: float = 100.0,
                  v2v_latency_s: float = 0.5,
-                 assume_leader_brakes: bool = True):
+                 assume_leader_brakes: bool = True,
+                 leader_brake: str = "emergency"):
         super().__init__()
+        if leader_brake not in self.LEADER_BRAKE:
+            raise ValueError(
+                "leader_brake must be one of %s, not %r"
+                % (", ".join(self.LEADER_BRAKE), leader_brake))
+        #: See :meth:`_run_on_m`. ``"emergency"`` is the conservative default.
+        self.leader_brake = leader_brake
         #: Standing separation held even at rest. Smaller than moving block's,
         #: because it is no longer doing the work a braking distance did.
         self.safety_margin_m = float(safety_margin_m)
@@ -90,16 +102,40 @@ class VirtualCoupling(SignallingSystem):
         exactly like moving block - correctly, since there is nothing left to
         borrow.
 
-        Taken at the *hardest* rate the leader can brake at, not the rate it
-        would normally use. The follower is planning to stop where the leader
-        stops, so it has to assume the leader stops as short as it possibly can;
-        assuming a service application would put the danger point beyond where
-        an emergency brake would actually leave the train, and the follower
-        would run into it.
+        Which rate to credit the leader with is the open question in the whole
+        concept, so it is a setting rather than a decision made here.
+
+        ``leader_brake="emergency"``, the default, takes the *hardest* rate the
+        leader can brake at rather than the rate it would normally use. The
+        follower is planning to stop where the leader stops, so it assumes the
+        leader stops as short as it possibly can: crediting a service
+        application would put the danger point beyond where an emergency brake
+        would actually leave the train, and the follower would run into it. The
+        follower therefore absorbs the whole difference between the two rates,
+        permanently, at every speed.
+
+        ``leader_brake="service"`` takes that penalty away, and it is what the
+        literature does. The V2V layer tells the leader the braking rate of
+        everything coupled behind it and the convoy brakes at the weakest rate
+        in it, so the leader may not stop shorter than the follower can. What
+        that buys is large - it is the single biggest term in the separation -
+        and what it costs is that the safety case now rests on the leader
+        honouring a rule rather than on physics.
+
+        This model does not enforce that rule, and cannot claim to: nothing in
+        it ever demands more than a service application, so there is no
+        behaviour here for the constraint to bind on. The setting is an
+        assumption about the degraded case, declared and switchable, not a
+        mechanism. Read a run made with it as "what virtual coupling is worth if
+        the convoy braking rule holds", which is exactly the question the
+        concept turns on.
         """
         if not self.assume_leader_brakes:
             return 0.0
-        decel = max(leader.stock.service_brake, leader.stock.emergency_brake)
+        if self.leader_brake == "service":
+            decel = leader.stock.service_brake
+        else:
+            decel = max(leader.stock.service_brake, leader.stock.emergency_brake)
         if decel <= 0.0:
             return 0.0
         return braking_distance(leader.speed_ms, decel)
@@ -192,6 +228,7 @@ class VirtualCoupling(SignallingSystem):
                     "(equivalent to moving block, margin %.0f m)"
                     % (self.safety_margin_m,))
         return ("virtual coupling / relative braking distance "
-                "(margin %.0f m, %.0f m degraded, V2V latency %.1f s)"
+                "(margin %.0f m, %.0f m degraded, V2V latency %.1f s, "
+                "leader credited with its %s brake)"
                 % (self.safety_margin_m, self.fallback_margin_m,
-                   self.v2v_latency_s))
+                   self.v2v_latency_s, self.leader_brake))

@@ -87,6 +87,42 @@
 # railway the two cab systems were within arithmetic of each other; here they
 # are not, because the constraint is now something relative braking can reach.
 #
+# THE CONVOY BRAKING RULE, AND WHY IT BUYS ALMOST NOTHING HERE
+#
+# By default the follower credits the train in front with its *emergency*
+# brake, because it is planning to stop where that train stops and has to
+# assume it stops as short as it possibly can. The follower therefore absorbs
+# the whole 1.0-against-1.5 difference, permanently, at every speed.
+#
+# The literature does not do that. It has the V2V layer tell the leader the
+# braking rate of everything coupled behind it, and the convoy brakes at the
+# weakest rate in it - so the leader may not out-brake its follower and the
+# penalty disappears. That is available here as a setting rather than as the
+# default, because it moves the safety case from physics onto a rule:
+#
+#   python run.py scenarios/express --system virtual_coupling \
+#                 --leader-brake service
+#   python scenarios/express/_sweep_headway.py virtual_coupling service
+#
+# It halves the separation and it barely touches the headway:
+#
+#   leader credited with   settled gap behind a slower train   all-green   keeps time
+#   emergency (default)                211 m                      33 s        18 s
+#   service                            124 m                      32 s        17 s
+#
+# (moving block, for scale, settles at 427 m.)
+#
+# One second. The reason is the same one the all-green figures have below: on
+# this railway the headway is not set by how close two trains may run. It is
+# set by the despatch sequence at the depot and by how long a train takes to
+# accelerate from rest, and halving the following distance does nothing about
+# either. The separation is genuinely halved - the graph of a run shows it
+# plainly - and the timetable cannot spend it.
+#
+# That is worth knowing before anybody argues for the convoy rule on capacity
+# grounds. What it buys is the ability to run closer, and a railway only
+# collects that where something other than the terminal is the constraint.
+#
 # WHY THE ALL-GREEN FIGURES DO NOT SEPARATE THE SAME WAY
 #
 # All-green improves only from 35 s to 33 s - 6 %, against 28 % for keeping

@@ -29,6 +29,7 @@ specific **scenario file**, so `scenarios/metro` and
 |---|---|
 | `--system NAME` | Override the signalling system for this run. |
 | `--compare A B` | Compare only the named systems instead of the whole ladder. |
+| `--leader-brake RATE` | Virtual coupling only: `emergency` (default) or `service` — which brake the follower credits the train in front with. |
 | `--as-fitted` | Run every system on the equipment and driver the timetable declares, instead of fitting both to the system being run. |
 | `--events` | After a headless run, print the full event log — every route set, refused, released, every arrival and departure. |
 | `--log FILE` | Record a time-based trace of every train to a spreadsheet — `.xlsx`, `.csv` or `.tsv`, picked from the extension. |
@@ -150,6 +151,35 @@ each system worth *to the fleet this timetable declares*.
 | `etcs_hybrid_l3` | L3 | yes | no |
 | `etcs_moving_block` | L3 | yes | no |
 | `virtual_coupling` | L3 | yes | yes |
+
+## Which brake the leader is credited with
+
+Under virtual coupling the follower plans to stop where the train in front will
+stop, so how much room it needs depends on how hard it assumes that train can
+brake. `--leader-brake` picks the assumption:
+
+```
+python run.py scenarios/express --system virtual_coupling --leader-brake service
+python scenarios/express/_sweep_headway.py virtual_coupling service
+```
+
+- **`emergency`** (default) — the leader may make a full emergency application
+  at any moment. The follower absorbs the whole difference between the two
+  rates, permanently. Safe against anything the train can do to itself.
+- **`service`** — the convoy braking rule of the literature: the V2V layer tells
+  the leader what is coupled behind it and the whole convoy brakes at the
+  weakest rate in it, so the leader may not out-brake its follower.
+
+The second nearly halves the separation — on the express railway a follower
+settles 124 m behind a slower train instead of 211 m, against moving block's
+427 m. It also moves that railway's headway by one second, because there the
+constraint is the depot rather than the following distance. Both facts are
+worth having.
+
+This model does not enforce the convoy rule and does not pretend to: nothing in
+it ever demands more than a service application, so there is no behaviour for
+the constraint to bind on. `service` is a declared assumption about the degraded
+case, not a mechanism — see `VirtualCoupling._run_on_m`.
 
 ## Signalling systems
 

@@ -45,8 +45,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(os.path.dirname(HERE)))
 sys.path.insert(0, HERE)
 
-from _generate_timetable import (COUNT, flight_spec, probe_all, simulation,
-                                 INFRA, STOCK)
+from _generate_timetable import (COUNT, OPTIONS, flight_spec, probe_all,
+                                 simulation, INFRA, STOCK)
 from trainsim.analysis.kpi import measure
 from trainsim.scenario.loader import build_timetable
 
@@ -249,4 +249,16 @@ def main(system="fixed_block_3aspect"):
 
 
 if __name__ == "__main__":
+    # A second argument, for virtual coupling, picks which brake the follower
+    # credits the train in front with:
+    #
+    #   python scenarios/express/_sweep_headway.py virtual_coupling service
+    #
+    # "service" is the convoy braking rule of the literature and is worth a
+    # great deal of separation - see VirtualCoupling._run_on_m for what it
+    # assumes and what this model does not enforce.
+    if len(sys.argv) > 2:
+        if sys.argv[1] != "virtual_coupling":
+            raise SystemExit("only virtual_coupling has a leader brake setting")
+        OPTIONS["virtual_coupling"] = {"leader_brake": sys.argv[2]}
     main(*sys.argv[1:2])

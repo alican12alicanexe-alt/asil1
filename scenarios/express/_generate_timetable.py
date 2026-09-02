@@ -93,6 +93,14 @@ def calls(line, pattern, shift=0, index=0):
     return entries
 
 
+#: Extra settings per signalling system, ``{name: {setting: value}}``. The sweep
+#: sets this so a whole sweep can be run under, say, the convoy braking rule
+#: without every call site having to know about it. Keyed by system because the
+#: probe runs under fixed block whatever is being swept, and a setting meant for
+#: virtual coupling is a TypeError anywhere else.
+OPTIONS = {}
+
+
 def signalling_for(system):
     """Build a signalling system, giving it only settings it has.
 
@@ -103,9 +111,10 @@ def signalling_for(system):
     CLI does when ``--compare`` switches systems: the setting goes with the
     system it was written for, and the others use their own defaults.
     """
+    settings = dict(OPTIONS.get(system, {}))
     if system == "fixed_block_3aspect":
-        return reg.create(system, sighting_distance_m=250)
-    return reg.create(system)
+        settings.setdefault("sighting_distance_m", 250)
+    return reg.create(system, **settings)
 
 
 def simulation(timetable, duration_s=9000, system="fixed_block_3aspect"):
