@@ -28,8 +28,10 @@
 #
 # BOTH LINES ARE SIGNALLED BOTH WAYS
 #
-# Four scissors crossovers bracket five reversible spans, one per station, so
-# every platform road has a road each way. Neither direction is the wrong one: a
+# Six scissors crossovers, one either side of each of the middle three stations,
+# bracket a reversible span at every station, so every platform road has a road
+# each way - and every one of those five spans is the same ten kilometres of
+# railway to lock as the others. Neither direction is the wrong one: a
 # line signalled both ways is signalled both ways, and which way it is set is a
 # state of the railway. The booked service uses none of it - both flights run on
 # their own line throughout - but the capability is there for a diversion, and
