@@ -73,6 +73,24 @@ exactly the same results as an untraced one.
 The `.xlsx` writer is built in — the format is a zip of XML parts, and writing
 those is smaller than taking on a spreadsheet dependency for a debug log.
 
+## Reading one train out of a trace
+
+The recorder samples every train once per tick, so a `--log` trace is in time
+order with the whole fleet interleaved - following one train means reading every
+twelfth row. `sort_log.py` regroups it by train, still in time order inside each:
+
+```
+python sort_log.py ring.csv                 writes ring-by-train.csv
+python sort_log.py ring.csv one-train.csv   or name the output yourself
+```
+
+Same rows, same columns, same header, different order - nothing is dropped or
+recomputed, so `explain_log.py` and a spreadsheet read the reordered file exactly
+as they read the original. Ids sort naturally, so `U2` comes before `U10`.
+
+`python sort_log.py --selfcheck` checks that ordering on a trace built to break
+a plain string sort.
+
 ## Explaining what held the trains
 
 `explain_log.py` reads the `reason` column of a `--log` trace and says what was
