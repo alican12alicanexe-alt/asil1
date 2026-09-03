@@ -825,21 +825,21 @@ class TkSchematicView(SchematicView):
         one post on the ground, and :meth:`_plan_shared_lamps` has already
         picked which of them carries it.
 
-        A signal with no road behind it IS drawn, dark, at the closed end of
-        the platform it belongs to. A station platform carries a lamp at each
-        end of its concrete, one per direction, and a depot platform was
-        carrying one: the lamp that would face the other way is a starter for
-        a direction there is nothing to start into, and the only signal the
-        model has at that end reads INTO the road from beyond the end of the
-        railway, which no train can ever do here.
+        A signal with no road behind it IS drawn, at the closed end of the
+        platform it belongs to, and lit like any other. A platform face
+        carries a lamp at each end of its concrete, one per direction, and a
+        depot platform was carrying one: the lamp that would face the other
+        way is a starter for a direction there is nothing to start into, so
+        the model has no signal for it, and the signal it does have at that
+        end - the one reading INTO the road - was being drawn out at the stop
+        block, clear of the concrete, or not at all.
 
-        It is drawn anyway, and on the concrete rather than out at the stop
-        block, for the reason a depot road looks like a platform in the first
-        place - it is one. The block boundary is real and the layout can grow
-        into it: a connection laid beyond that stop block, a junction or an
-        extension or a road worked through, gives the signal an approach and
-        it starts working. Until then it is a lamp that never lights, which is
-        a fact about this layout rather than about the signal.
+        It is a real signal on a real block boundary. It reads into the depot
+        road, it shows what that road is worth, and a movement routed into it
+        clears it: a train crossing over from the other line and running in is
+        signalled by it. Which of the roads beyond the stop block exist is a
+        fact about how far these particular rails go, not about the lamp, so
+        it is neither hidden nor held dark.
 
         It is dark rather than red, and :meth:`_signals_out_of_use` is what
         makes it so. Dark is the right word for it - *not this way* - and red
@@ -1016,13 +1016,14 @@ class TkSchematicView(SchematicView):
         only about the road ahead left it lit, and lit at danger: a red lamp at
         the far end of an occupied platform, for a train that cannot exist.
 
-        A signal with NO road behind it is dark always. That is the lamp at a
-        buffer stop: the depot roads are worked both ways like a platform, but
-        one end of them is the end of the railway, and the model still puts a
-        signal there reading into the road from beyond the blocks. Nothing is
-        beyond the blocks, so nothing can ever approach it. Those are no longer
-        drawn at all - a buffer stop is drawn where they were - and this line
-        stays as the guard that says what they are worth if they ever are.
+        Having no road behind it is NOT one of the reasons. That is the lamp
+        at the closed end of a depot road, and it is a working signal - it
+        reads into the road, it shows what the road is worth, and it goes off
+        when a route is set into it. Nothing on these particular railways
+        approaches it from beyond the stop block, but that is a fact about
+        where the rails happen to end and not about the lamp, and a lamp
+        forced dark is one nobody can read. It shows its aspect like every
+        other signal here.
         """
         sim = self.sim
         interlocking = sim.interlocking
@@ -1039,10 +1040,8 @@ class TkSchematicView(SchematicView):
 
         dark = set()
         for signal in infra.signals.values():
-            if not signal.from_segment:
-                dark.add(signal.id)
-                continue
-            behind = infra.block_of_segment.get(signal.from_segment)
+            behind = (infra.block_of_segment.get(signal.from_segment)
+                      if signal.from_segment else None)
             if opposed(signal.block_id) or (behind and opposed(behind)):
                 dark.add(signal.id)
         return dark
