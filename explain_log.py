@@ -79,6 +79,28 @@ def kind_of(reason):
     return reason, "(no explanation written for this one yet)"
 
 
+def cost_kmh(row):
+    """How much speed the governing constraint was actually taking, km/h.
+
+    The reason column names whichever constraint bound *first*, and says
+    nothing about by how much: a train accelerating hard towards 80 that is
+    permitted 79.4 is "coupled to R03" in exactly the same way as one held to
+    40. Counting rows alone therefore reports a bottleneck where there is none,
+    which is why every total here is also weighted by this.
+    """
+    if row.get("reason") == "line speed":
+        # Nothing is taking anything: the line itself is the constraint. The
+        # subtraction below would still show a few km/h, because limit_kmh is
+        # read at the nose while the driver obeys the limit under the whole
+        # train - so a train whose tail is still in a slower section reads as
+        # held when it is simply not clear of the restriction yet.
+        return 0.0
+    try:
+        return max(0.0, float(row["limit_kmh"]) - float(row["target_kmh"]))
+    except (KeyError, TypeError, ValueError):
+        return 0.0
+
+
 def held_back(reason):
     """Whether this reason is the signalling holding a train down."""
     low = reason.lower()
@@ -111,16 +133,23 @@ def report(rows):
     lines.append("")
 
     kinds = collections.Counter()
+    cost = collections.Counter()
     meanings = {}
     for row in rows:
         kind, meaning = kind_of(row["reason"])
         kinds[kind] += 1
+        cost[kind] += cost_kmh(row)
         meanings[kind] = meaning
     lines.append("what governed each train")
-    lines.append("  %-24s %7s   %s" % ("kind", "share", "what it means"))
+    lines.append("  %-24s %7s %8s   %s"
+                 % ("kind", "share", "costing", "what it means"))
     for kind, n in kinds.most_common():
-        lines.append("  %-24s %6.1f%%   %s"
-                     % (kind, 100.0 * n / len(rows), meanings[kind]))
+        lines.append("  %-24s %6.1f%% %6.1f km/h   %s"
+                     % (kind, 100.0 * n / len(rows),
+                        cost[kind] / n, meanings[kind]))
+    lines.append("  \"costing\" is the mean speed the constraint was taking while it")
+    lines.append("  governed. A fraction of a km/h means it bound first and cost")
+    lines.append("  nothing - the train was not being held.")
 
     restrained = [r for r in rows if held_back(r["reason"])]
     lines.append("")
@@ -129,24 +158,37 @@ def report(rows):
                      "line speed, a booked stop or a speed restriction.")
         return "\n".join(lines)
 
-    lines.append("the signalling held a train for %.1f%% of running time. Where:"
-                 % (100.0 * len(restrained) / len(rows),))
-    where = collections.Counter(round(float(r["km"])) for r in restrained)
-    most = where.most_common(1)[0][1]
+    lost = sum(cost_kmh(r) for r in restrained)
+    lines.append("the signalling governed %.1f%% of running time, and over those "
+                 "samples" % (100.0 * len(restrained) / len(rows),))
+    lines.append("took a mean %.1f km/h off the line speed. Where it cost most:"
+                 % (lost / len(restrained),))
+    where = collections.Counter()
+    for r in restrained:
+        where[round(float(r["km"]))] += cost_kmh(r)
+    if not where or max(where.values()) <= 0.0:
+        lines.append("  nowhere: every sample it governed, it was costing nothing.")
+        return "\n".join(lines)
+    most = max(where.values())
     for km, n in where.most_common(8):
-        lines.append("  km %-4d %6d  %s" % (km, n, bar(n, most)))
+        lines.append("  km %-4d %8.0f km/h-samples  %s" % (km, n, bar(n, most)))
 
-    stops = collections.Counter(r["next_stop"] for r in restrained if r["next_stop"])
+    stops = collections.Counter()
+    for r in restrained:
+        if r["next_stop"]:
+            stops[r["next_stop"]] += cost_kmh(r)
     if stops:
         lines.append("")
         lines.append("and what those trains were next booked to call at:")
         for stop, n in stops.most_common(5):
-            lines.append("  %-18s %6d" % (stop, n))
+            lines.append("  %-18s %8.0f km/h-samples" % (stop, n))
 
-    worst = collections.Counter(r["train"] for r in restrained)
+    worst = collections.Counter()
+    for r in restrained:
+        worst[r["train"]] += cost_kmh(r)
     lines.append("")
     lines.append("worst affected: %s"
-                 % ", ".join("%s (%d)" % (t, n) for t, n in worst.most_common(4)))
+                 % ", ".join("%s (%.0f)" % (t, n) for t, n in worst.most_common(4)))
     return "\n".join(lines)
 
 
