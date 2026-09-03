@@ -459,6 +459,9 @@ class TkSchematicView(SchematicView):
         x0, x1 = layout.x(segment.km_start), layout.x(segment.km_end)
         y_seg = layout.y(segment.y)
         if abs(segment.end_y - segment.y) > 1e-6:
+            if segment.turns:
+                # A horseshoe, and it has to look like one. See _turn_points.
+                return self._turn_points(x0, y_seg, x1, layout.y(segment.end_y))
             # A junction link: a straight ramp from one line's alignment to the
             # other's, which is the one thing on the schematic that is not drawn
             # parallel to everything else.
@@ -469,6 +472,48 @@ class TkSchematicView(SchematicView):
         y_track = layout.y(track_y)
         taper = (x1 - x0) * self.ROAD_TAPER_FRAC
         return (x0, y_track, x0 + taper, y_seg, x1 - taper, y_seg, x1, y_track)
+
+    #: How far a horseshoe reaches past the end of the line, as a fraction of
+    #: the gap between the two roads it joins. Set in that gap rather than in
+    #: kilometres on purpose: a horseshoe is a *shape*, and it has to keep it at
+    #: every zoom. 0.6 makes the curve about as wide as it is deep, which is
+    #: what reads as a half circle.
+    TURN_REACH_FRAC = 0.6
+    #: Straight pieces the curve is flattened into. Sixteen is past the point
+    #: where more of them change the picture at any zoom this window reaches.
+    TURN_STEPS = 16
+
+    def _turn_points(self, x0, y0, x1, y1):
+        """A U for a turning loop, rather than the ramp a crossover gets.
+
+        A crossover is a diagonal and is honestly drawn as one. A horseshoe is
+        not: the train leaves the up line still going up, sweeps round 180
+        degrees, and comes back down the down line. Drawn as a straight line
+        between its two ends it reads as a train cutting a corner at about 120
+        degrees - which is the wrong shape, and worse, it is the shape a
+        crossover has, so the one place on this railway where a train turns
+        round looks like the eight places where it does not.
+
+        So: a cubic whose control points both sit on the same outer x. That
+        forces the curve horizontal at both ends - away from the line where it
+        leaves, back towards it where it joins - which is the whole of what a
+        half circle looks like on a schematic. It reaches past the end of the
+        railway, because that is where a turning loop is: the curve is the last
+        thing on the line, not something tucked inside it.
+        """
+        reach = abs(y1 - y0) * self.TURN_REACH_FRAC
+        outward = 1.0 if x0 >= x1 else -1.0
+        x_out = (max(x0, x1) if outward > 0 else min(x0, x1)) + outward * reach
+        points = []
+        for step in range(self.TURN_STEPS + 1):
+            t = float(step) / self.TURN_STEPS
+            u = 1.0 - t
+            # Both control points at x_out, on their own end's y.
+            points.append(u * u * u * x0 + 3 * u * u * t * x_out
+                          + 3 * u * t * t * x_out + t * t * t * x1)
+            points.append(u * u * u * y0 + 3 * u * u * t * y0
+                          + 3 * u * t * t * y1 + t * t * t * y1)
+        return tuple(points)
 
     def _road_span(self, segment, track_y):
         """The x range over which a road runs at its own alignment.
