@@ -188,7 +188,7 @@ def nearest_ahead(train, others) -> Optional[Tuple[float, str]]:
         rear_entry = other.path.entry_at(max(0.0, other.rear_m))
         offset = max(0.0, other.rear_m) - rear_entry.start_m
         here = train.path.chainage_of(rear_entry.segment.id, offset,
-                                      after_m=train.chainage_m)
+                                      near_m=max(0.0, other.rear_m))
         if here is None or here <= train.chainage_m:
             continue
         if nearest is None or here < nearest[0]:
@@ -378,17 +378,27 @@ class Path:
         return [s for s in self.sections if s.end_m > chainage_m]
 
     def chainage_of(self, segment_id: str, offset_m: float = 0.0,
-                    after_m: float = 0.0) -> Optional[float]:
+                    near_m: Optional[float] = None) -> Optional[float]:
         """Where a point on ``segment_id`` falls along this path, if it does.
 
         Used to place another train on *this* train's road: the answer is None
         when that segment is not on the path at all, which is how a train on the
         opposite line is correctly ignored.
+
+        A lap comes back to the platform it left from, so on a circuit one
+        segment sits on the path twice and the question has two answers.
+        ``near_m`` chooses between them by how far the other train is along its
+        own lap: a train standing at the start of the circuit is at the start
+        occurrence, not one lap ahead at the end of this one. Without it the
+        leading train read the train 3 km behind it as a train 67 km in front.
         """
-        for entry in self.entries:
-            if entry.segment.id == segment_id and entry.end_m >= after_m:
-                return entry.start_m + offset_m
-        return None
+        hits = [entry.start_m + offset_m for entry in self.entries
+                if entry.segment.id == segment_id]
+        if not hits:
+            return None
+        if near_m is None:
+            return hits[0]
+        return min(hits, key=lambda here: abs(here - near_m))
 
     def next_signal(self, chainage_m: float) -> Optional[Tuple[str, float, int]]:
         """The first signal strictly ahead: ``(signal_id, chainage, index)``."""
