@@ -205,14 +205,17 @@ tracks:
       - {from_km: 34.90, to_km: 36.00, max_speed_kmh: 80}
 
 platforms:
-  # Two roads per line at every station, both of them through roads at line
-  # speed - an island platform with a face each side rather than a main and a
-  # loop. Two faces are what lets one train be held for another; making one of
-  # them slower would only mean alternate services were booked slower than
-  # their neighbours, and a flight of trains that are not all the same measures
-  # the timetable rather than the signalling. Akyurt 1 gets four a side because
-  # it is where every service starts and finishes - a lap begins and ends
-  # there, so its roads carry twice the traffic of anywhere else.
+  # One road per line at every station: a single through face at line speed,
+  # so a train at the platform blocks the line rather than being passed. That
+  # is the case worth measuring here - with a face each side, a following train
+  # has one of its own to come into and the platform never binds, which takes
+  # the constraint most likely to bite out of the comparison. The second face
+  # at each station is commented out below rather than deleted, so putting the
+  # island platforms back is a matter of uncommenting them.
+  #
+  # Akyurt 1 keeps four a side: every lap begins and ends there, so its roads
+  # carry twice the traffic of anywhere else and one face would be a terminus
+  # bottleneck of exactly the kind a ring exists to avoid.
   - {id: AKYURT_1_UP_1, station: AKYURT_1, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.0}
   - {id: AKYURT_1_UP_2, station: AKYURT_1, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.4}
   - {id: AKYURT_1_UP_3, station: AKYURT_1, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.8}
@@ -223,54 +226,54 @@ platforms:
   - {id: AKYURT_1_DN_4, station: AKYURT_1, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  1.2}
 
   - {id: MACUNKOY_1_UP_1, station: MACUNKOY_1, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.0}
-  - {id: MACUNKOY_1_UP_2, station: MACUNKOY_1, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.4}
+  # - {id: MACUNKOY_1_UP_2, station: MACUNKOY_1, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.4}
   - {id: MACUNKOY_1_DN_1, station: MACUNKOY_1, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.0}
-  - {id: MACUNKOY_1_DN_2, station: MACUNKOY_1, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.4}
+  # - {id: MACUNKOY_1_DN_2, station: MACUNKOY_1, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.4}
 
   - {id: GOLBASI_1_UP_1, station: GOLBASI_1, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.0}
-  - {id: GOLBASI_1_UP_2, station: GOLBASI_1, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.4}
+  # - {id: GOLBASI_1_UP_2, station: GOLBASI_1, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.4}
   - {id: GOLBASI_1_DN_1, station: GOLBASI_1, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.0}
-  - {id: GOLBASI_1_DN_2, station: GOLBASI_1, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.4}
+  # - {id: GOLBASI_1_DN_2, station: GOLBASI_1, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.4}
 
   - {id: TEKNOPARK_1_UP_1, station: TEKNOPARK_1, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.0}
-  - {id: TEKNOPARK_1_UP_2, station: TEKNOPARK_1, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.4}
+  # - {id: TEKNOPARK_1_UP_2, station: TEKNOPARK_1, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.4}
   - {id: TEKNOPARK_1_DN_1, station: TEKNOPARK_1, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.0}
-  - {id: TEKNOPARK_1_DN_2, station: TEKNOPARK_1, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.4}
+  # - {id: TEKNOPARK_1_DN_2, station: TEKNOPARK_1, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.4}
 
   - {id: AKYURT_2_UP_1, station: AKYURT_2, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.0}
-  - {id: AKYURT_2_UP_2, station: AKYURT_2, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.4}
+  # - {id: AKYURT_2_UP_2, station: AKYURT_2, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.4}
   - {id: AKYURT_2_DN_1, station: AKYURT_2, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.0}
-  - {id: AKYURT_2_DN_2, station: AKYURT_2, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.4}
+  # - {id: AKYURT_2_DN_2, station: AKYURT_2, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.4}
 
   - {id: MACUNKOY_2_UP_1, station: MACUNKOY_2, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.0}
-  - {id: MACUNKOY_2_UP_2, station: MACUNKOY_2, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.4}
+  # - {id: MACUNKOY_2_UP_2, station: MACUNKOY_2, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.4}
   - {id: MACUNKOY_2_DN_1, station: MACUNKOY_2, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.0}
-  - {id: MACUNKOY_2_DN_2, station: MACUNKOY_2, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.4}
+  # - {id: MACUNKOY_2_DN_2, station: MACUNKOY_2, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.4}
 
   - {id: GOLBASI_2_UP_1, station: GOLBASI_2, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.0}
-  - {id: GOLBASI_2_UP_2, station: GOLBASI_2, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.4}
+  # - {id: GOLBASI_2_UP_2, station: GOLBASI_2, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.4}
   - {id: GOLBASI_2_DN_1, station: GOLBASI_2, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.0}
-  - {id: GOLBASI_2_DN_2, station: GOLBASI_2, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.4}
+  # - {id: GOLBASI_2_DN_2, station: GOLBASI_2, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.4}
 
   - {id: TEKNOPARK_2_UP_1, station: TEKNOPARK_2, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.0}
-  - {id: TEKNOPARK_2_UP_2, station: TEKNOPARK_2, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.4}
+  # - {id: TEKNOPARK_2_UP_2, station: TEKNOPARK_2, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.4}
   - {id: TEKNOPARK_2_DN_1, station: TEKNOPARK_2, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.0}
-  - {id: TEKNOPARK_2_DN_2, station: TEKNOPARK_2, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.4}
+  # - {id: TEKNOPARK_2_DN_2, station: TEKNOPARK_2, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.4}
 
   - {id: AKYURT_3_UP_1, station: AKYURT_3, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.0}
-  - {id: AKYURT_3_UP_2, station: AKYURT_3, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.4}
+  # - {id: AKYURT_3_UP_2, station: AKYURT_3, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.4}
   - {id: AKYURT_3_DN_1, station: AKYURT_3, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.0}
-  - {id: AKYURT_3_DN_2, station: AKYURT_3, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.4}
+  # - {id: AKYURT_3_DN_2, station: AKYURT_3, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.4}
 
   - {id: MACUNKOY_3_UP_1, station: MACUNKOY_3, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.0}
-  - {id: MACUNKOY_3_UP_2, station: MACUNKOY_3, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.4}
+  # - {id: MACUNKOY_3_UP_2, station: MACUNKOY_3, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.4}
   - {id: MACUNKOY_3_DN_1, station: MACUNKOY_3, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.0}
-  - {id: MACUNKOY_3_DN_2, station: MACUNKOY_3, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.4}
+  # - {id: MACUNKOY_3_DN_2, station: MACUNKOY_3, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.4}
 
   - {id: GOLBASI_3_UP_1, station: GOLBASI_3, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.0}
-  - {id: GOLBASI_3_UP_2, station: GOLBASI_3, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.4}
+  # - {id: GOLBASI_3_UP_2, station: GOLBASI_3, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.4}
   - {id: GOLBASI_3_DN_1, station: GOLBASI_3, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.0}
-  - {id: GOLBASI_3_DN_2, station: GOLBASI_3, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.4}
+  # - {id: GOLBASI_3_DN_2, station: GOLBASI_3, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.4}
 
 crossovers:
   # One in every gap between neighbouring stations, at the middle of the gap.
