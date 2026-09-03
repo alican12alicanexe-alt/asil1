@@ -80,10 +80,14 @@ those is smaller than taking on a spreadsheet dependency for a debug log.
 ```
 python graph.py --system virtual_coupling U03
 python graph.py --system virtual_coupling U03 U08
-python graph.py --scenario scenarios/express/scenario-tight.yaml \
+python graph.py scenarios/express/scenario-tight.yaml \
                 --system etcs_moving_block U03 U08 -o mb.svg
 python graph.py --system virtual_coupling            # fleet mean only
 ```
+
+A first argument that is a path is the scenario, as in `run.py`; without one it
+runs `scenarios/express`. `--scenario PATH` does the same thing if you prefer
+it named.
 
 Name the trains you want and they are drawn individually; every panel also
 carries the fleet mean over all services in grey, so a train reads against what
@@ -99,7 +103,7 @@ sits below it, because the follower may plan on the leader stopping too.
 
 | option | |
 |---|---|
-| `--scenario PATH` | which scenario (default `scenarios/express`) |
+| `--scenario PATH` | which scenario, if not given as the first argument (default `scenarios/express`) |
 | `--system NAME` | signalling system; the fleet is fitted for it, as `run.py` does |
 | `--as-fitted` | do not re-equip the fleet or change the driver |
 | `--every N` | trace sampling interval in simulated seconds (default 2) |

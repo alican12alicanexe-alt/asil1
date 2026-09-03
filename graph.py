@@ -2,8 +2,12 @@
 
     python graph.py --system virtual_coupling U03
     python graph.py --system virtual_coupling U03 U08
-    python graph.py --system etcs_moving_block --scenario scenarios/capacity
-    python graph.py --system virtual_coupling --headway 30 U03 U04 U05
+    python graph.py scenarios/capacity --system etcs_moving_block U03
+    python graph.py scenarios/express/scenario-tight.yaml \
+                    --system virtual_coupling --leader-brake service U03 U08
+
+The scenario is the first argument when it is a path and ``scenarios/express``
+when it is not, so leading with one works the way it does in run.py.
 
 Name the trains you want and they are drawn individually; every panel also
 carries the fleet mean over all sixteen services, so a train can be read
@@ -42,6 +46,10 @@ from trainsim.scenario.loader import ScenarioError, build_simulation, load_scena
 #: Trace columns this script reads, by name, so a change to COLUMNS is a
 #: KeyError here rather than a silently shifted plot.
 COL = {name: index for index, name in enumerate(trace.COLUMNS)}
+
+#: Run this when no scenario is named. The express railway is the one built to
+#: show following behaviour; see scenarios/express/scenario.yaml.
+DEFAULT_SCENARIO = "scenarios/express"
 
 
 def collect(sim, interval_s):
@@ -172,15 +180,18 @@ def build_charts(by_train, wanted, system, bin_width):
 
 # ------------------------------------------------------------------------- cli
 
-def main(argv=None) -> int:
+def build_parser():
     parser = argparse.ArgumentParser(
         prog="graph.py",
         description="Draw speed, separation and headway for a run.")
-    parser.add_argument("trains", nargs="*", metavar="TRAIN",
-                        help="service ids to draw, e.g. U03 U08. "
-                             "With none, only the fleet mean is drawn")
-    parser.add_argument("--scenario", default="scenarios/express",
-                        help="scenario directory or file (default: %(default)s)")
+    parser.add_argument("trains", nargs="*", metavar="[SCENARIO] TRAIN",
+                        help="service ids to draw, e.g. U03 U08, with none "
+                             "meaning only the fleet mean. A first argument "
+                             "that is a path on disk is taken as the scenario, "
+                             "so run.py's habit of leading with one works here")
+    parser.add_argument("--scenario", default=None,
+                        help="scenario directory or file (default: %s)"
+                             % (DEFAULT_SCENARIO,))
     parser.add_argument("--system", default=None,
                         help="signalling system to run under; the fleet is "
                              "fitted for it, as run.py does")
@@ -201,7 +212,39 @@ def main(argv=None) -> int:
                         help="output file (default: %(default)s)")
     parser.add_argument("--log", metavar="FILE", default=None,
                         help="also write the underlying trace to a spreadsheet")
-    args = parser.parse_args(argv)
+    return parser
+
+
+def parse_arguments(argv=None):
+    """Arguments, with ``scenario`` resolved from wherever it was given.
+
+    Positionals split around an option - "graph.py SCENARIO --system X U03 U08"
+    - are more than argparse will collect into one nargs="*", and it rejects the
+    trailing ones as unrecognized. That command is the obvious thing to type, so
+    the leftovers are gathered here rather than refused. Anything that looks
+    like an option is still a mistake and still an error.
+    """
+    parser = build_parser()
+    args, leftover = parser.parse_known_args(argv)
+    bad = [word for word in leftover if word.startswith("-")]
+    if bad:
+        parser.error("unrecognized arguments: %s" % (" ".join(bad),))
+    args.trains += leftover
+
+    # A leading path is the scenario. Service ids are not paths, so there is
+    # nothing for this to be ambiguous with.
+    if args.trains and os.path.exists(args.trains[0]):
+        if args.scenario is not None:
+            parser.error("scenario given twice: %s and %s"
+                         % (args.scenario, args.trains[0]))
+        args.scenario = args.trains.pop(0)
+    if args.scenario is None:
+        args.scenario = DEFAULT_SCENARIO
+    return args
+
+
+def main(argv=None) -> int:
+    args = parse_arguments(argv)
 
     try:
         scenario = load_scenario(args.scenario)

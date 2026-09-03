@@ -22,6 +22,8 @@ from trainsim.scenario.loader import build_timetable  # noqa: E402
 SCENARIOS = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scenarios"
 )
+CAPACITY = os.path.join(SCENARIOS, "capacity")
+EXPRESS = os.path.join(SCENARIOS, "express")
 CORRIDOR3 = os.path.join(SCENARIOS, "corridor3")
 INTENSIVE = os.path.join(SCENARIOS, "corridor3", "scenario-intensive.yaml")
 METRO = os.path.join(SCENARIOS, "metro")

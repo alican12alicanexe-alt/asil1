@@ -101,6 +101,35 @@ class TestRunGraph(unittest.TestCase):
         for _, value in means:
             self.assertGreaterEqual(value, 0.0)
 
+    def test_a_leading_path_is_the_scenario_and_the_rest_are_trains(self):
+        """Positionals split around an option, which is what people type."""
+        # A real path, because that is the test: a first argument is the
+        # scenario when it exists on disk and a train when it does not.
+        args = graph.parse_arguments([support.CAPACITY, "--system",
+                                      "virtual_coupling", "U03", "U08"])
+        self.assertEqual(args.scenario, support.CAPACITY)
+        self.assertEqual(args.trains, ["U03", "U08"])
+
+    def test_the_scenario_may_be_named_instead_of_led_with(self):
+        args = graph.parse_arguments(["--scenario", support.CAPACITY, "U03"])
+        self.assertEqual(args.scenario, support.CAPACITY)
+        self.assertEqual(args.trains, ["U03"])
+
+    def test_giving_it_both_ways_is_refused_rather_than_guessed(self):
+        with self.assertRaises(SystemExit):
+            graph.parse_arguments([support.CAPACITY, "--scenario",
+                                   support.CAPACITY, "U03"])
+
+    def test_with_no_scenario_at_all_there_is_a_default(self):
+        args = graph.parse_arguments(["U03"])
+        self.assertEqual(args.scenario, graph.DEFAULT_SCENARIO)
+        self.assertEqual(args.trains, ["U03"])
+
+    def test_a_mistyped_option_is_still_refused(self):
+        """Gathering the leftovers must not swallow a typo silently."""
+        with self.assertRaises(SystemExit):
+            graph.parse_arguments(["--systemm", "virtual_coupling", "U03"])
+
     def test_stats_report_a_journey_rather_than_a_sample(self):
         rows = self._rows()
         summary = graph.stats("P", rows)
