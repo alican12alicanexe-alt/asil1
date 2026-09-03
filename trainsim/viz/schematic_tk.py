@@ -723,12 +723,25 @@ class TkSchematicView(SchematicView):
                     x = platform_end
                     pinned.add(signal.id)
             if not signal.from_segment:
-                # A buffer-stop signal, and not one of a throat's alternatives
-                # however the node groups it. Two of them at a depot are the
-                # stop blocks of two separate roads, at the far end from the
-                # points; taking the group's rearmost x would drag the offset
-                # road's lamp back to where its road is still leaving the
-                # running line, and hang it in the air beside the splay.
+                # The lamp at the closed end of a depot road, and it belongs on
+                # the concrete like the starter at the other end of the same
+                # platform, not out at the block boundary. A station platform
+                # carries a lamp at each end of its face - one per direction -
+                # and a depot road was coming out with one, because the second
+                # is a starter for a direction it has nowhere to start into
+                # and the only signal at that end stands at the stop block
+                # instead. Drawn on the near end of the face, the depot reads
+                # like the platform it is.
+                #
+                # Pinned either way. Two of these at a depot are the closed
+                # ends of two separate roads and not alternatives at a set of
+                # points, so taking the group's rearmost x would drag the
+                # offset road's lamp back to where its road is still leaving
+                # the running line and hang it in the air beside the splay.
+                if road is not None:
+                    face = self._platform_face_span(road, road_track_y)
+                    if face is not None:
+                        x = min(face, key=lambda end: abs(end - x))
                 pinned.add(signal.id)
             wanted[signal.id] = x
 
@@ -812,19 +825,21 @@ class TkSchematicView(SchematicView):
         one post on the ground, and :meth:`_plan_shared_lamps` has already
         picked which of them carries it.
 
-        A signal with no road behind it IS drawn, dark, alongside the buffer
-        stop :meth:`_draw_buffer_stops` puts there. It stands at the far end of
-        a depot road, reading into it from beyond the end of the railway, and
-        no train can ever be where it would be read from - so on this railway
-        it is a lamp that never lights. It is drawn anyway, because it is a
-        real boundary of a real block and the layout can grow into it: a
-        connection laid beyond that stop block - a junction, an extension, a
-        second depot road worked through - gives it an approach and it starts
-        working, and a schematic that had quietly left it out would then be
-        showing a signal fewer than the railway has. Leaving it out also made
-        a depot road read as one post where a platform road has two at each
-        end, which is not the difference between them: the difference is that
-        one end of a depot road is the end of the line.
+        A signal with no road behind it IS drawn, dark, at the closed end of
+        the platform it belongs to. A station platform carries a lamp at each
+        end of its concrete, one per direction, and a depot platform was
+        carrying one: the lamp that would face the other way is a starter for
+        a direction there is nothing to start into, and the only signal the
+        model has at that end reads INTO the road from beyond the end of the
+        railway, which no train can ever do here.
+
+        It is drawn anyway, and on the concrete rather than out at the stop
+        block, for the reason a depot road looks like a platform in the first
+        place - it is one. The block boundary is real and the layout can grow
+        into it: a connection laid beyond that stop block, a junction or an
+        extension or a road worked through, gives the signal an approach and
+        it starts working. Until then it is a lamp that never lights, which is
+        a fact about this layout rather than about the signal.
 
         It is dark rather than red, and :meth:`_signals_out_of_use` is what
         makes it so. Dark is the right word for it - *not this way* - and red
