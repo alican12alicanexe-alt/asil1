@@ -185,6 +185,43 @@ it ever demands more than a service application, so there is no behaviour for
 the constraint to bind on. `service` is a declared assumption about the degraded
 case, not a mechanism — see `VirtualCoupling._run_on_m`.
 
+## Turning loops
+
+A horseshoe turns a train through 180 degrees at the end of a line: up the up
+line, round the curve, back down the down line, facing the right way the whole
+time. No reversal, nobody changes ends, and nothing runs against the way a road
+is signalled — which is what makes a circuit out of two lines that would
+otherwise only meet at a crossover.
+
+```yaml
+tracks:
+  - id: UP
+    direction: up
+    serves: [WDEPOT, LINFORD, EDEPOT]
+    runs_from_km: 1.0        # the rails start before the first platform
+    runs_to_km: 21.0         # and carry on past the last one
+
+turning_loops:
+  - {id: HS_EAST, from: UP, to: DN, km: 21.0, length_m: 900, max_speed_kmh: 40}
+  - {id: HS_WEST, from: DN, to: UP, km: 1.0,  length_m: 900, max_speed_kmh: 40}
+```
+
+**It is not a crossover, and cannot be declared as one.** A `crossovers:` entry
+between the up and the down line lays *four* movements — the diagonal each way,
+and each of those over the reverse road — because a diagonal is a piece of
+railway and a piece of railway can be traversed either way. A horseshoe is
+one-way by construction: the curve takes an up train onto the down line going
+down, and a down train arriving at the same place is already going the way the
+curve would send it.
+
+**It needs railway beyond the terminus.** Both ends of the curve need a block
+boundary, and a platform zone is one segment with a stopping mark on it — there
+is nowhere in the middle of one for a signal to stand. A line whose last
+platform runs to the buffer stops therefore has no room for a horseshoe, which
+is what `runs_from_km` and `runs_to_km` are for: the rails need not stop where
+the last platform does. Both read in the direction the road is worked, so a down
+line's `runs_from_km` is the higher number.
+
 ## Signalling systems
 
 Names for `--system` and `--compare`, oldest technology first:

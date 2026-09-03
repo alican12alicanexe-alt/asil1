@@ -39,7 +39,7 @@ INTERLOCKING = frozenset({
 
 #: ``infrastructure.yaml``
 INFRASTRUCTURE = frozenset({"name", "defaults", "stations", "tracks",
-                            "platforms", "crossovers"})
+                            "platforms", "crossovers", "turning_loops"})
 DEFAULTS = frozenset({
     "platform_zone_m", "block_length_m", "max_speed_kmh", "stop_margin_m",
     "platform_y_step", "grade_permille",
@@ -48,7 +48,7 @@ STATION = frozenset({"id", "name", "km"})
 TRACK = frozenset({
     "id", "direction", "y", "max_speed_kmh", "block_length_m", "platform_zone_m",
     "serves", "block_lengths", "junction", "grade_permille", "gradients",
-    "speed_limits",
+    "speed_limits", "runs_from_km", "runs_to_km",
 })
 BLOCK_LENGTHS = frozenset({"from", "to", "block_length_m"})
 #: A permanent line-speed change over a stretch, in schematic kilometres. Not a
@@ -58,6 +58,11 @@ SPEED_LIMITS = frozenset({"from_km", "to_km", "max_speed_kmh"})
 GRADIENTS = frozenset({"from", "to", "grade_permille"})
 JUNCTION = frozenset({"track", "at", "length_m", "max_speed_kmh",
                       "grade_separated", "grade_permille"})
+#: A horseshoe: a one-way curve turning a train through 180 degrees at the end
+#: of a line, off one road and onto the road going back. Not a crossover - see
+#: ``_plan_turning_loops`` in the builder for why it cannot be one.
+TURNING_LOOP = frozenset({"id", "from", "to", "km", "length_m",
+                          "max_speed_kmh"})
 PLATFORM = frozenset({
     "id", "station", "track", "length_m", "max_speed_kmh", "y_offset",
     "grade_permille", "berth",

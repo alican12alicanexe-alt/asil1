@@ -50,6 +50,11 @@ class Segment:
     #: junction link ramps from one line's alignment to another's, and is the
     #: only thing here that is not drawn parallel to the rest of the railway.
     y_end: Optional[float] = None
+    #: Whether this piece of railway turns a train through 180 degrees. True
+    #: only on a horseshoe, and it is what tells the path finder that the
+    #: change of direction across it is a curve rather than a reversal - see
+    #: :meth:`Network._reverses`.
+    turns: bool = False
     #: Rise per thousand *in the direction of travel*: positive is a climb,
     #: negative a fall. Segments are one-way, so the same physical bank is
     #: recorded as +10 on the up line and -10 on the down, and neither the
@@ -245,7 +250,13 @@ class Network:
         """
         one = self._sense(here)
         two = self._sense(nxt)
-        return bool(one) and bool(two) and one != two
+        if not (bool(one) and bool(two) and one != two):
+            return False
+        # Unless one of them is a horseshoe, where the change of direction is
+        # the whole point: the train goes round a curve and comes back facing
+        # the other way without changing ends. That is a real move and the only
+        # one that turns a train round here, so it is the only exemption.
+        return not (self.segments[here].turns or self.segments[nxt].turns)
 
     def _sense(self, segment_id: str) -> int:
         """``1`` for a segment worked towards higher km, ``-1`` for lower."""

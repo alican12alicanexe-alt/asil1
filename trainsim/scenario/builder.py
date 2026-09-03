@@ -111,6 +111,8 @@ class _Builder(object):
         self.platforms_spec = _index(spec.get("platforms"), "platforms")
         self.crossovers_spec = _index(spec.get("crossovers"), "crossovers",
                                       name_from=_crossover_name)
+        self.turning_loops_spec = _index(spec.get("turning_loops"),
+                                         "turning_loops")
         for station_id, station in self.stations_spec.items():
             _check("station %r" % station_id, station, schema.STATION)
         for track_id, track in self.tracks_spec.items():
@@ -131,6 +133,8 @@ class _Builder(object):
             _check("platform %r" % platform_id, platform, schema.PLATFORM)
         for crossover_id, crossover in self.crossovers_spec.items():
             _check("crossover %r" % crossover_id, crossover, schema.CROSSOVER)
+        for loop_id, loop in self.turning_loops_spec.items():
+            _check("turning loop %r" % loop_id, loop, schema.TURNING_LOOP)
 
         self.nodes: Dict[str, Node] = {}
         self.segments: List[Segment] = []
@@ -181,6 +185,7 @@ class _Builder(object):
         # there. Worked out before any track is laid out, because a block plan
         # has to accommodate the connections rather than the other way round.
         self._plan_crossovers()
+        self._plan_turning_loops()
 
         # Plain tracks first: a branch attaches to a node on the line it joins,
         # so that line has to exist before the branch can be laid out.
@@ -403,6 +408,14 @@ class _Builder(object):
         mirror["direction"] = ("up" if track.get("direction", "up") == "down"
                                else "down")
         mirror["serves"] = list(reversed(list(track.get("serves") or [])))
+        # Both are read in the direction the road is worked, and the mirror is
+        # worked the other way, so they swap with the station order.
+        if track.get("runs_from_km") is not None or track.get("runs_to_km") is not None:
+            mirror["runs_from_km"] = track.get("runs_to_km")
+            mirror["runs_to_km"] = track.get("runs_from_km")
+            for key in ("runs_from_km", "runs_to_km"):
+                if mirror[key] is None:
+                    del mirror[key]
         mirror["mirrors"] = track_id
         self.tracks_spec[mirror_id] = mirror
         self.mirror_of[mirror_id] = track_id
@@ -558,7 +571,25 @@ class _Builder(object):
         if not serves:
             raise InfrastructureError("track %r serves nothing" % (track_id,))
         sign = -1.0 if track.get("direction", "up") == "down" else 1.0
-        return float(self.stations_spec[serves[0]]["km"]), sign
+        return self._runs_from_km(track, serves), sign
+
+    def _runs_from_km(self, track, serves) -> float:
+        """Schematic km where this track's rails begin, in its direction of travel.
+
+        The first station it serves, unless ``runs_from_km`` says the rails start
+        before that - see :meth:`_build_track` for why a line would want to.
+        """
+        declared = track.get("runs_from_km")
+        if declared is not None:
+            return float(declared)
+        return float(self.stations_spec[serves[0]]["km"])
+
+    def _runs_to_km(self, track, serves) -> float:
+        """Schematic km where this track's rails end, in its direction of travel."""
+        declared = track.get("runs_to_km")
+        if declared is not None:
+            return float(declared)
+        return float(self.stations_spec[serves[-1]]["km"])
 
     def _plan_crossovers(self) -> None:
         """Work out where each crossover meets its two lines.
@@ -682,6 +713,73 @@ class _Builder(object):
             "max_speed_ms": kmh_to_ms(float(
                 spec.get("max_speed_kmh", 60.0))),
         })
+
+    def _plan_turning_loops(self) -> None:
+        """Horseshoes: one-way curves that turn a train round at the end of a line.
+
+        A train runs to the end of the up line, round a 180-degree curve, and
+        back down the down line, facing the right way the whole time. It never
+        reverses, nobody changes ends, and it does not run against the way a
+        road is signalled - which is what makes a circuit out of two lines that
+        would otherwise only meet at a crossover.
+
+        WHY THIS IS NOT A CROSSOVER
+
+        It looks like one - two roads, joined - and it cannot be declared as
+        one. ``crossovers:`` between the up and the down line goes through
+        :meth:`_plan_two_way_crossover`, which lays *four* movements: the
+        diagonal each way, and each of those over the reverse road, because a
+        diagonal is a piece of railway and a piece of railway can be traversed
+        either way. That is right for a crossover and wrong for a horseshoe. A
+        horseshoe is one-way by construction: the curve takes an up train onto
+        the down line going down, and there is no movement in the other
+        direction over it, because a down train arriving at the same place is
+        already going the way the curve would send it.
+
+        So this lays exactly one movement, ``from`` road to ``to`` road, with no
+        mirror and no reverse. Everything after that - the block boundaries, the
+        signals, the routes, the interlocking - is a connection like any other.
+
+        WHERE IT CAN GO
+
+        The curve leaves ``from`` at ``km`` and rejoins ``to`` ``length_m``
+        further along the *joining* road's own direction, so at the east end of
+        a line it comes back a little short of where it left. Both ends need a
+        block boundary, which means neither may fall inside a platform zone: a
+        platform is one segment with a stopping mark on it and there is nowhere
+        in the middle of it for a signal to stand. A line whose depot platform
+        runs to the buffer stops therefore has no room for a horseshoe beyond
+        it, and has to be extended before it can have one.
+        """
+        for loop_id, spec in self.turning_loops_spec.items():
+            try:
+                from_id, to_id = str(spec["from"]), str(spec["to"])
+                km = float(spec["km"])
+            except KeyError as exc:
+                raise InfrastructureError(
+                    "turning loop %r: missing %s" % (loop_id, exc))
+            for role, track_id in (("from", from_id), ("to", to_id)):
+                if track_id not in self.tracks_spec:
+                    raise InfrastructureError(
+                        "turning loop %r: %s unknown track %r"
+                        % (loop_id, role, track_id))
+            if from_id == to_id:
+                raise InfrastructureError(
+                    "turning loop %r turns %s onto itself - a horseshoe joins "
+                    "a road to the road going back" % (loop_id, from_id))
+            if (self.tracks_spec[from_id].get("direction", "up")
+                    == self.tracks_spec[to_id].get("direction", "up")):
+                raise InfrastructureError(
+                    "turning loop %r joins %s to %s, which run the same way - "
+                    "a horseshoe turns a train round, so the road it joins has "
+                    "to be worked in the other direction. Two roads running the "
+                    "same way are joined with a crossover."
+                    % (loop_id, from_id, to_id))
+            settings = dict(spec)
+            settings.setdefault("length_m", 900.0)
+            settings.setdefault("max_speed_kmh", 40.0)
+            self._plan_line_crossover(loop_id, settings, from_id, to_id, km)
+            self.crossovers[-1]["turns"] = True
 
     def _needs_boundary(self, track_id: str, chainage: float) -> None:
         """Ask for a block boundary at ``chainage``, once.
@@ -961,6 +1059,7 @@ class _Builder(object):
                 # A crossover lies between two parallel lines at the same
                 # place, so it is on whatever gradient the line it leaves is on.
                 grade_permille=grade,
+                turns=bool(crossover.get("turns")),
             )
             self.segments.append(segment)
             # Registered as a ramp so that a connection reaching across an
@@ -1156,7 +1255,14 @@ class _Builder(object):
                 )
 
         sign = 1.0 if direction == "up" else -1.0
-        start_km = float(self.stations_spec[serves[0]]["km"])
+        # A line normally begins and ends at the outermost station it serves.
+        # ``runs_from_km`` and ``runs_to_km`` extend it past them, because the
+        # rails do not always stop where the last platform does: a turning loop
+        # needs somewhere beyond the terminus to attach, and a platform zone is
+        # one segment with a stopping mark on it, so a connection cannot land
+        # inside one. Both are read in the direction this track is worked, so a
+        # down line's runs_from_km is the higher number.
+        start_km = self._runs_from_km(track, serves)
         track_y = float(track.get("y", 0.0))
         line_speed = kmh_to_ms(float(track.get("max_speed_kmh",
                                                self.defaults["max_speed_kmh"])))
@@ -1182,7 +1288,7 @@ class _Builder(object):
             far_km = (junction["node_km"] if junction["joining"]
                       else float(self.stations_spec[serves[-1]]["km"]))
         else:
-            far_km = float(self.stations_spec[serves[-1]]["km"])
+            far_km = self._runs_to_km(track, serves)
 
         total = chainage_of(far_km)
         if total <= 0:
@@ -1207,11 +1313,16 @@ class _Builder(object):
                     % (track_id,)
                 )
 
+        # An extended end is an open one: the terminus is no longer the end of
+        # the rails, so its platform zone is centred on it like any other
+        # station's rather than sitting against the buffer stops.
         zones = self._platform_zones(
             track_id, layout_serves, chainage_of, zone_length,
             layout_from, layout_to,
-            open_start=junction is not None and not junction["joining"],
-            open_end=junction is not None and junction["joining"],
+            open_start=(track.get("runs_from_km") is not None
+                        or (junction is not None and not junction["joining"])),
+            open_end=(track.get("runs_to_km") is not None
+                      or (junction is not None and junction["joining"])),
         )
 
         overrides = self._stretch_overrides(track_id, track)
