@@ -91,6 +91,34 @@ as they read the original. Ids sort naturally, so `U2` comes before `U10`.
 `python sort_log.py --selfcheck` checks that ordering on a trace built to break
 a plain string sort.
 
+## How much room a train needs, by speed
+
+`separation.py` prints the braking chain and the margins together, per system,
+across a range of speeds:
+
+```
+python separation.py                    the ring unit, every system
+python separation.py scenarios/express  another scenario's unit
+python separation.py --grade -25        on a 1-in-40 falling gradient
+```
+
+Two tables. The first is the authority a train needs to run at a speed without
+braking - `braking_distance` at the rate the gradient allows, plus brake
+build-up, plus the driver's standing margin, plus its reaction distance. That is
+`stopping_distance` in `trainsim/core/driver.py`, the same function `--check`
+sizes blocks with, so the 80 km/h fixed-block figure here and the `needs >= 339
+m` in `run.py scenarios/ring --check` are the same number by construction.
+
+The second is what that becomes as a gap to the rear of the train in front,
+which only the distance-separated systems can answer. Virtual coupling's is much
+the smallest, and the last block shows why: at 80 km/h it is borrowing 165 m of
+the leader's own run-on and giving back 61 m of margin, so its danger point sits
+103 m *beyond* the leader's rear where moving block's sits 100 m short of it.
+Below about 45 km/h there is too little run-on left to borrow and the sign flips.
+
+`python separation.py --selfcheck` feeds each figure back through the driver's
+own arithmetic and checks the permitted speed comes out as the speed asked for.
+
 ## Explaining what held the trains
 
 `explain_log.py` reads the `reason` column of a `--log` trace and says what was

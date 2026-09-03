@@ -50,6 +50,7 @@ from dataclasses import dataclass
 from typing import List, Optional
 
 from ..core import dynamics
+from ..core.driver import stopping_distance
 from ..core.units import braking_distance, format_clock, ms_to_kmh
 
 
@@ -118,13 +119,8 @@ def check_block_lengths(infrastructure, timetable, driver_config,
         for service in timetable.services:
             stock = service.stock
             speed = min(stock.max_speed_ms, line_speed)
-            needed = (
-                braking_distance(
-                    speed, dynamics.braking_rate_on_grade(stock, grade))
-                + dynamics.brake_buildup_distance_m(stock, speed)
-                + speed * driver_config.reaction_time_s
-                + driver_config.safety_margin_m
-            ) / float(warning_blocks)
+            needed = stopping_distance(
+                stock, driver_config, speed, grade) / float(warning_blocks)
             if needed > required:
                 required, worst = needed, stock.id
 

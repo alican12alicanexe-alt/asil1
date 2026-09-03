@@ -32,6 +32,24 @@ class DriverConfig:
     speed_deadband_ms: float = 0.3
 
 
+def stopping_distance(stock, config: DriverConfig, speed_ms: float,
+                     grade_permille: float = 0.0) -> float:
+    """How much room this train needs to stop from ``speed_ms``, all in.
+
+    The four terms :meth:`Driver.decide` applies, in one place because two
+    callers want the number without running a train: the block-length check in
+    trainsim.scenario.checks, and separation.py. Written as the inverse of what
+    the driver does - decide() turns a distance into a permitted speed, this
+    turns a speed back into the distance that permits it - so a block sized by
+    this is a block a train can actually stop in.
+    """
+    rate = dynamics.braking_rate_on_grade(stock, grade_permille)
+    return (braking_distance(speed_ms, rate)
+            + dynamics.brake_buildup_distance_m(stock, speed_ms)
+            + speed_ms * config.reaction_time_s
+            + config.safety_margin_m)
+
+
 class Driver:
     """Decides acceleration for one tick."""
 
