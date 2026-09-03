@@ -13,9 +13,9 @@ Four panels: acceleration against time and against distance, then braking
 against each. Speed against distance is the one that matters for headway - it
 says how much of a section a train spends getting up to line speed.
 
-SVG comes out of trainsim.analysis.chart, which writes the markup directly:
-the simulator has no plotting dependency and this is not worth acquiring one
-for.
+SVG comes out of trainsim.analysis.chart, which draws with matplotlib - the
+only thing here outside the standard library, and needed only for the pictures.
+See requirements-optional.txt.
 """
 
 import sys

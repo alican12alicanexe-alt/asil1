@@ -1,47 +1,53 @@
-"""A small line-chart renderer that writes SVG directly.
-
-The simulator has no plotting dependency and is not worth acquiring one for:
-everything drawn here is a few polylines on a grid. So this does the arithmetic
-- data coordinates to pixels, a readable tick step, a legend - and emits the
-markup, and the scripts that use it worry about what to plot rather than how.
+"""A small line-chart renderer, drawn with matplotlib.
 
 Two things only: :class:`Chart`, which is one panel with axes and any number of
-lines on it, and :func:`document`, which lays panels out on a page.
+lines on it, and :func:`document`, which lays panels out on a page and returns
+the SVG for it. The scripts that use it worry about what to plot rather than
+how.
+
+matplotlib is the one thing in this project that is not the standard library,
+and it is needed only to *draw*. Nothing under ``trainsim/core`` or
+``trainsim/scenario`` imports this module, so a run, a ``--check`` and a
+``--log`` spreadsheet all still work on a bare Python install with pip blocked -
+which was the constraint the hand-written SVG writer here used to serve. What
+that writer could not do is a plotting library's ordinary work: tick location,
+label placement, layout that reflows when a panel changes size.
+
+    pip install --user -r requirements-optional.txt
 """
+
+try:
+    from matplotlib.backends.backend_svg import FigureCanvasSVG
+    from matplotlib.figure import Figure
+    from matplotlib.ticker import MaxNLocator
+except ImportError as exc:  # keep the cause; say what to do about it
+    raise ImportError(
+        "the graphs are drawn with matplotlib, which is not installed: "
+        "pip install --user -r requirements-optional.txt"
+    ) from exc
+
+from io import StringIO
 
 #: Line colours, in the order series are added. Chosen to stay distinguishable
 #: printed in grey as well as on screen.
 PALETTE = ("#1a6dcc", "#c0392b", "#1a8f5a", "#e08b1a", "#7b4fb5", "#0f8f9e",
            "#b5417a", "#5c6b7a")
 
-_STYLE = (
-    "text{font-family:ui-sans-serif,system-ui,sans-serif}"
-    ".ti{font-size:15px;font-weight:600;fill:#111}"
-    ".no{font-size:11px;fill:#666}"
-    ".ax{font-size:11px;fill:#555}"
-    ".lg{font-size:11px;text-anchor:end}"
-    ".g{stroke:#e6e6e6;stroke-width:1}"
-    ".ln{stroke:#999;stroke-width:1}"
-    ".h{font-size:19px;font-weight:700;fill:#111}"
-    ".s{font-size:12px;fill:#444}"
-)
+#: Chart chrome. The lines carry the identity; the grid, the axes and the text
+#: stay out of their way, and none of them borrows a series colour.
+GRID = "#e6e6e6"
+AXIS = "#999999"
+INK = "#111111"
+MUTED = "#666666"
+LABEL = "#555555"
 
-
-def nice_step(span, target=6):
-    """A round tick step giving roughly ``target`` gridlines across ``span``.
-
-    Rounds up to 1, 2 or 5 times a power of ten, which is what makes an axis
-    read 0/20/40 rather than 0/17/34.
-    """
-    if span <= 0:
-        return 1.0
-    rough = span / float(target)
-    power = 10.0 ** (len(str(int(rough))) - 1 if rough >= 1 else
-                     -len(str(int(1.0 / rough))))
-    for multiple in (1.0, 2.0, 5.0, 10.0):
-        if power * multiple >= rough:
-            return power * multiple
-    return power * 10.0
+#: Pixels per inch, so a panel declared 470x250 is 470x250 pixels of plotting
+#: area. Everything outside it - titles, ticks, axis labels - is allowed for on
+#: top of that, which is what PAD_IN is.
+DPI = 100.0
+PAD_X_IN = 1.15
+PAD_Y_IN = 1.25
+HEADER_IN = 1.0
 
 
 class Chart:
@@ -72,127 +78,121 @@ class Chart:
         self.series.append((label, points, colour, dash))
         return self
 
-    # ------------------------------------------------------------------ bounds
-
-    def _bounds(self):
-        xs = [p[0] for _, pts, _, _ in self.series for p in pts]
-        ys = [p[1] for _, pts, _, _ in self.series for p in pts]
-        if not xs:
-            return 0.0, 1.0, 0.0, 1.0
-        x0 = self.x_min if self.x_min is not None else min(xs)
-        x1 = self.x_max if self.x_max is not None else max(xs)
-        y0 = self.y_min if self.y_min is not None else min(ys)
-        y1 = self.y_max if self.y_max is not None else max(ys) * 1.08
-        if x1 <= x0:
-            x1 = x0 + 1.0
-        if y1 <= y0:
-            y1 = y0 + 1.0
-        return x0, x1, y0, y1
-
     # ------------------------------------------------------------------ render
 
-    def render(self, ox, oy):
-        """SVG for this panel with its top-left plotting corner at (ox, oy)."""
-        pw, ph = self.width, self.height
-        x0, x1, y0, y1 = self._bounds()
-
-        def px(v):
-            return ox + (v - x0) / (x1 - x0) * pw
-
-        def py(v):
-            return oy + ph - (v - y0) / (y1 - y0) * ph
-
-        out = ['<text x="%d" y="%d" class="ti">%s</text>' % (ox, oy - 24, self.title)]
-        if self.note:
-            out.append('<text x="%d" y="%d" class="no">%s</text>'
-                       % (ox, oy - 8, self.note))
-
-        step = nice_step(x1 - x0)
-        tick = (int(x0 / step)) * step
-        while tick <= x1 + 1e-9:
-            if tick >= x0 - 1e-9:
-                gx = px(tick)
-                out.append('<line x1="%.1f" y1="%d" x2="%.1f" y2="%d" class="g"/>'
-                           % (gx, oy, gx, oy + ph))
-                out.append('<text x="%.1f" y="%d" class="ax" '
-                           'text-anchor="middle">%s</text>'
-                           % (gx, oy + ph + 16, _label(tick, step)))
-            tick += step
-
-        step = nice_step(y1 - y0, target=5)
-        tick = (int(y0 / step)) * step
-        while tick <= y1 + 1e-9:
-            if tick >= y0 - 1e-9:
-                gy = py(tick)
-                out.append('<line x1="%d" y1="%.1f" x2="%d" y2="%.1f" class="g"/>'
-                           % (ox, gy, ox + pw, gy))
-                out.append('<text x="%d" y="%.1f" class="ax" '
-                           'text-anchor="end">%s</text>'
-                           % (ox - 6, gy + 4, _label(tick, step)))
-            tick += step
-
-        out.append('<line x1="%d" y1="%d" x2="%d" y2="%d" class="ln"/>'
-                   % (ox, oy, ox, oy + ph))
-        out.append('<line x1="%d" y1="%d" x2="%d" y2="%d" class="ln"/>'
-                   % (ox, oy + ph, ox + pw, oy + ph))
-        out.append('<text x="%.0f" y="%d" class="ax" text-anchor="middle">%s</text>'
-                   % (ox + pw / 2.0, oy + ph + 36, self.xlabel))
-        out.append('<text x="%d" y="%.0f" class="ax" text-anchor="middle" '
-                   'transform="rotate(-90 %d %.0f)">%s</text>'
-                   % (ox - 44, oy + ph / 2.0, ox - 44, oy + ph / 2.0, self.ylabel))
-
-        legend_y = oy + 14
+    def draw(self, ax):
+        """Draw this panel onto ``ax``, a matplotlib axes."""
+        labelled = []
         for label, points, colour, dash in self.series:
-            path = " ".join("%s%.1f,%.1f" % ("M" if i == 0 else "L",
-                                             px(x), py(y))
-                            for i, (x, y) in enumerate(points))
-            out.append('<path d="%s" fill="none" stroke="%s" stroke-width="%s" '
-                       'stroke-linejoin="round"%s/>'
-                       % (path, colour, "1.6" if dash else "2",
-                          ' stroke-dasharray="6 4"' if dash else ""))
+            xs = [p[0] for p in points]
+            ys = [p[1] for p in points]
+            ax.plot(xs, ys, color=colour,
+                    linewidth=1.6 if dash else 2.0,
+                    linestyle=(0, (6, 4)) if dash else "solid",
+                    solid_joinstyle="round",
+                    label=label or "_nolegend_")
             if label:
-                out.append('<text x="%d" y="%d" class="lg" fill="%s">%s</text>'
-                           % (ox + pw - 8, legend_y, colour, label))
-                legend_y += 16
-        return "\n".join(out)
+                labelled.append((label, xs[-1], ys[-1], colour))
+
+        ax.set_title(self.title, loc="left", pad=26, color=INK,
+                     fontsize=15, fontweight="bold")
+        if self.note:
+            ax.text(0.0, 1.025, self.note, transform=ax.transAxes,
+                    ha="left", va="bottom", fontsize=11, color=MUTED)
+        ax.set_xlabel(self.xlabel, fontsize=11, color=LABEL, labelpad=8)
+        ax.set_ylabel(self.ylabel, fontsize=11, color=LABEL, labelpad=8)
+
+        # 1/2/5 times a power of ten, which is what keeps an axis reading
+        # 0/20/40 rather than 0/17/34.
+        ax.xaxis.set_major_locator(MaxNLocator(nbins=6, steps=[1, 2, 5, 10]))
+        ax.yaxis.set_major_locator(MaxNLocator(nbins=5, steps=[1, 2, 5, 10]))
+        ax.tick_params(labelsize=11, colors=LABEL, length=0)
+        ax.grid(True, color=GRID, linewidth=1.0)
+        ax.set_axisbelow(True)
+        for side in ("top", "right"):
+            ax.spines[side].set_visible(False)
+        for side in ("left", "bottom"):
+            ax.spines[side].set_color(AXIS)
+            ax.spines[side].set_linewidth(1.0)
+
+        ax.margins(y=0.08)
+        if self.x_min is not None:
+            ax.set_xlim(left=self.x_min)
+        if self.x_max is not None:
+            ax.set_xlim(right=self.x_max)
+        if self.y_min is not None:
+            ax.set_ylim(bottom=self.y_min)
+        if self.y_max is not None:
+            ax.set_ylim(top=self.y_max)
+
+        # Two or more series need telling apart, so they get a legend. One does
+        # not: it gets its name at the end of its own line, which is one less
+        # thing between the reader and the shape of it.
+        if len(labelled) > 1:
+            # A panel is usually full of line, so the legend sits on top of
+            # some of it. White behind and no border keeps it readable without
+            # drawing a box the eye has to get past.
+            ax.legend(loc="upper right", fontsize=11, labelcolor=INK,
+                      handlelength=1.6, borderpad=0.3, labelspacing=0.35,
+                      frameon=True, facecolor="#ffffff", edgecolor="none",
+                      framealpha=0.85)
+        elif labelled:
+            label, x, y, colour = labelled[0]
+            ax.annotate(label, (x, y), textcoords="offset points",
+                        xytext=(-4, 7), ha="right", fontsize=11, color=INK)
 
 
-def _label(value, step):
-    """Tick text with only as many decimals as the step needs."""
-    if step >= 1.0:
-        return "%.0f" % (value,)
-    if step >= 0.1:
-        return "%.1f" % (value,)
-    return "%.2f" % (value,)
-
-
-def document(charts, heading="", subheading="", columns=2,
-             margin_x=120, margin_y=130, gap_x=100, gap_y=120):
-    """Lay ``charts`` out in a grid and return one SVG document.
+def figure(charts, heading="", subheading="", columns=2):
+    """Lay ``charts`` out in a grid and return the matplotlib figure.
 
     Panels are placed left to right, top to bottom. The page is sized from what
     was actually placed, so a run with three panels is not a page with a hole in
-    it.
+    it, and a grid that does not fill its last row leaves no empty axes behind.
+
+    Separate from :func:`document` so the same page can go to any backend
+    matplotlib has - a PNG to look at while working on it, say - without the
+    caller reaching into how it was built.
     """
     if not charts:
         raise ValueError("nothing to draw")
+    columns = min(columns, len(charts))
     rows = (len(charts) + columns - 1) // columns
-    pw = max(c.width for c in charts)
-    ph = max(c.height for c in charts)
-    width = margin_x + columns * pw + (columns - 1) * gap_x + 60
-    height = margin_y + rows * ph + (rows - 1) * gap_y + 60
+    panel_w = max(c.width for c in charts) / DPI
+    panel_h = max(c.height for c in charts) / DPI
+    header = HEADER_IN if (heading or subheading) else 0.0
 
-    out = ['<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" '
-           'viewBox="0 0 %d %d">' % (width, height, width, height),
-           "<style>%s</style>" % (_STYLE,),
-           '<rect width="100%" height="100%" fill="#fff"/>']
-    if heading:
-        out.append('<text x="%d" y="34" class="h">%s</text>' % (margin_x - 50, heading))
-    if subheading:
-        out.append('<text x="%d" y="54" class="s">%s</text>' % (margin_x - 50, subheading))
+    fig = Figure(figsize=(columns * (panel_w + PAD_X_IN),
+                          rows * (panel_h + PAD_Y_IN) + header),
+                 dpi=DPI, layout="constrained")
+    fig.patch.set_facecolor("#ffffff")
+    axes = fig.subplots(rows, columns, squeeze=False)
     for index, chart in enumerate(charts):
-        ox = margin_x + (index % columns) * (pw + gap_x)
-        oy = margin_y + (index // columns) * (ph + gap_y)
-        out.append(chart.render(ox, oy))
-    out.append("</svg>")
-    return "\n".join(out)
+        chart.draw(axes[index // columns][index % columns])
+    for spare in range(len(charts), rows * columns):
+        axes[spare // columns][spare % columns].set_visible(False)
+
+    if header:
+        # Keep the layout engine out of the top strip rather than leaving the
+        # heading to be laid over the first panel's own title. A suptitle would
+        # reserve the band but only holds one piece of text, and these two are
+        # not the same size.
+        band = header / fig.get_figheight()
+        fig.get_layout_engine().set(rect=(0.0, 0.0, 1.0, 1.0 - band))
+        if heading:
+            fig.text(0.012, 1.0 - 0.30 * band, heading, ha="left", va="center",
+                     fontsize=19, fontweight="bold", color=INK)
+        if subheading:
+            # wrap: a subheading naming several trains and a sampling
+            # interval outgrows a two-column page, and running off the edge
+            # loses the end of it.
+            fig.text(0.012, 1.0 - 0.68 * band, subheading, ha="left",
+                     va="center", fontsize=12, color="#444444", wrap=True)
+
+    return fig
+
+
+def document(charts, heading="", subheading="", columns=2):
+    """The SVG for :func:`figure`, as a string ready to write to a file."""
+    out = StringIO()
+    FigureCanvasSVG(figure(charts, heading, subheading, columns)).print_svg(out)
+    return out.getvalue()

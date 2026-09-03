@@ -28,8 +28,10 @@ written in.
 The data is the same per-tick trace that ``run.py --log`` writes, so a picture
 and a spreadsheet of the same run agree by construction.
 
-SVG is written directly rather than through a plotting library - see
-trainsim/analysis/chart.
+Drawn with matplotlib, through trainsim/analysis/chart. That is the one thing
+here outside the standard library, and it is needed only to draw: running a
+scenario and writing its trace need nothing installed. See
+requirements-optional.txt.
 """
 
 import argparse

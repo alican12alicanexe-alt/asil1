@@ -1,13 +1,19 @@
-# NOTHING HERE IS REQUIRED.
+# THE SIMULATOR NEEDS NONE OF THIS.
 #
 # The simulator and its tkinter schematic view run on a bare Python install with
 # no packages at all - that is a deliberate constraint, so the project works on a
-# locked-down machine where pip may be blocked.
+# locked-down machine where pip may be blocked. Running a scenario, checking one,
+# comparing systems and writing a trace all hold to it.
 #
-# These only make things nicer, and all install without admin rights:
+# The one exception is drawing: the charts are matplotlib's, so graph.py and
+# _plot_curves.py do need it installed. Nothing else does.
+#
+# All of these install without admin rights:
 #     pip install --user -r requirements-optional.txt
 
 PyYAML>=5.4      # a faster, fully-featured YAML parser; there is a built-in
                  # fallback subset parser (trainsim/scenario/minyaml.py) if absent
-matplotlib>=3.5  # Phase 2: time-distance (Marey) diagrams and capacity charts
+matplotlib>=3.5  # draws every chart: graph.py and _plot_curves.py need it, and
+                 # nothing else does - a run, a --check and a --log spreadsheet
+                 # all still work with none of these installed
 pygame>=2.1      # an alternative rendering backend, if smoother zoom/pan is wanted

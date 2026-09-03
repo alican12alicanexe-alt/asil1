@@ -1,4 +1,4 @@
-"""The SVG chart renderer, and the run graphs built on it."""
+"""The chart renderer, and the run graphs built on it."""
 
 import unittest
 import xml.etree.ElementTree as ET
@@ -7,38 +7,38 @@ import support  # noqa: F401  - puts the package on the path
 
 import graph
 from trainsim.analysis import trace
-from trainsim.analysis.chart import Chart, document, nice_step
+from trainsim.analysis.chart import Chart, document, figure
 
 SVG = "{http://www.w3.org/2000/svg}"
 
 
-class TestNiceStep(unittest.TestCase):
+class TestChart(unittest.TestCase):
 
-    def test_a_step_is_one_two_or_five_times_a_power_of_ten(self):
+    def test_a_chart_draws_one_line_per_series(self):
+        chart = (Chart("t", "x", "y")
+                 .line("a", [(0, 0), (1, 5), (2, 3)])
+                 .line("b", [(0, 2), (1, 1), (2, 4)]))
+        axes = figure([chart]).axes[0]
+        self.assertEqual([line.get_label() for line in axes.get_lines()],
+                         ["a", "b"])
+
+    def test_the_axis_reads_in_ones_twos_or_fives(self):
         """What keeps an axis reading 0/20/40 rather than 0/17/34."""
-        for span in (0.4, 3.0, 7.0, 60.0, 130.0, 4200.0):
-            step = nice_step(span)
-            scaled = step
+        chart = Chart("t", "x", "y").line("a", [(0, 0), (130, 4200)])
+        axes = figure([chart]).axes[0]
+        for ticks in (axes.get_xticks(), axes.get_yticks()):
+            steps = {round(b - a, 6) for a, b in zip(ticks, ticks[1:])}
+            self.assertEqual(len(steps), 1, list(ticks))
+            scaled = steps.pop()
             while scaled < 1.0:
                 scaled *= 10.0
             while scaled >= 10.0:
                 scaled /= 10.0
-            self.assertIn(round(scaled, 6), (1.0, 2.0, 5.0), span)
+            self.assertIn(round(scaled, 6), (1.0, 2.0, 5.0), list(ticks))
 
-    def test_a_step_divides_the_span_into_a_readable_number_of_ticks(self):
-        for span in (3.0, 60.0, 130.0, 4200.0):
-            self.assertTrue(2 <= span / nice_step(span) <= 12, span)
-
-    def test_an_empty_span_does_not_divide_by_zero(self):
-        self.assertGreater(nice_step(0.0), 0.0)
-
-
-class TestChart(unittest.TestCase):
-
-    def test_a_chart_renders_as_well_formed_svg(self):
-        chart = Chart("t", "x", "y").line("a", [(0, 0), (1, 5), (2, 3)])
-        root = ET.fromstring("<svg xmlns='http://www.w3.org/2000/svg'>%s</svg>"
-                             % chart.render(0, 0))
+    def test_a_document_is_well_formed_svg(self):
+        body = document([Chart("t", "x", "y").line("a", [(0, 0), (1, 5)])])
+        root = ET.fromstring(body)
         self.assertTrue(root.findall(".//" + SVG + "path"))
 
     def test_an_empty_series_is_dropped_rather_than_drawn(self):
@@ -62,13 +62,20 @@ class TestChart(unittest.TestCase):
         for body in (one, four):
             ET.fromstring(body)
 
+    def test_a_part_full_last_row_leaves_no_empty_panel_behind(self):
+        drawn = figure([Chart(str(n), "x", "y").line("s", [(0, 0), (1, 1)])
+                        for n in range(3)]).axes
+        self.assertEqual([ax.get_visible() for ax in drawn],
+                         [True, True, True, False])
+
     def test_a_document_with_nothing_to_draw_is_an_error(self):
         with self.assertRaises(ValueError):
             document([])
 
 
 def _height(body):
-    return int(ET.fromstring(body).get("height"))
+    """The page height, without whatever unit matplotlib wrote it in."""
+    return float(ET.fromstring(body).get("height").rstrip("pt"))
 
 
 class TestRunGraph(unittest.TestCase):
