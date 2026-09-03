@@ -188,7 +188,7 @@ def nearest_ahead(train, others) -> Optional[Tuple[float, str]]:
         rear_entry = other.path.entry_at(max(0.0, other.rear_m))
         offset = max(0.0, other.rear_m) - rear_entry.start_m
         here = train.path.chainage_of(rear_entry.segment.id, offset,
-                                      near_m=max(0.0, other.rear_m))
+                                      near_m=train.chainage_m)
         if here is None or here <= train.chainage_m:
             continue
         if nearest is None or here < nearest[0]:
@@ -386,11 +386,12 @@ class Path:
         opposite line is correctly ignored.
 
         A lap comes back to the platform it left from, so on a circuit one
-        segment sits on the path twice and the question has two answers.
-        ``near_m`` chooses between them by how far the other train is along its
-        own lap: a train standing at the start of the circuit is at the start
-        occurrence, not one lap ahead at the end of this one. Without it the
-        leading train read the train 3 km behind it as a train 67 km in front.
+        segment sits on the path twice and the question has two answers: the
+        same train is a little way behind and most of a lap in front. ``near_m``
+        takes the nearer reading, which is the one that describes where the two
+        trains actually are - a train 3 km back is 3 km back, not 67 km ahead,
+        and a train standing at the platform a lap-finisher is coming into is
+        2 km ahead of it rather than a lap behind.
         """
         hits = [entry.start_m + offset_m for entry in self.entries
                 if entry.segment.id == segment_id]
