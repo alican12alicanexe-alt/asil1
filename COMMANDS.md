@@ -73,6 +73,27 @@ exactly the same results as an untraced one.
 The `.xlsx` writer is built in — the format is a zip of XML parts, and writing
 those is smaller than taking on a spreadsheet dependency for a debug log.
 
+## Explaining what held the trains
+
+`explain_log.py` reads the `reason` column of a `--log` trace and says what was
+governing each train, what each reason means, and where the ones that are the
+signalling holding a train back actually happen:
+
+```
+python run.py scenarios/ring --headless --log ring.csv --log-every 2
+python explain_log.py ring.csv
+```
+
+It groups the raw strings by kind - twelve trains stopped at twelve different
+signals is one row, not two hundred - and splits the timetable's own constraints
+(line speed, a booked call, a speed restriction) from the signalling's. What
+counts as the second is `RESTRAINT_MARKERS` in `trainsim/analysis/kpi.py`, the
+same list behind the `restrained` column of `--compare`, so the two reports
+cannot disagree. Stdlib only, and it reads a file rather than running anything.
+
+`python explain_log.py --selfcheck` checks the classifier against one real
+string of every kind the kernel emits.
+
 ## Graphing a run
 
 `graph.py` runs a scenario and draws what happened, as SVG:
