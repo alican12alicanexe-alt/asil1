@@ -1,9 +1,9 @@
 """Regenerate scenarios/ring/timetable.yaml - the lap.
 
 Every service on this railway is the same lap: away from Akyurt 1 on the up
-line, calling at all nine stations, round HS_EAST, back down the down line
-calling at all nine again, round HS_WEST, and into Akyurt 1 facing the way it
-set off. Nineteen calls, fifty-eight kilometres, no reversal anywhere.
+line, calling at all eleven stations, round HS_EAST, back down the down line
+calling at all eleven again, round HS_WEST, and into Akyurt 1 facing the way it
+set off. Twenty-two calls, seventy kilometres, no reversal anywhere.
 
 That is the difference from the out-and-back railways here. On those, a service
 begins and ends standing on a depot road, and the interval the line can be
@@ -39,10 +39,11 @@ from trainsim.scenario.builder import build_infrastructure
 from trainsim.scenario.loader import build_timetable, read_data_file
 
 BASE = 7 * 3600
-#: Thirty seconds at every station and a minute at Akyurt 1 at the end of the
-#: lap, which is the only call that is a terminus rather than a stop.
+#: Thirty seconds at every call, the last one included. A lap ends where it
+#: began and the train is not turned round there - it has already turned, twice,
+#: on the curves - so the final call is a station stop like the other twenty-one
+#: and is booked like one.
 DWELL = 30
-TURNROUND = 60
 READY_LEAD = 30
 #: Services in the flight. Twelve laps is enough traffic that trains meet each
 #: other everywhere on the circuit without the base timetable already fighting
@@ -57,17 +58,18 @@ STOCK = {"id": "EMU", "name": "Ring unit", "length_m": 120,
 INFRA = build_infrastructure(
     read_data_file(os.path.join(HERE, "infrastructure.yaml")))
 
-#: The nine stations in up-line order. A lap calls at every one of them twice,
-#: once on each road.
+#: The eleven stations in up-line order. A lap calls at every one of them
+#: twice, once on each road.
 STATIONS = ["AKYURT_1", "MACUNKOY_1", "GOLBASI_1", "TEKNOPARK_1", "AKYURT_2",
-            "MACUNKOY_2", "GOLBASI_2", "TEKNOPARK_2", "AKYURT_3"]
+            "MACUNKOY_2", "GOLBASI_2", "TEKNOPARK_2", "AKYURT_3", "MACUNKOY_3",
+            "GOLBASI_3"]
 
 #: ``(station, line, dwell)`` in the order a lap calls at them. The line moves
-#: with the train - up as far as Akyurt 3, down all the way back, and up again
+#: with the train - up as far as Gölbaşı 3, down all the way back, and up again
 #: for the last call, which is the same platform the lap started from.
 LAP = ([(station, "UP", DWELL) for station in STATIONS]
        + [(station, "DN", DWELL) for station in reversed(STATIONS)]
-       + [(STATIONS[0], "UP", TURNROUND)])
+       + [(STATIONS[0], "UP", DWELL)])
 
 
 def roads(station, line):
@@ -226,10 +228,10 @@ HEADER = '''# ring timetable - generated, do not edit by hand.
 #   python scenarios/ring/_generate_timetable.py
 #
 # %d laps of the circuit, booked %d seconds apart, all of them the same unit.
-# A lap is nineteen calls: nine stations out on the up line, round HS_EAST,
-# the same nine back on the down line, round HS_WEST, and into Akyurt 1 again
-# facing the way it set off. Every booked time is what that service achieves
-# with the railway to itself.
+# A lap is twenty-two calls: eleven stations out on the up line, round HS_EAST,
+# the same eleven back on the down line, round HS_WEST, and into Akyurt 1 again
+# facing the way it set off. Thirty seconds at every one. Every booked time is
+# what that service achieves with the railway to itself.
 
 '''
 

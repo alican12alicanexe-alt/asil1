@@ -8,11 +8,12 @@
 #
 # WHAT THIS SCENARIO IS FOR
 #
-# A capacity experiment on a railway with no ends. Twenty-nine kilometres each
-# way joined by a horseshoe at both ends, so a service is a fifty-eight
-# kilometre lap: out on the up line calling at nine stations, round HS_EAST,
-# back on the down line calling at the same nine, round HS_WEST, into Akyurt 1
-# facing the way it set off. Nothing reverses and nothing stands in a depot.
+# A capacity experiment on a railway with no ends. Thirty-six kilometres each
+# way joined by a horseshoe at both ends, so a service is a seventy kilometre
+# lap: out on the up line calling at eleven stations, round HS_EAST, back on the
+# down line calling at the same eleven, round HS_WEST, into Akyurt 1 facing the
+# way it set off. Twenty-two calls, thirty seconds at each. Nothing reverses and
+# nothing stands in a depot.
 #
 # The other two capacity railways here are out-and-back, and both of them ran
 # into the same thing: past a certain interval the constraint stopped being the
@@ -28,8 +29,8 @@
 # WHAT IT IS NOT
 #
 # Not an easy case for relative braking. Every train calls at every station -
-# eighteen stops in a lap, one about every three kilometres - so a good deal of
-# every lap is spent below line speed, and the benefit of relative-braking
+# twenty-two stops in a lap, one about every three kilometres - so a good deal
+# of every lap is spent below line speed, and the benefit of relative-braking
 # separation is bought with speed: in time it is about
 #
 #     v/2 x (1/b - 1/b_emergency)
@@ -44,29 +45,32 @@
 #
 # THE LAYOUT, IN ONE PLACE
 #
-#   route            29.0 km each way, 58.0 km to the lap
-#   stations         9, from km 3.0 to km 26.0, every 2.4 to 4.0 km
-#   line speed       80, over thirty irregular sections averaging 71
-#   crossovers       8 scissors, one in the middle of every gap between
+#   rails            36.0 km each way, km 0.0 to 36.0
+#   the lap          69.6 km - UP km 1.8 to 35.4, HS_EAST, DN km 34.2 to 0.6,
+#                    HS_WEST - so 34.8 km in each direction, curve included
+#   stations         11, from km 2.6 to km 33.4, every 2.5 to 4.0 km (mean 3.1)
+#   line speed       80, over thirty-seven irregular sections averaging 71
+#   crossovers       10 scissors, one in the middle of every gap between
 #                    neighbouring stations, at 40
-#   horseshoes       HS_EAST leaves UP at km 28.4 and rejoins DN at km 27.2
+#   horseshoes       HS_EAST leaves UP at km 35.4 and rejoins DN at km 34.2
 #                    HS_WEST leaves DN at km  0.6 and rejoins UP at km  1.8
 #                    1200 m apiece, at 50
 #   blocks           900 m
 #   platforms        2 faces per line at every station, 4 at Akyurt 1
 #   unit             120 m, 90 km/h, 1.0 accel, 1.0 service, 1.5 emergency
 #
-# A lap with the railway to itself takes 63 min 53 s, of which 10 min is
-# standing at platforms. That is 65 km/h while running and 54 km/h door to
-# door, which is what the irregular profile was aimed at.
+# A lap with the railway to itself takes 79 min 09 s, of which 11 min is
+# standing at platforms. That is 61 km/h while running and 53 km/h door to door
+# against a mean line limit of 71 - the gap between the two is what a stop every
+# three kilometres costs, and it is the reason a railway like this one is a
+# harder case for relative braking than a non-stop one.
 #
 # WHAT IT LOOKS LIKE BEFORE THE SWEEP
 #
 # The base timetable is twelve laps five minutes apart and runs all-green: no
 # violations, every train on time. Under fixed block the same flight is already
-# being checked at 300 s and still at 195 s; both cab systems are clean at 90 s
-# and virtual coupling at 60. Where each of them stops is what _sweep_headway.py
-# is for - these are spot checks, not the answer.
+# being checked at 300 s; both cab systems are clean well below that. Where each
+# of them stops is what _sweep_headway.py is for.
 #
 # THE STATIONS ARE NOT EVENLY SPACED, AND THAT IS DELIBERATE
 #
@@ -76,11 +80,11 @@
 # and it is also why those railways cannot answer the question this one is for.
 # A real timetable has a tightest place; what an operator wants to know is
 # whether a signalling system helps at it. Uneven spacing puts one there on
-# purpose - the 2.4 km between Teknopark 2 and Akyurt 3 is where this circuit
+# purpose - the 2.5 km between Akyurt 1 and Macunköy 1 is where this circuit
 # will bind first - and the systems can then be compared at it.
 
 name: ring
-description: "A 58 km circuit with nine stations and a horseshoe at each end - a stopping-service capacity test with no terminus to hide behind."
+description: "A 70 km circuit with eleven stations and a horseshoe at each end - a stopping-service capacity test with no terminus to hide behind."
 
 infrastructure: infrastructure.yaml
 timetable: timetable.yaml
@@ -88,7 +92,7 @@ timetable: timetable.yaml
 simulation:
   dt: 1.0
   start_time: "06:57:00"
-  duration_s: 9000
+  duration_s: 12000
   strict: false
 
 signalling:

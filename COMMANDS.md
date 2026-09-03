@@ -377,16 +377,19 @@ python scenarios/capacity/_sweep_headway.py virtual_coupling
 
 ### `scenarios/ring` — a circuit with no ends
 
-Twenty-nine kilometres each way joined by a horseshoe at both ends, so a
-service is a 58 km lap: out on the up line calling at nine stations, round
-`HS_EAST`, back on the down line calling at the same nine, round `HS_WEST`, and
-into Akyurt 1 facing the way it set off. Nothing reverses and nothing stands in
-a depot, so the interval is never floored by a despatch sequence — which is
-what the two out-and-back railways below eventually run into.
+Thirty-six kilometres each way joined by a horseshoe at both ends, so a
+service is a 70 km lap: out on the up line calling at eleven stations, round
+`HS_EAST`, back on the down line calling at the same eleven, round `HS_WEST`,
+and into Akyurt 1 facing the way it set off — twenty-two calls, thirty seconds
+at each. Nothing reverses and nothing stands in a depot, so the interval is
+never floored by a despatch sequence, which is what the two out-and-back
+railways below eventually run into.
 
-Line speed 80 over thirty irregular sections averaging 71; eight scissors
+Line speed 80 over thirty-seven irregular sections averaging 71; ten scissors
 crossovers, one in the middle of every gap between neighbouring stations;
-stations 2.4 to 4.0 km apart. A lap with the railway to itself is 63 min 53 s.
+stations 2.5 to 4.0 km apart. A lap with the railway to itself is 79 min 09 s —
+61 km/h while running, which is what a stop every three kilometres costs
+against a mean line limit of 71.
 
 ```
 python run.py scenarios/ring --check

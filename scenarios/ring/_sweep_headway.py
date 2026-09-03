@@ -28,7 +28,7 @@ Three numbers per row:
                the signalling, and the first thing to move as trains close up.
                Reported over the baseline the flight pays with the railway to
                itself, which on a stopping service is not small: every lap is
-               eighteen approaches to a platform.
+               twenty-two approaches to a platform.
   mean delay   how late the average train was at the end of its lap.
   worst        the worst single arrival, which is what a passenger notices.
 
@@ -51,9 +51,9 @@ from trainsim.core import signalling as reg
 from trainsim.scenario.loader import build_timetable
 
 #: Enough time after the last train is away for it to finish its lap - a lap is
-#: about 64 minutes with the railway to itself, and rather longer when the
+#: about 79 minutes with the railway to itself, and rather longer when the
 #: circuit is full.
-TAIL_S = 6000
+TAIL_S = 7200
 
 #: Wide enough at the top to start clear of anything this circuit might hold,
 #: and fine enough at the bottom to show it degrading rather than simply
@@ -136,7 +136,7 @@ def main(system="fixed_block_3aspect"):
     # signals from one on the other.
     alone = sum(run(times, HEADWAYS[0], system, indices=[n]).total_restrained_s
                 for n in range(COUNT))
-    print("%d laps of the circuit, every one calling at all nine stations twice, "
+    print("%d laps of the circuit, every one calling at all eleven stations twice, "
           "under %s" % (COUNT, system))
     print("the flight alone is restrained %.0f s at the controlled station "
           "signals; the column below is over that.\n" % alone)
