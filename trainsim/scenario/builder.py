@@ -434,14 +434,21 @@ class _Builder(object):
         return self._track_length(original) - chainage
 
     def _track_length(self, track_id: str) -> float:
-        """How long a track is, before it has been laid out."""
+        """How long a track is, before it has been laid out.
+
+        End to end of the rails, which is the stations it serves unless
+        ``runs_from_km`` or ``runs_to_km`` carry them further - a line with a
+        horseshoe beyond its terminus has rails past its last platform, and a
+        mirror laid over it counts its chainage from the end of those rails
+        rather than from the platform.
+        """
         track = self.tracks_spec[track_id]
         serves = list(track.get("serves") or [])
         if len(serves) < 2:
             raise InfrastructureError(
                 "track %r must serve at least two stations" % (track_id,))
-        first = float(self.stations_spec[serves[0]]["km"])
-        last = float(self.stations_spec[serves[-1]]["km"])
+        first = self._runs_from_km(track, serves)
+        last = self._runs_to_km(track, serves)
         return abs(last - first) * 1000.0
 
     def _emit_mirrors(self) -> None:

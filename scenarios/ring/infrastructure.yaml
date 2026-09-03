@@ -1,0 +1,271 @@
+# ring - a short, dense circuit worked as a continuous loop.
+#
+# Twenty-nine kilometres of railway each way, joined at both ends by a
+# horseshoe, so a train runs out on the up line, round the curve, back on the
+# down line, round the other curve, and arrives where it started facing the way
+# it set off. Nothing reverses and nobody changes ends: the whole route is one
+# direction of travel, and the fifty-eight kilometres of it are a lap.
+#
+#            HS_WEST                                            HS_EAST
+#             ,---.                                              ,---.
+#   UP  km 0 (     >--- AKYURT 1 ... AKYURT 3 -------------------<     ) km 29
+#   DN        `---<-------------------------------------------------`
+#
+#             AK1   MA1   GO1   TE1   AK2   MA2   GO2   TE2   AK3
+#   km        3.0   5.5   8.6  11.4  15.4  17.9  20.7  23.5  26.0
+#                X     X     X     X     X     X     X     X
+#   km        4.25  7.05 10.00 13.40 16.65 19.30 22.10 24.75
+#
+# X is a scissors crossover, one in every gap between neighbouring stations and
+# placed at the middle of it, so a train can change lines anywhere on the
+# circuit rather than only at the ends.
+#
+# WHY A RING
+#
+# The other capacity railways here are out-and-back: a train runs depot to
+# depot and stops, and the measurement is of one flight of trains passing over
+# a line once. That leaves the ends of the line doing something no signalling
+# system can help with - trains standing on a depot road, accelerating from
+# rest - and on scenarios/express that despatch sequence turned out to be the
+# binding constraint rather than the distance between trains.
+#
+# A ring has no ends. Every train is always running, the up line and the down
+# line are both fully worked at once, and the only places a train waits are
+# places another train is in the way. That is the quantity a signalling
+# comparison wants.
+#
+# WHY THE HORSESHOES ARE PART OF THE GEOMETRY
+#
+# They are ``turning_loops``, not decoration and not crossovers. A crossover
+# between the up and the down line lays four movements, because a diagonal can
+# be traversed either way; a horseshoe is one-way by construction and lays one.
+# See _plan_turning_loops in trainsim/scenario/builder.py.
+#
+# The curve leaves one road at ``km`` and rejoins the other ``length_m``
+# further along the joining road's own direction, so it comes back short of
+# where it left:
+#
+#   HS_EAST  leaves UP at km 28.4, rejoins DN at km 27.2
+#   HS_WEST  leaves DN at km  0.6, rejoins UP at km  1.8
+#
+# Both ends of a curve need a block boundary, and a platform zone is one
+# segment with a stopping mark on it - there is nowhere in the middle of it for
+# a signal to stand. That is why the rails run from km 0 to km 29 while the
+# outermost stations are at km 3.0 and km 26.0: ``runs_from_km`` and
+# ``runs_to_km`` open both ends so the curves have somewhere to attach.
+#
+# WHY THE SPEED PROFILE IS IRREGULAR
+#
+# Line speed is 80 and the profile never sits at it for long: thirty sections
+# of roughly a kilometre each, weighted towards the top of the range - fourteen
+# at 80, nine at 70, four at 60, three at 50. The mean of the limits is 71 and
+# a train that has to brake for each change and accelerate out of it achieves
+# rather less, which is the point. A flat 80 would make this a test of nothing
+# but the following distance; a sawtooth would make every train brake in the
+# same places and measure the geography instead of the signalling. An irregular
+# profile puts the two together, which is what a real railway does.
+#
+# Nothing here braces a crossover: the crossover carries its own 40 and that
+# limit belongs to the train taking it. A train staying on its own line runs
+# past the pointwork at whatever the profile allows.
+
+name: ring
+
+defaults:
+  # 700 m rather than the kilometre the other scenarios use. A platform zone is
+  # one segment with a stopping mark on it, so no signal can stand inside it,
+  # and the tightest gaps here are 2.4 km with a 1 km crossover footprint in
+  # the middle: a 1 km zone left only 250 m between the crossover and the zone,
+  # which is less than the 339 m a train needs to stop from 80 and therefore
+  # not signalable. 700 m leaves 350 to 400.
+  platform_zone_m: 700
+  block_length_m: 900
+  max_speed_kmh: 80
+  stop_margin_m: 30
+
+stations:
+  - {id: AKYURT_1,    name: "Akyurt 1",    km:  3.0}
+  - {id: MACUNKOY_1,  name: "Macunköy 1",  km:  5.5}
+  - {id: GOLBASI_1,   name: "Gölbaşı 1",   km:  8.6}
+  - {id: TEKNOPARK_1, name: "Teknopark 1", km: 11.4}
+  - {id: AKYURT_2,    name: "Akyurt 2",    km: 15.4}
+  - {id: MACUNKOY_2,  name: "Macunköy 2",  km: 17.9}
+  - {id: GOLBASI_2,   name: "Gölbaşı 2",   km: 20.7}
+  - {id: TEKNOPARK_2, name: "Teknopark 2", km: 23.5}
+  - {id: AKYURT_3,    name: "Akyurt 3",    km: 26.0}
+
+tracks:
+  - id: UP
+    direction: up
+    y: 0.0
+    max_speed_kmh: 80
+    block_length_m: 900
+    # The rails carry on past the outermost platforms at both ends, because
+    # that is where the horseshoes attach and a curve cannot attach inside a
+    # platform zone.
+    runs_from_km: 0.0
+    runs_to_km: 29.0
+    serves: [AKYURT_1, MACUNKOY_1, GOLBASI_1, TEKNOPARK_1, AKYURT_2,
+             MACUNKOY_2, GOLBASI_2, TEKNOPARK_2, AKYURT_3]
+    # Thirty sections of about a kilometre, weighted towards the top of the
+    # range and deliberately not in any order. The kilometres are the same for
+    # both lines - a limit is a property of the rail - so the down line carries
+    # the same list even though its chainage runs the other way.
+    speed_limits:
+      - {from_km:  0.00, to_km:  1.00, max_speed_kmh: 70}
+      - {from_km:  1.00, to_km:  1.95, max_speed_kmh: 80}
+      - {from_km:  1.95, to_km:  2.90, max_speed_kmh: 80}
+      - {from_km:  2.90, to_km:  3.85, max_speed_kmh: 60}
+      - {from_km:  3.85, to_km:  4.80, max_speed_kmh: 70}
+      - {from_km:  4.80, to_km:  5.90, max_speed_kmh: 80}
+      - {from_km:  5.90, to_km:  6.85, max_speed_kmh: 80}
+      - {from_km:  6.85, to_km:  7.70, max_speed_kmh: 50}
+      - {from_km:  7.70, to_km:  8.65, max_speed_kmh: 70}
+      - {from_km:  8.65, to_km:  9.75, max_speed_kmh: 80}
+      - {from_km:  9.75, to_km: 10.70, max_speed_kmh: 80}
+      - {from_km: 10.70, to_km: 11.65, max_speed_kmh: 70}
+      - {from_km: 11.65, to_km: 12.55, max_speed_kmh: 60}
+      - {from_km: 12.55, to_km: 13.65, max_speed_kmh: 80}
+      - {from_km: 13.65, to_km: 14.60, max_speed_kmh: 80}
+      - {from_km: 14.60, to_km: 15.50, max_speed_kmh: 70}
+      - {from_km: 15.50, to_km: 16.45, max_speed_kmh: 80}
+      - {from_km: 16.45, to_km: 17.25, max_speed_kmh: 50}
+      - {from_km: 17.25, to_km: 18.30, max_speed_kmh: 70}
+      - {from_km: 18.30, to_km: 19.35, max_speed_kmh: 80}
+      - {from_km: 19.35, to_km: 20.30, max_speed_kmh: 60}
+      - {from_km: 20.30, to_km: 21.25, max_speed_kmh: 70}
+      - {from_km: 21.25, to_km: 22.35, max_speed_kmh: 80}
+      - {from_km: 22.35, to_km: 23.30, max_speed_kmh: 80}
+      - {from_km: 23.30, to_km: 24.15, max_speed_kmh: 50}
+      - {from_km: 24.15, to_km: 25.10, max_speed_kmh: 70}
+      - {from_km: 25.10, to_km: 26.15, max_speed_kmh: 80}
+      - {from_km: 26.15, to_km: 27.05, max_speed_kmh: 60}
+      - {from_km: 27.05, to_km: 28.00, max_speed_kmh: 70}
+      - {from_km: 28.00, to_km: 29.00, max_speed_kmh: 80}
+
+  - id: DN
+    direction: down
+    y: 0.4
+    max_speed_kmh: 80
+    block_length_m: 900
+    runs_from_km: 29.0
+    runs_to_km: 0.0
+    serves: [AKYURT_3, TEKNOPARK_2, GOLBASI_2, MACUNKOY_2, AKYURT_2,
+             TEKNOPARK_1, GOLBASI_1, MACUNKOY_1, AKYURT_1]
+    speed_limits:
+      - {from_km:  0.00, to_km:  1.00, max_speed_kmh: 70}
+      - {from_km:  1.00, to_km:  1.95, max_speed_kmh: 80}
+      - {from_km:  1.95, to_km:  2.90, max_speed_kmh: 80}
+      - {from_km:  2.90, to_km:  3.85, max_speed_kmh: 60}
+      - {from_km:  3.85, to_km:  4.80, max_speed_kmh: 70}
+      - {from_km:  4.80, to_km:  5.90, max_speed_kmh: 80}
+      - {from_km:  5.90, to_km:  6.85, max_speed_kmh: 80}
+      - {from_km:  6.85, to_km:  7.70, max_speed_kmh: 50}
+      - {from_km:  7.70, to_km:  8.65, max_speed_kmh: 70}
+      - {from_km:  8.65, to_km:  9.75, max_speed_kmh: 80}
+      - {from_km:  9.75, to_km: 10.70, max_speed_kmh: 80}
+      - {from_km: 10.70, to_km: 11.65, max_speed_kmh: 70}
+      - {from_km: 11.65, to_km: 12.55, max_speed_kmh: 60}
+      - {from_km: 12.55, to_km: 13.65, max_speed_kmh: 80}
+      - {from_km: 13.65, to_km: 14.60, max_speed_kmh: 80}
+      - {from_km: 14.60, to_km: 15.50, max_speed_kmh: 70}
+      - {from_km: 15.50, to_km: 16.45, max_speed_kmh: 80}
+      - {from_km: 16.45, to_km: 17.25, max_speed_kmh: 50}
+      - {from_km: 17.25, to_km: 18.30, max_speed_kmh: 70}
+      - {from_km: 18.30, to_km: 19.35, max_speed_kmh: 80}
+      - {from_km: 19.35, to_km: 20.30, max_speed_kmh: 60}
+      - {from_km: 20.30, to_km: 21.25, max_speed_kmh: 70}
+      - {from_km: 21.25, to_km: 22.35, max_speed_kmh: 80}
+      - {from_km: 22.35, to_km: 23.30, max_speed_kmh: 80}
+      - {from_km: 23.30, to_km: 24.15, max_speed_kmh: 50}
+      - {from_km: 24.15, to_km: 25.10, max_speed_kmh: 70}
+      - {from_km: 25.10, to_km: 26.15, max_speed_kmh: 80}
+      - {from_km: 26.15, to_km: 27.05, max_speed_kmh: 60}
+      - {from_km: 27.05, to_km: 28.00, max_speed_kmh: 70}
+      - {from_km: 28.00, to_km: 29.00, max_speed_kmh: 80}
+
+platforms:
+  # Two roads per line at every station, both of them through roads at line
+  # speed - an island platform with a face each side rather than a main and a
+  # loop. Two faces are what lets one train be held for another; making one of
+  # them slower would only mean alternate services were booked slower than
+  # their neighbours, and a flight of trains that are not all the same measures
+  # the timetable rather than the signalling. Akyurt 1 gets four a side because
+  # it is where every service starts and finishes - a lap begins and ends
+  # there, so its roads carry twice the traffic of anywhere else.
+  #
+  # The through roads sit on the main alignment and the loops fan outward, the
+  # up loops negative and the down loops positive, so the drawing reads the way
+  # a track diagram does.
+  - {id: AKYURT_1_UP_1, station: AKYURT_1, track: UP, length_m: 240, max_speed_kmh: 80, y_offset:  0.0}
+  - {id: AKYURT_1_UP_2, station: AKYURT_1, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.4}
+  - {id: AKYURT_1_UP_3, station: AKYURT_1, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.8}
+  - {id: AKYURT_1_UP_4, station: AKYURT_1, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -1.2}
+  - {id: AKYURT_1_DN_1, station: AKYURT_1, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.0}
+  - {id: AKYURT_1_DN_2, station: AKYURT_1, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.4}
+  - {id: AKYURT_1_DN_3, station: AKYURT_1, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.8}
+  - {id: AKYURT_1_DN_4, station: AKYURT_1, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  1.2}
+
+  - {id: MACUNKOY_1_UP_1, station: MACUNKOY_1, track: UP, length_m: 240, max_speed_kmh: 80, y_offset:  0.0}
+  - {id: MACUNKOY_1_UP_2, station: MACUNKOY_1, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.4}
+  - {id: MACUNKOY_1_DN_1, station: MACUNKOY_1, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.0}
+  - {id: MACUNKOY_1_DN_2, station: MACUNKOY_1, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.4}
+
+  - {id: GOLBASI_1_UP_1, station: GOLBASI_1, track: UP, length_m: 240, max_speed_kmh: 80, y_offset:  0.0}
+  - {id: GOLBASI_1_UP_2, station: GOLBASI_1, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.4}
+  - {id: GOLBASI_1_DN_1, station: GOLBASI_1, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.0}
+  - {id: GOLBASI_1_DN_2, station: GOLBASI_1, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.4}
+
+  - {id: TEKNOPARK_1_UP_1, station: TEKNOPARK_1, track: UP, length_m: 240, max_speed_kmh: 80, y_offset:  0.0}
+  - {id: TEKNOPARK_1_UP_2, station: TEKNOPARK_1, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.4}
+  - {id: TEKNOPARK_1_DN_1, station: TEKNOPARK_1, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.0}
+  - {id: TEKNOPARK_1_DN_2, station: TEKNOPARK_1, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.4}
+
+  - {id: AKYURT_2_UP_1, station: AKYURT_2, track: UP, length_m: 240, max_speed_kmh: 80, y_offset:  0.0}
+  - {id: AKYURT_2_UP_2, station: AKYURT_2, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.4}
+  - {id: AKYURT_2_DN_1, station: AKYURT_2, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.0}
+  - {id: AKYURT_2_DN_2, station: AKYURT_2, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.4}
+
+  - {id: MACUNKOY_2_UP_1, station: MACUNKOY_2, track: UP, length_m: 240, max_speed_kmh: 80, y_offset:  0.0}
+  - {id: MACUNKOY_2_UP_2, station: MACUNKOY_2, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.4}
+  - {id: MACUNKOY_2_DN_1, station: MACUNKOY_2, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.0}
+  - {id: MACUNKOY_2_DN_2, station: MACUNKOY_2, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.4}
+
+  - {id: GOLBASI_2_UP_1, station: GOLBASI_2, track: UP, length_m: 240, max_speed_kmh: 80, y_offset:  0.0}
+  - {id: GOLBASI_2_UP_2, station: GOLBASI_2, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.4}
+  - {id: GOLBASI_2_DN_1, station: GOLBASI_2, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.0}
+  - {id: GOLBASI_2_DN_2, station: GOLBASI_2, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.4}
+
+  - {id: TEKNOPARK_2_UP_1, station: TEKNOPARK_2, track: UP, length_m: 240, max_speed_kmh: 80, y_offset:  0.0}
+  - {id: TEKNOPARK_2_UP_2, station: TEKNOPARK_2, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.4}
+  - {id: TEKNOPARK_2_DN_1, station: TEKNOPARK_2, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.0}
+  - {id: TEKNOPARK_2_DN_2, station: TEKNOPARK_2, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.4}
+
+  - {id: AKYURT_3_UP_1, station: AKYURT_3, track: UP, length_m: 240, max_speed_kmh: 80, y_offset:  0.0}
+  - {id: AKYURT_3_UP_2, station: AKYURT_3, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.4}
+  - {id: AKYURT_3_DN_1, station: AKYURT_3, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.0}
+  - {id: AKYURT_3_DN_2, station: AKYURT_3, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.4}
+
+crossovers:
+  # One in every gap between neighbouring stations, at the middle of the gap.
+  # Scissors, so a train can cross either way at the same place; 500 m, which
+  # is longer than the 246 m a train needs to stop from 80 and therefore
+  # signalable, and short enough to sit clear of the platform zones either
+  # side. A two-way crossover reaches half a kilometre back on the road it
+  # joins as well as half a kilometre forward on the road it leaves, so its
+  # footprint is the whole kilometre centred on the km below.
+  - {id: XO_AK1_MA1, from: UP, to: DN, km:  4.25, length_m: 500, max_speed_kmh: 40, type: scissors}
+  - {id: XO_MA1_GO1, from: UP, to: DN, km:  7.05, length_m: 500, max_speed_kmh: 40, type: scissors}
+  - {id: XO_GO1_TE1, from: UP, to: DN, km: 10.00, length_m: 500, max_speed_kmh: 40, type: scissors}
+  - {id: XO_TE1_AK2, from: UP, to: DN, km: 13.40, length_m: 500, max_speed_kmh: 40, type: scissors}
+  - {id: XO_AK2_MA2, from: UP, to: DN, km: 16.65, length_m: 500, max_speed_kmh: 40, type: scissors}
+  - {id: XO_MA2_GO2, from: UP, to: DN, km: 19.30, length_m: 500, max_speed_kmh: 40, type: scissors}
+  - {id: XO_GO2_TE2, from: UP, to: DN, km: 22.10, length_m: 500, max_speed_kmh: 40, type: scissors}
+  - {id: XO_TE2_AK3, from: UP, to: DN, km: 24.75, length_m: 500, max_speed_kmh: 40, type: scissors}
+
+turning_loops:
+  # The two ends of the circuit. Large curves - 1200 m of railway apiece, taken
+  # at 50 - rather than the 40 a crossover is worth, because a horseshoe is a
+  # sweeping 180 and not a set of points.
+  - {id: HS_EAST, from: UP, to: DN, km: 28.4, length_m: 1200, max_speed_kmh: 50}
+  - {id: HS_WEST, from: DN, to: UP, km:  0.6, length_m: 1200, max_speed_kmh: 50}

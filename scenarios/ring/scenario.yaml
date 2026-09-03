@@ -1,0 +1,110 @@
+# ring - a short, dense circuit worked as a continuous loop.
+#
+#   python run.py scenarios/ring                (live schematic)
+#   python run.py scenarios/ring --headless
+#   python run.py scenarios/ring --check        (the layout, and the plan)
+#   python run.py scenarios/ring --compare      (the ladder, one table)
+#   python scenarios/ring/_sweep_headway.py     (what the circuit actually holds)
+#
+# WHAT THIS SCENARIO IS FOR
+#
+# A capacity experiment on a railway with no ends. Twenty-nine kilometres each
+# way joined by a horseshoe at both ends, so a service is a fifty-eight
+# kilometre lap: out on the up line calling at nine stations, round HS_EAST,
+# back on the down line calling at the same nine, round HS_WEST, into Akyurt 1
+# facing the way it set off. Nothing reverses and nothing stands in a depot.
+#
+# The other two capacity railways here are out-and-back, and both of them ran
+# into the same thing: past a certain interval the constraint stopped being the
+# distance between trains and became the despatch sequence at the terminus -
+# trains standing on a road, then accelerating from rest. No signalling system
+# changes how long a train takes to get going, so that part of the interval is
+# common to all of them and the comparison flattens out.
+#
+# A ring removes that. Every train is running, the up line and the down line are
+# both fully worked at once, and the only reason to wait is that something else
+# is in the way. What the sweep measures is therefore the signalling.
+#
+# WHAT IT IS NOT
+#
+# Not an easy case for relative braking. Every train calls at every station -
+# eighteen stops in a lap, one about every three kilometres - so a good deal of
+# every lap is spent below line speed, and the benefit of relative-braking
+# separation is bought with speed: in time it is about
+#
+#     v/2 x (1/b - 1/b_emergency)
+#
+# which for this unit is about 0.17 v, so 3.7 s of headway at 80 km/h and
+# nothing at a stand. scenarios/express is the favourable case, where nothing
+# stops and the trains run at 120. This is the other end: a stopping service on
+# a slower railway, which is what most of them are.
+#
+# Read the two together. If virtual coupling still separates from moving block
+# here, it separates on a railway anybody would recognise.
+#
+# THE LAYOUT, IN ONE PLACE
+#
+#   route            29.0 km each way, 58.0 km to the lap
+#   stations         9, from km 3.0 to km 26.0, every 2.4 to 4.0 km
+#   line speed       80, over thirty irregular sections averaging 71
+#   crossovers       8 scissors, one in the middle of every gap between
+#                    neighbouring stations, at 40
+#   horseshoes       HS_EAST leaves UP at km 28.4 and rejoins DN at km 27.2
+#                    HS_WEST leaves DN at km  0.6 and rejoins UP at km  1.8
+#                    1200 m apiece, at 50
+#   blocks           900 m
+#   platforms        2 faces per line at every station, 4 at Akyurt 1
+#   unit             120 m, 90 km/h, 1.0 accel, 1.0 service, 1.5 emergency
+#
+# A lap with the railway to itself takes 63 min 53 s, of which 10 min is
+# standing at platforms. That is 65 km/h while running and 54 km/h door to
+# door, which is what the irregular profile was aimed at.
+#
+# WHAT IT LOOKS LIKE BEFORE THE SWEEP
+#
+# The base timetable is twelve laps five minutes apart and runs all-green: no
+# violations, every train on time. Under fixed block the same flight is already
+# being checked at 300 s and still at 195 s; both cab systems are clean at 90 s
+# and virtual coupling at 60. Where each of them stops is what _sweep_headway.py
+# is for - these are spot checks, not the answer.
+#
+# THE STATIONS ARE NOT EVENLY SPACED, AND THAT IS DELIBERATE
+#
+# The out-and-back railways here space their stations evenly on the argument
+# that a capacity figure is a property of the tightest place on the line, so an
+# even layout measures the signalling rather than the geography. That is true
+# and it is also why those railways cannot answer the question this one is for.
+# A real timetable has a tightest place; what an operator wants to know is
+# whether a signalling system helps at it. Uneven spacing puts one there on
+# purpose - the 2.4 km between Teknopark 2 and Akyurt 3 is where this circuit
+# will bind first - and the systems can then be compared at it.
+
+name: ring
+description: "A 58 km circuit with nine stations and a horseshoe at each end - a stopping-service capacity test with no terminus to hide behind."
+
+infrastructure: infrastructure.yaml
+timetable: timetable.yaml
+
+simulation:
+  dt: 1.0
+  start_time: "06:57:00"
+  duration_s: 9000
+  strict: false
+
+signalling:
+  system: fixed_block_3aspect
+  sighting_distance_m: 250
+
+interlocking:
+  route_request_distance_m: 2000
+  route_request_lead_s: 60
+  automatic_signals: false
+  route_lookahead: 2
+
+driver:
+  reaction_time_s: 2.0
+  safety_margin_m: 25.0
+
+view:
+  title: "ring - a lap of the circuit"
+  speed: 20
