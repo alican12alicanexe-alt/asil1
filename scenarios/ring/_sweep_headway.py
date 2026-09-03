@@ -130,10 +130,10 @@ def refine(times, system, test, clean_s, degraded_s):
 
 def main(system="fixed_block_3aspect"):
     times = probe_all()
-    # What the flight pays with the railway to itself. Summed service by service
-    # rather than taken once and multiplied: the services take the roads at each
-    # station in turn, and a train on one face is checked at a different set of
-    # signals from one on the other.
+    # What the flight pays with the railway to itself. Every lap now takes the
+    # same face at every station, so the services do pay the same; it is still
+    # summed service by service rather than multiplied, because that stays true
+    # if the roads are ever spread across the faces again.
     alone = sum(run(times, HEADWAYS[0], system, indices=[n]).total_restrained_s
                 for n in range(COUNT))
     print("%d laps of the circuit, every one calling at all eleven stations twice, "

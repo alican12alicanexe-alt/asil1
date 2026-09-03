@@ -57,29 +57,29 @@ services:
     departure: "07:05:00"
     ready_lead_s: 30
     calls:
-      - {station: AKYURT_1, platform: AKYURT_1_UP_2, departure: "07:05:01", dwell_s: 30}
-      - {station: MACUNKOY_1, platform: MACUNKOY_1_UP_2, arrival: "07:07:38", departure: "07:08:08", dwell_s: 30}
-      - {station: GOLBASI_1, platform: GOLBASI_1_UP_2, arrival: "07:11:21", departure: "07:11:51", dwell_s: 30}
-      - {station: TEKNOPARK_1, platform: TEKNOPARK_1_UP_2, arrival: "07:14:22", departure: "07:14:52", dwell_s: 30}
-      - {station: AKYURT_2, platform: AKYURT_2_UP_2, arrival: "07:18:25", departure: "07:18:55", dwell_s: 30}
-      - {station: MACUNKOY_2, platform: MACUNKOY_2_UP_2, arrival: "07:21:34", departure: "07:22:04", dwell_s: 30}
-      - {station: GOLBASI_2, platform: GOLBASI_2_UP_2, arrival: "07:25:28", departure: "07:25:58", dwell_s: 30}
-      - {station: TEKNOPARK_2, platform: TEKNOPARK_2_UP_2, arrival: "07:28:29", departure: "07:28:59", dwell_s: 30}
-      - {station: AKYURT_3, platform: AKYURT_3_UP_2, arrival: "07:32:57", departure: "07:33:27", dwell_s: 30}
-      - {station: MACUNKOY_3, platform: MACUNKOY_3_UP_2, arrival: "07:36:14", departure: "07:36:44", dwell_s: 30}
-      - {station: GOLBASI_3, platform: GOLBASI_3_UP_2, arrival: "07:39:34", departure: "07:40:04", dwell_s: 30}
-      - {station: GOLBASI_3, platform: GOLBASI_3_DN_2, arrival: "07:44:30", departure: "07:45:00", dwell_s: 30}
-      - {station: MACUNKOY_3, platform: MACUNKOY_3_DN_2, arrival: "07:47:50", departure: "07:48:20", dwell_s: 30}
-      - {station: AKYURT_3, platform: AKYURT_3_DN_2, arrival: "07:51:07", departure: "07:51:37", dwell_s: 30}
-      - {station: TEKNOPARK_2, platform: TEKNOPARK_2_DN_2, arrival: "07:55:36", departure: "07:56:06", dwell_s: 30}
-      - {station: GOLBASI_2, platform: GOLBASI_2_DN_2, arrival: "07:58:37", departure: "07:59:07", dwell_s: 30}
-      - {station: MACUNKOY_2, platform: MACUNKOY_2_DN_2, arrival: "08:02:31", departure: "08:03:01", dwell_s: 30}
-      - {station: AKYURT_2, platform: AKYURT_2_DN_2, arrival: "08:05:40", departure: "08:06:10", dwell_s: 30}
-      - {station: TEKNOPARK_1, platform: TEKNOPARK_1_DN_2, arrival: "08:09:43", departure: "08:10:13", dwell_s: 30}
-      - {station: GOLBASI_1, platform: GOLBASI_1_DN_2, arrival: "08:12:44", departure: "08:13:14", dwell_s: 30}
-      - {station: MACUNKOY_1, platform: MACUNKOY_1_DN_2, arrival: "08:16:27", departure: "08:16:57", dwell_s: 30}
-      - {station: AKYURT_1, platform: AKYURT_1_DN_2, arrival: "08:19:35", departure: "08:20:05", dwell_s: 30}
-      - {station: AKYURT_1, platform: AKYURT_1_UP_2, arrival: "08:24:10", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_UP_1, departure: "07:05:01", dwell_s: 30}
+      - {station: MACUNKOY_1, platform: MACUNKOY_1_UP_1, arrival: "07:07:38", departure: "07:08:08", dwell_s: 30}
+      - {station: GOLBASI_1, platform: GOLBASI_1_UP_1, arrival: "07:11:21", departure: "07:11:51", dwell_s: 30}
+      - {station: TEKNOPARK_1, platform: TEKNOPARK_1_UP_1, arrival: "07:14:22", departure: "07:14:52", dwell_s: 30}
+      - {station: AKYURT_2, platform: AKYURT_2_UP_1, arrival: "07:18:25", departure: "07:18:55", dwell_s: 30}
+      - {station: MACUNKOY_2, platform: MACUNKOY_2_UP_1, arrival: "07:21:34", departure: "07:22:04", dwell_s: 30}
+      - {station: GOLBASI_2, platform: GOLBASI_2_UP_1, arrival: "07:25:28", departure: "07:25:58", dwell_s: 30}
+      - {station: TEKNOPARK_2, platform: TEKNOPARK_2_UP_1, arrival: "07:28:29", departure: "07:28:59", dwell_s: 30}
+      - {station: AKYURT_3, platform: AKYURT_3_UP_1, arrival: "07:32:57", departure: "07:33:27", dwell_s: 30}
+      - {station: MACUNKOY_3, platform: MACUNKOY_3_UP_1, arrival: "07:36:14", departure: "07:36:44", dwell_s: 30}
+      - {station: GOLBASI_3, platform: GOLBASI_3_UP_1, arrival: "07:39:34", departure: "07:40:04", dwell_s: 30}
+      - {station: GOLBASI_3, platform: GOLBASI_3_DN_1, arrival: "07:44:30", departure: "07:45:00", dwell_s: 30}
+      - {station: MACUNKOY_3, platform: MACUNKOY_3_DN_1, arrival: "07:47:50", departure: "07:48:20", dwell_s: 30}
+      - {station: AKYURT_3, platform: AKYURT_3_DN_1, arrival: "07:51:07", departure: "07:51:37", dwell_s: 30}
+      - {station: TEKNOPARK_2, platform: TEKNOPARK_2_DN_1, arrival: "07:55:36", departure: "07:56:06", dwell_s: 30}
+      - {station: GOLBASI_2, platform: GOLBASI_2_DN_1, arrival: "07:58:37", departure: "07:59:07", dwell_s: 30}
+      - {station: MACUNKOY_2, platform: MACUNKOY_2_DN_1, arrival: "08:02:31", departure: "08:03:01", dwell_s: 30}
+      - {station: AKYURT_2, platform: AKYURT_2_DN_1, arrival: "08:05:40", departure: "08:06:10", dwell_s: 30}
+      - {station: TEKNOPARK_1, platform: TEKNOPARK_1_DN_1, arrival: "08:09:43", departure: "08:10:13", dwell_s: 30}
+      - {station: GOLBASI_1, platform: GOLBASI_1_DN_1, arrival: "08:12:44", departure: "08:13:14", dwell_s: 30}
+      - {station: MACUNKOY_1, platform: MACUNKOY_1_DN_1, arrival: "08:16:27", departure: "08:16:57", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_DN_1, arrival: "08:19:35", departure: "08:20:05", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_UP_1, arrival: "08:24:10", dwell_s: 30}
 
   - id: R03
     name: 07:10 Akyurt 1 circuit
@@ -87,7 +87,7 @@ services:
     departure: "07:10:00"
     ready_lead_s: 30
     calls:
-      - {station: AKYURT_1, platform: AKYURT_1_UP_3, departure: "07:10:01", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_UP_1, departure: "07:10:01", dwell_s: 30}
       - {station: MACUNKOY_1, platform: MACUNKOY_1_UP_1, arrival: "07:12:38", departure: "07:13:08", dwell_s: 30}
       - {station: GOLBASI_1, platform: GOLBASI_1_UP_1, arrival: "07:16:21", departure: "07:16:51", dwell_s: 30}
       - {station: TEKNOPARK_1, platform: TEKNOPARK_1_UP_1, arrival: "07:19:22", departure: "07:19:52", dwell_s: 30}
@@ -108,8 +108,8 @@ services:
       - {station: TEKNOPARK_1, platform: TEKNOPARK_1_DN_1, arrival: "08:14:43", departure: "08:15:13", dwell_s: 30}
       - {station: GOLBASI_1, platform: GOLBASI_1_DN_1, arrival: "08:17:44", departure: "08:18:14", dwell_s: 30}
       - {station: MACUNKOY_1, platform: MACUNKOY_1_DN_1, arrival: "08:21:27", departure: "08:21:57", dwell_s: 30}
-      - {station: AKYURT_1, platform: AKYURT_1_DN_3, arrival: "08:24:35", departure: "08:25:05", dwell_s: 30}
-      - {station: AKYURT_1, platform: AKYURT_1_UP_3, arrival: "08:29:10", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_DN_1, arrival: "08:24:35", departure: "08:25:05", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_UP_1, arrival: "08:29:10", dwell_s: 30}
 
   - id: R04
     name: 07:15 Akyurt 1 circuit
@@ -117,29 +117,29 @@ services:
     departure: "07:15:00"
     ready_lead_s: 30
     calls:
-      - {station: AKYURT_1, platform: AKYURT_1_UP_4, departure: "07:15:01", dwell_s: 30}
-      - {station: MACUNKOY_1, platform: MACUNKOY_1_UP_2, arrival: "07:17:38", departure: "07:18:08", dwell_s: 30}
-      - {station: GOLBASI_1, platform: GOLBASI_1_UP_2, arrival: "07:21:21", departure: "07:21:51", dwell_s: 30}
-      - {station: TEKNOPARK_1, platform: TEKNOPARK_1_UP_2, arrival: "07:24:22", departure: "07:24:52", dwell_s: 30}
-      - {station: AKYURT_2, platform: AKYURT_2_UP_2, arrival: "07:28:25", departure: "07:28:55", dwell_s: 30}
-      - {station: MACUNKOY_2, platform: MACUNKOY_2_UP_2, arrival: "07:31:34", departure: "07:32:04", dwell_s: 30}
-      - {station: GOLBASI_2, platform: GOLBASI_2_UP_2, arrival: "07:35:28", departure: "07:35:58", dwell_s: 30}
-      - {station: TEKNOPARK_2, platform: TEKNOPARK_2_UP_2, arrival: "07:38:29", departure: "07:38:59", dwell_s: 30}
-      - {station: AKYURT_3, platform: AKYURT_3_UP_2, arrival: "07:42:57", departure: "07:43:27", dwell_s: 30}
-      - {station: MACUNKOY_3, platform: MACUNKOY_3_UP_2, arrival: "07:46:14", departure: "07:46:44", dwell_s: 30}
-      - {station: GOLBASI_3, platform: GOLBASI_3_UP_2, arrival: "07:49:34", departure: "07:50:04", dwell_s: 30}
-      - {station: GOLBASI_3, platform: GOLBASI_3_DN_2, arrival: "07:54:30", departure: "07:55:00", dwell_s: 30}
-      - {station: MACUNKOY_3, platform: MACUNKOY_3_DN_2, arrival: "07:57:50", departure: "07:58:20", dwell_s: 30}
-      - {station: AKYURT_3, platform: AKYURT_3_DN_2, arrival: "08:01:07", departure: "08:01:37", dwell_s: 30}
-      - {station: TEKNOPARK_2, platform: TEKNOPARK_2_DN_2, arrival: "08:05:36", departure: "08:06:06", dwell_s: 30}
-      - {station: GOLBASI_2, platform: GOLBASI_2_DN_2, arrival: "08:08:37", departure: "08:09:07", dwell_s: 30}
-      - {station: MACUNKOY_2, platform: MACUNKOY_2_DN_2, arrival: "08:12:31", departure: "08:13:01", dwell_s: 30}
-      - {station: AKYURT_2, platform: AKYURT_2_DN_2, arrival: "08:15:40", departure: "08:16:10", dwell_s: 30}
-      - {station: TEKNOPARK_1, platform: TEKNOPARK_1_DN_2, arrival: "08:19:43", departure: "08:20:13", dwell_s: 30}
-      - {station: GOLBASI_1, platform: GOLBASI_1_DN_2, arrival: "08:22:44", departure: "08:23:14", dwell_s: 30}
-      - {station: MACUNKOY_1, platform: MACUNKOY_1_DN_2, arrival: "08:26:27", departure: "08:26:57", dwell_s: 30}
-      - {station: AKYURT_1, platform: AKYURT_1_DN_4, arrival: "08:29:35", departure: "08:30:05", dwell_s: 30}
-      - {station: AKYURT_1, platform: AKYURT_1_UP_4, arrival: "08:34:10", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_UP_1, departure: "07:15:01", dwell_s: 30}
+      - {station: MACUNKOY_1, platform: MACUNKOY_1_UP_1, arrival: "07:17:38", departure: "07:18:08", dwell_s: 30}
+      - {station: GOLBASI_1, platform: GOLBASI_1_UP_1, arrival: "07:21:21", departure: "07:21:51", dwell_s: 30}
+      - {station: TEKNOPARK_1, platform: TEKNOPARK_1_UP_1, arrival: "07:24:22", departure: "07:24:52", dwell_s: 30}
+      - {station: AKYURT_2, platform: AKYURT_2_UP_1, arrival: "07:28:25", departure: "07:28:55", dwell_s: 30}
+      - {station: MACUNKOY_2, platform: MACUNKOY_2_UP_1, arrival: "07:31:34", departure: "07:32:04", dwell_s: 30}
+      - {station: GOLBASI_2, platform: GOLBASI_2_UP_1, arrival: "07:35:28", departure: "07:35:58", dwell_s: 30}
+      - {station: TEKNOPARK_2, platform: TEKNOPARK_2_UP_1, arrival: "07:38:29", departure: "07:38:59", dwell_s: 30}
+      - {station: AKYURT_3, platform: AKYURT_3_UP_1, arrival: "07:42:57", departure: "07:43:27", dwell_s: 30}
+      - {station: MACUNKOY_3, platform: MACUNKOY_3_UP_1, arrival: "07:46:14", departure: "07:46:44", dwell_s: 30}
+      - {station: GOLBASI_3, platform: GOLBASI_3_UP_1, arrival: "07:49:34", departure: "07:50:04", dwell_s: 30}
+      - {station: GOLBASI_3, platform: GOLBASI_3_DN_1, arrival: "07:54:30", departure: "07:55:00", dwell_s: 30}
+      - {station: MACUNKOY_3, platform: MACUNKOY_3_DN_1, arrival: "07:57:50", departure: "07:58:20", dwell_s: 30}
+      - {station: AKYURT_3, platform: AKYURT_3_DN_1, arrival: "08:01:07", departure: "08:01:37", dwell_s: 30}
+      - {station: TEKNOPARK_2, platform: TEKNOPARK_2_DN_1, arrival: "08:05:36", departure: "08:06:06", dwell_s: 30}
+      - {station: GOLBASI_2, platform: GOLBASI_2_DN_1, arrival: "08:08:37", departure: "08:09:07", dwell_s: 30}
+      - {station: MACUNKOY_2, platform: MACUNKOY_2_DN_1, arrival: "08:12:31", departure: "08:13:01", dwell_s: 30}
+      - {station: AKYURT_2, platform: AKYURT_2_DN_1, arrival: "08:15:40", departure: "08:16:10", dwell_s: 30}
+      - {station: TEKNOPARK_1, platform: TEKNOPARK_1_DN_1, arrival: "08:19:43", departure: "08:20:13", dwell_s: 30}
+      - {station: GOLBASI_1, platform: GOLBASI_1_DN_1, arrival: "08:22:44", departure: "08:23:14", dwell_s: 30}
+      - {station: MACUNKOY_1, platform: MACUNKOY_1_DN_1, arrival: "08:26:27", departure: "08:26:57", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_DN_1, arrival: "08:29:35", departure: "08:30:05", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_UP_1, arrival: "08:34:10", dwell_s: 30}
 
   - id: R05
     name: 07:20 Akyurt 1 circuit
@@ -177,29 +177,29 @@ services:
     departure: "07:25:00"
     ready_lead_s: 30
     calls:
-      - {station: AKYURT_1, platform: AKYURT_1_UP_2, departure: "07:25:01", dwell_s: 30}
-      - {station: MACUNKOY_1, platform: MACUNKOY_1_UP_2, arrival: "07:27:38", departure: "07:28:08", dwell_s: 30}
-      - {station: GOLBASI_1, platform: GOLBASI_1_UP_2, arrival: "07:31:21", departure: "07:31:51", dwell_s: 30}
-      - {station: TEKNOPARK_1, platform: TEKNOPARK_1_UP_2, arrival: "07:34:22", departure: "07:34:52", dwell_s: 30}
-      - {station: AKYURT_2, platform: AKYURT_2_UP_2, arrival: "07:38:25", departure: "07:38:55", dwell_s: 30}
-      - {station: MACUNKOY_2, platform: MACUNKOY_2_UP_2, arrival: "07:41:34", departure: "07:42:04", dwell_s: 30}
-      - {station: GOLBASI_2, platform: GOLBASI_2_UP_2, arrival: "07:45:28", departure: "07:45:58", dwell_s: 30}
-      - {station: TEKNOPARK_2, platform: TEKNOPARK_2_UP_2, arrival: "07:48:29", departure: "07:48:59", dwell_s: 30}
-      - {station: AKYURT_3, platform: AKYURT_3_UP_2, arrival: "07:52:57", departure: "07:53:27", dwell_s: 30}
-      - {station: MACUNKOY_3, platform: MACUNKOY_3_UP_2, arrival: "07:56:14", departure: "07:56:44", dwell_s: 30}
-      - {station: GOLBASI_3, platform: GOLBASI_3_UP_2, arrival: "07:59:34", departure: "08:00:04", dwell_s: 30}
-      - {station: GOLBASI_3, platform: GOLBASI_3_DN_2, arrival: "08:04:30", departure: "08:05:00", dwell_s: 30}
-      - {station: MACUNKOY_3, platform: MACUNKOY_3_DN_2, arrival: "08:07:50", departure: "08:08:20", dwell_s: 30}
-      - {station: AKYURT_3, platform: AKYURT_3_DN_2, arrival: "08:11:07", departure: "08:11:37", dwell_s: 30}
-      - {station: TEKNOPARK_2, platform: TEKNOPARK_2_DN_2, arrival: "08:15:36", departure: "08:16:06", dwell_s: 30}
-      - {station: GOLBASI_2, platform: GOLBASI_2_DN_2, arrival: "08:18:37", departure: "08:19:07", dwell_s: 30}
-      - {station: MACUNKOY_2, platform: MACUNKOY_2_DN_2, arrival: "08:22:31", departure: "08:23:01", dwell_s: 30}
-      - {station: AKYURT_2, platform: AKYURT_2_DN_2, arrival: "08:25:40", departure: "08:26:10", dwell_s: 30}
-      - {station: TEKNOPARK_1, platform: TEKNOPARK_1_DN_2, arrival: "08:29:43", departure: "08:30:13", dwell_s: 30}
-      - {station: GOLBASI_1, platform: GOLBASI_1_DN_2, arrival: "08:32:44", departure: "08:33:14", dwell_s: 30}
-      - {station: MACUNKOY_1, platform: MACUNKOY_1_DN_2, arrival: "08:36:27", departure: "08:36:57", dwell_s: 30}
-      - {station: AKYURT_1, platform: AKYURT_1_DN_2, arrival: "08:39:35", departure: "08:40:05", dwell_s: 30}
-      - {station: AKYURT_1, platform: AKYURT_1_UP_2, arrival: "08:44:10", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_UP_1, departure: "07:25:01", dwell_s: 30}
+      - {station: MACUNKOY_1, platform: MACUNKOY_1_UP_1, arrival: "07:27:38", departure: "07:28:08", dwell_s: 30}
+      - {station: GOLBASI_1, platform: GOLBASI_1_UP_1, arrival: "07:31:21", departure: "07:31:51", dwell_s: 30}
+      - {station: TEKNOPARK_1, platform: TEKNOPARK_1_UP_1, arrival: "07:34:22", departure: "07:34:52", dwell_s: 30}
+      - {station: AKYURT_2, platform: AKYURT_2_UP_1, arrival: "07:38:25", departure: "07:38:55", dwell_s: 30}
+      - {station: MACUNKOY_2, platform: MACUNKOY_2_UP_1, arrival: "07:41:34", departure: "07:42:04", dwell_s: 30}
+      - {station: GOLBASI_2, platform: GOLBASI_2_UP_1, arrival: "07:45:28", departure: "07:45:58", dwell_s: 30}
+      - {station: TEKNOPARK_2, platform: TEKNOPARK_2_UP_1, arrival: "07:48:29", departure: "07:48:59", dwell_s: 30}
+      - {station: AKYURT_3, platform: AKYURT_3_UP_1, arrival: "07:52:57", departure: "07:53:27", dwell_s: 30}
+      - {station: MACUNKOY_3, platform: MACUNKOY_3_UP_1, arrival: "07:56:14", departure: "07:56:44", dwell_s: 30}
+      - {station: GOLBASI_3, platform: GOLBASI_3_UP_1, arrival: "07:59:34", departure: "08:00:04", dwell_s: 30}
+      - {station: GOLBASI_3, platform: GOLBASI_3_DN_1, arrival: "08:04:30", departure: "08:05:00", dwell_s: 30}
+      - {station: MACUNKOY_3, platform: MACUNKOY_3_DN_1, arrival: "08:07:50", departure: "08:08:20", dwell_s: 30}
+      - {station: AKYURT_3, platform: AKYURT_3_DN_1, arrival: "08:11:07", departure: "08:11:37", dwell_s: 30}
+      - {station: TEKNOPARK_2, platform: TEKNOPARK_2_DN_1, arrival: "08:15:36", departure: "08:16:06", dwell_s: 30}
+      - {station: GOLBASI_2, platform: GOLBASI_2_DN_1, arrival: "08:18:37", departure: "08:19:07", dwell_s: 30}
+      - {station: MACUNKOY_2, platform: MACUNKOY_2_DN_1, arrival: "08:22:31", departure: "08:23:01", dwell_s: 30}
+      - {station: AKYURT_2, platform: AKYURT_2_DN_1, arrival: "08:25:40", departure: "08:26:10", dwell_s: 30}
+      - {station: TEKNOPARK_1, platform: TEKNOPARK_1_DN_1, arrival: "08:29:43", departure: "08:30:13", dwell_s: 30}
+      - {station: GOLBASI_1, platform: GOLBASI_1_DN_1, arrival: "08:32:44", departure: "08:33:14", dwell_s: 30}
+      - {station: MACUNKOY_1, platform: MACUNKOY_1_DN_1, arrival: "08:36:27", departure: "08:36:57", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_DN_1, arrival: "08:39:35", departure: "08:40:05", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_UP_1, arrival: "08:44:10", dwell_s: 30}
 
   - id: R07
     name: 07:30 Akyurt 1 circuit
@@ -207,7 +207,7 @@ services:
     departure: "07:30:00"
     ready_lead_s: 30
     calls:
-      - {station: AKYURT_1, platform: AKYURT_1_UP_3, departure: "07:30:01", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_UP_1, departure: "07:30:01", dwell_s: 30}
       - {station: MACUNKOY_1, platform: MACUNKOY_1_UP_1, arrival: "07:32:38", departure: "07:33:08", dwell_s: 30}
       - {station: GOLBASI_1, platform: GOLBASI_1_UP_1, arrival: "07:36:21", departure: "07:36:51", dwell_s: 30}
       - {station: TEKNOPARK_1, platform: TEKNOPARK_1_UP_1, arrival: "07:39:22", departure: "07:39:52", dwell_s: 30}
@@ -228,8 +228,8 @@ services:
       - {station: TEKNOPARK_1, platform: TEKNOPARK_1_DN_1, arrival: "08:34:43", departure: "08:35:13", dwell_s: 30}
       - {station: GOLBASI_1, platform: GOLBASI_1_DN_1, arrival: "08:37:44", departure: "08:38:14", dwell_s: 30}
       - {station: MACUNKOY_1, platform: MACUNKOY_1_DN_1, arrival: "08:41:27", departure: "08:41:57", dwell_s: 30}
-      - {station: AKYURT_1, platform: AKYURT_1_DN_3, arrival: "08:44:35", departure: "08:45:05", dwell_s: 30}
-      - {station: AKYURT_1, platform: AKYURT_1_UP_3, arrival: "08:49:10", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_DN_1, arrival: "08:44:35", departure: "08:45:05", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_UP_1, arrival: "08:49:10", dwell_s: 30}
 
   - id: R08
     name: 07:35 Akyurt 1 circuit
@@ -237,29 +237,29 @@ services:
     departure: "07:35:00"
     ready_lead_s: 30
     calls:
-      - {station: AKYURT_1, platform: AKYURT_1_UP_4, departure: "07:35:01", dwell_s: 30}
-      - {station: MACUNKOY_1, platform: MACUNKOY_1_UP_2, arrival: "07:37:38", departure: "07:38:08", dwell_s: 30}
-      - {station: GOLBASI_1, platform: GOLBASI_1_UP_2, arrival: "07:41:21", departure: "07:41:51", dwell_s: 30}
-      - {station: TEKNOPARK_1, platform: TEKNOPARK_1_UP_2, arrival: "07:44:22", departure: "07:44:52", dwell_s: 30}
-      - {station: AKYURT_2, platform: AKYURT_2_UP_2, arrival: "07:48:25", departure: "07:48:55", dwell_s: 30}
-      - {station: MACUNKOY_2, platform: MACUNKOY_2_UP_2, arrival: "07:51:34", departure: "07:52:04", dwell_s: 30}
-      - {station: GOLBASI_2, platform: GOLBASI_2_UP_2, arrival: "07:55:28", departure: "07:55:58", dwell_s: 30}
-      - {station: TEKNOPARK_2, platform: TEKNOPARK_2_UP_2, arrival: "07:58:29", departure: "07:58:59", dwell_s: 30}
-      - {station: AKYURT_3, platform: AKYURT_3_UP_2, arrival: "08:02:57", departure: "08:03:27", dwell_s: 30}
-      - {station: MACUNKOY_3, platform: MACUNKOY_3_UP_2, arrival: "08:06:14", departure: "08:06:44", dwell_s: 30}
-      - {station: GOLBASI_3, platform: GOLBASI_3_UP_2, arrival: "08:09:34", departure: "08:10:04", dwell_s: 30}
-      - {station: GOLBASI_3, platform: GOLBASI_3_DN_2, arrival: "08:14:30", departure: "08:15:00", dwell_s: 30}
-      - {station: MACUNKOY_3, platform: MACUNKOY_3_DN_2, arrival: "08:17:50", departure: "08:18:20", dwell_s: 30}
-      - {station: AKYURT_3, platform: AKYURT_3_DN_2, arrival: "08:21:07", departure: "08:21:37", dwell_s: 30}
-      - {station: TEKNOPARK_2, platform: TEKNOPARK_2_DN_2, arrival: "08:25:36", departure: "08:26:06", dwell_s: 30}
-      - {station: GOLBASI_2, platform: GOLBASI_2_DN_2, arrival: "08:28:37", departure: "08:29:07", dwell_s: 30}
-      - {station: MACUNKOY_2, platform: MACUNKOY_2_DN_2, arrival: "08:32:31", departure: "08:33:01", dwell_s: 30}
-      - {station: AKYURT_2, platform: AKYURT_2_DN_2, arrival: "08:35:40", departure: "08:36:10", dwell_s: 30}
-      - {station: TEKNOPARK_1, platform: TEKNOPARK_1_DN_2, arrival: "08:39:43", departure: "08:40:13", dwell_s: 30}
-      - {station: GOLBASI_1, platform: GOLBASI_1_DN_2, arrival: "08:42:44", departure: "08:43:14", dwell_s: 30}
-      - {station: MACUNKOY_1, platform: MACUNKOY_1_DN_2, arrival: "08:46:27", departure: "08:46:57", dwell_s: 30}
-      - {station: AKYURT_1, platform: AKYURT_1_DN_4, arrival: "08:49:35", departure: "08:50:05", dwell_s: 30}
-      - {station: AKYURT_1, platform: AKYURT_1_UP_4, arrival: "08:54:10", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_UP_1, departure: "07:35:01", dwell_s: 30}
+      - {station: MACUNKOY_1, platform: MACUNKOY_1_UP_1, arrival: "07:37:38", departure: "07:38:08", dwell_s: 30}
+      - {station: GOLBASI_1, platform: GOLBASI_1_UP_1, arrival: "07:41:21", departure: "07:41:51", dwell_s: 30}
+      - {station: TEKNOPARK_1, platform: TEKNOPARK_1_UP_1, arrival: "07:44:22", departure: "07:44:52", dwell_s: 30}
+      - {station: AKYURT_2, platform: AKYURT_2_UP_1, arrival: "07:48:25", departure: "07:48:55", dwell_s: 30}
+      - {station: MACUNKOY_2, platform: MACUNKOY_2_UP_1, arrival: "07:51:34", departure: "07:52:04", dwell_s: 30}
+      - {station: GOLBASI_2, platform: GOLBASI_2_UP_1, arrival: "07:55:28", departure: "07:55:58", dwell_s: 30}
+      - {station: TEKNOPARK_2, platform: TEKNOPARK_2_UP_1, arrival: "07:58:29", departure: "07:58:59", dwell_s: 30}
+      - {station: AKYURT_3, platform: AKYURT_3_UP_1, arrival: "08:02:57", departure: "08:03:27", dwell_s: 30}
+      - {station: MACUNKOY_3, platform: MACUNKOY_3_UP_1, arrival: "08:06:14", departure: "08:06:44", dwell_s: 30}
+      - {station: GOLBASI_3, platform: GOLBASI_3_UP_1, arrival: "08:09:34", departure: "08:10:04", dwell_s: 30}
+      - {station: GOLBASI_3, platform: GOLBASI_3_DN_1, arrival: "08:14:30", departure: "08:15:00", dwell_s: 30}
+      - {station: MACUNKOY_3, platform: MACUNKOY_3_DN_1, arrival: "08:17:50", departure: "08:18:20", dwell_s: 30}
+      - {station: AKYURT_3, platform: AKYURT_3_DN_1, arrival: "08:21:07", departure: "08:21:37", dwell_s: 30}
+      - {station: TEKNOPARK_2, platform: TEKNOPARK_2_DN_1, arrival: "08:25:36", departure: "08:26:06", dwell_s: 30}
+      - {station: GOLBASI_2, platform: GOLBASI_2_DN_1, arrival: "08:28:37", departure: "08:29:07", dwell_s: 30}
+      - {station: MACUNKOY_2, platform: MACUNKOY_2_DN_1, arrival: "08:32:31", departure: "08:33:01", dwell_s: 30}
+      - {station: AKYURT_2, platform: AKYURT_2_DN_1, arrival: "08:35:40", departure: "08:36:10", dwell_s: 30}
+      - {station: TEKNOPARK_1, platform: TEKNOPARK_1_DN_1, arrival: "08:39:43", departure: "08:40:13", dwell_s: 30}
+      - {station: GOLBASI_1, platform: GOLBASI_1_DN_1, arrival: "08:42:44", departure: "08:43:14", dwell_s: 30}
+      - {station: MACUNKOY_1, platform: MACUNKOY_1_DN_1, arrival: "08:46:27", departure: "08:46:57", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_DN_1, arrival: "08:49:35", departure: "08:50:05", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_UP_1, arrival: "08:54:10", dwell_s: 30}
 
   - id: R09
     name: 07:40 Akyurt 1 circuit
@@ -297,29 +297,29 @@ services:
     departure: "07:45:00"
     ready_lead_s: 30
     calls:
-      - {station: AKYURT_1, platform: AKYURT_1_UP_2, departure: "07:45:01", dwell_s: 30}
-      - {station: MACUNKOY_1, platform: MACUNKOY_1_UP_2, arrival: "07:47:38", departure: "07:48:08", dwell_s: 30}
-      - {station: GOLBASI_1, platform: GOLBASI_1_UP_2, arrival: "07:51:21", departure: "07:51:51", dwell_s: 30}
-      - {station: TEKNOPARK_1, platform: TEKNOPARK_1_UP_2, arrival: "07:54:22", departure: "07:54:52", dwell_s: 30}
-      - {station: AKYURT_2, platform: AKYURT_2_UP_2, arrival: "07:58:25", departure: "07:58:55", dwell_s: 30}
-      - {station: MACUNKOY_2, platform: MACUNKOY_2_UP_2, arrival: "08:01:34", departure: "08:02:04", dwell_s: 30}
-      - {station: GOLBASI_2, platform: GOLBASI_2_UP_2, arrival: "08:05:28", departure: "08:05:58", dwell_s: 30}
-      - {station: TEKNOPARK_2, platform: TEKNOPARK_2_UP_2, arrival: "08:08:29", departure: "08:08:59", dwell_s: 30}
-      - {station: AKYURT_3, platform: AKYURT_3_UP_2, arrival: "08:12:57", departure: "08:13:27", dwell_s: 30}
-      - {station: MACUNKOY_3, platform: MACUNKOY_3_UP_2, arrival: "08:16:14", departure: "08:16:44", dwell_s: 30}
-      - {station: GOLBASI_3, platform: GOLBASI_3_UP_2, arrival: "08:19:34", departure: "08:20:04", dwell_s: 30}
-      - {station: GOLBASI_3, platform: GOLBASI_3_DN_2, arrival: "08:24:30", departure: "08:25:00", dwell_s: 30}
-      - {station: MACUNKOY_3, platform: MACUNKOY_3_DN_2, arrival: "08:27:50", departure: "08:28:20", dwell_s: 30}
-      - {station: AKYURT_3, platform: AKYURT_3_DN_2, arrival: "08:31:07", departure: "08:31:37", dwell_s: 30}
-      - {station: TEKNOPARK_2, platform: TEKNOPARK_2_DN_2, arrival: "08:35:36", departure: "08:36:06", dwell_s: 30}
-      - {station: GOLBASI_2, platform: GOLBASI_2_DN_2, arrival: "08:38:37", departure: "08:39:07", dwell_s: 30}
-      - {station: MACUNKOY_2, platform: MACUNKOY_2_DN_2, arrival: "08:42:31", departure: "08:43:01", dwell_s: 30}
-      - {station: AKYURT_2, platform: AKYURT_2_DN_2, arrival: "08:45:40", departure: "08:46:10", dwell_s: 30}
-      - {station: TEKNOPARK_1, platform: TEKNOPARK_1_DN_2, arrival: "08:49:43", departure: "08:50:13", dwell_s: 30}
-      - {station: GOLBASI_1, platform: GOLBASI_1_DN_2, arrival: "08:52:44", departure: "08:53:14", dwell_s: 30}
-      - {station: MACUNKOY_1, platform: MACUNKOY_1_DN_2, arrival: "08:56:27", departure: "08:56:57", dwell_s: 30}
-      - {station: AKYURT_1, platform: AKYURT_1_DN_2, arrival: "08:59:35", departure: "09:00:05", dwell_s: 30}
-      - {station: AKYURT_1, platform: AKYURT_1_UP_2, arrival: "09:04:10", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_UP_1, departure: "07:45:01", dwell_s: 30}
+      - {station: MACUNKOY_1, platform: MACUNKOY_1_UP_1, arrival: "07:47:38", departure: "07:48:08", dwell_s: 30}
+      - {station: GOLBASI_1, platform: GOLBASI_1_UP_1, arrival: "07:51:21", departure: "07:51:51", dwell_s: 30}
+      - {station: TEKNOPARK_1, platform: TEKNOPARK_1_UP_1, arrival: "07:54:22", departure: "07:54:52", dwell_s: 30}
+      - {station: AKYURT_2, platform: AKYURT_2_UP_1, arrival: "07:58:25", departure: "07:58:55", dwell_s: 30}
+      - {station: MACUNKOY_2, platform: MACUNKOY_2_UP_1, arrival: "08:01:34", departure: "08:02:04", dwell_s: 30}
+      - {station: GOLBASI_2, platform: GOLBASI_2_UP_1, arrival: "08:05:28", departure: "08:05:58", dwell_s: 30}
+      - {station: TEKNOPARK_2, platform: TEKNOPARK_2_UP_1, arrival: "08:08:29", departure: "08:08:59", dwell_s: 30}
+      - {station: AKYURT_3, platform: AKYURT_3_UP_1, arrival: "08:12:57", departure: "08:13:27", dwell_s: 30}
+      - {station: MACUNKOY_3, platform: MACUNKOY_3_UP_1, arrival: "08:16:14", departure: "08:16:44", dwell_s: 30}
+      - {station: GOLBASI_3, platform: GOLBASI_3_UP_1, arrival: "08:19:34", departure: "08:20:04", dwell_s: 30}
+      - {station: GOLBASI_3, platform: GOLBASI_3_DN_1, arrival: "08:24:30", departure: "08:25:00", dwell_s: 30}
+      - {station: MACUNKOY_3, platform: MACUNKOY_3_DN_1, arrival: "08:27:50", departure: "08:28:20", dwell_s: 30}
+      - {station: AKYURT_3, platform: AKYURT_3_DN_1, arrival: "08:31:07", departure: "08:31:37", dwell_s: 30}
+      - {station: TEKNOPARK_2, platform: TEKNOPARK_2_DN_1, arrival: "08:35:36", departure: "08:36:06", dwell_s: 30}
+      - {station: GOLBASI_2, platform: GOLBASI_2_DN_1, arrival: "08:38:37", departure: "08:39:07", dwell_s: 30}
+      - {station: MACUNKOY_2, platform: MACUNKOY_2_DN_1, arrival: "08:42:31", departure: "08:43:01", dwell_s: 30}
+      - {station: AKYURT_2, platform: AKYURT_2_DN_1, arrival: "08:45:40", departure: "08:46:10", dwell_s: 30}
+      - {station: TEKNOPARK_1, platform: TEKNOPARK_1_DN_1, arrival: "08:49:43", departure: "08:50:13", dwell_s: 30}
+      - {station: GOLBASI_1, platform: GOLBASI_1_DN_1, arrival: "08:52:44", departure: "08:53:14", dwell_s: 30}
+      - {station: MACUNKOY_1, platform: MACUNKOY_1_DN_1, arrival: "08:56:27", departure: "08:56:57", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_DN_1, arrival: "08:59:35", departure: "09:00:05", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_UP_1, arrival: "09:04:10", dwell_s: 30}
 
   - id: R11
     name: 07:50 Akyurt 1 circuit
@@ -327,7 +327,7 @@ services:
     departure: "07:50:00"
     ready_lead_s: 30
     calls:
-      - {station: AKYURT_1, platform: AKYURT_1_UP_3, departure: "07:50:01", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_UP_1, departure: "07:50:01", dwell_s: 30}
       - {station: MACUNKOY_1, platform: MACUNKOY_1_UP_1, arrival: "07:52:38", departure: "07:53:08", dwell_s: 30}
       - {station: GOLBASI_1, platform: GOLBASI_1_UP_1, arrival: "07:56:21", departure: "07:56:51", dwell_s: 30}
       - {station: TEKNOPARK_1, platform: TEKNOPARK_1_UP_1, arrival: "07:59:22", departure: "07:59:52", dwell_s: 30}
@@ -348,8 +348,8 @@ services:
       - {station: TEKNOPARK_1, platform: TEKNOPARK_1_DN_1, arrival: "08:54:43", departure: "08:55:13", dwell_s: 30}
       - {station: GOLBASI_1, platform: GOLBASI_1_DN_1, arrival: "08:57:44", departure: "08:58:14", dwell_s: 30}
       - {station: MACUNKOY_1, platform: MACUNKOY_1_DN_1, arrival: "09:01:27", departure: "09:01:57", dwell_s: 30}
-      - {station: AKYURT_1, platform: AKYURT_1_DN_3, arrival: "09:04:35", departure: "09:05:05", dwell_s: 30}
-      - {station: AKYURT_1, platform: AKYURT_1_UP_3, arrival: "09:09:10", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_DN_1, arrival: "09:04:35", departure: "09:05:05", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_UP_1, arrival: "09:09:10", dwell_s: 30}
 
   - id: R12
     name: 07:55 Akyurt 1 circuit
@@ -357,26 +357,26 @@ services:
     departure: "07:55:00"
     ready_lead_s: 30
     calls:
-      - {station: AKYURT_1, platform: AKYURT_1_UP_4, departure: "07:55:01", dwell_s: 30}
-      - {station: MACUNKOY_1, platform: MACUNKOY_1_UP_2, arrival: "07:57:38", departure: "07:58:08", dwell_s: 30}
-      - {station: GOLBASI_1, platform: GOLBASI_1_UP_2, arrival: "08:01:21", departure: "08:01:51", dwell_s: 30}
-      - {station: TEKNOPARK_1, platform: TEKNOPARK_1_UP_2, arrival: "08:04:22", departure: "08:04:52", dwell_s: 30}
-      - {station: AKYURT_2, platform: AKYURT_2_UP_2, arrival: "08:08:25", departure: "08:08:55", dwell_s: 30}
-      - {station: MACUNKOY_2, platform: MACUNKOY_2_UP_2, arrival: "08:11:34", departure: "08:12:04", dwell_s: 30}
-      - {station: GOLBASI_2, platform: GOLBASI_2_UP_2, arrival: "08:15:28", departure: "08:15:58", dwell_s: 30}
-      - {station: TEKNOPARK_2, platform: TEKNOPARK_2_UP_2, arrival: "08:18:29", departure: "08:18:59", dwell_s: 30}
-      - {station: AKYURT_3, platform: AKYURT_3_UP_2, arrival: "08:22:57", departure: "08:23:27", dwell_s: 30}
-      - {station: MACUNKOY_3, platform: MACUNKOY_3_UP_2, arrival: "08:26:14", departure: "08:26:44", dwell_s: 30}
-      - {station: GOLBASI_3, platform: GOLBASI_3_UP_2, arrival: "08:29:34", departure: "08:30:04", dwell_s: 30}
-      - {station: GOLBASI_3, platform: GOLBASI_3_DN_2, arrival: "08:34:30", departure: "08:35:00", dwell_s: 30}
-      - {station: MACUNKOY_3, platform: MACUNKOY_3_DN_2, arrival: "08:37:50", departure: "08:38:20", dwell_s: 30}
-      - {station: AKYURT_3, platform: AKYURT_3_DN_2, arrival: "08:41:07", departure: "08:41:37", dwell_s: 30}
-      - {station: TEKNOPARK_2, platform: TEKNOPARK_2_DN_2, arrival: "08:45:36", departure: "08:46:06", dwell_s: 30}
-      - {station: GOLBASI_2, platform: GOLBASI_2_DN_2, arrival: "08:48:37", departure: "08:49:07", dwell_s: 30}
-      - {station: MACUNKOY_2, platform: MACUNKOY_2_DN_2, arrival: "08:52:31", departure: "08:53:01", dwell_s: 30}
-      - {station: AKYURT_2, platform: AKYURT_2_DN_2, arrival: "08:55:40", departure: "08:56:10", dwell_s: 30}
-      - {station: TEKNOPARK_1, platform: TEKNOPARK_1_DN_2, arrival: "08:59:43", departure: "09:00:13", dwell_s: 30}
-      - {station: GOLBASI_1, platform: GOLBASI_1_DN_2, arrival: "09:02:44", departure: "09:03:14", dwell_s: 30}
-      - {station: MACUNKOY_1, platform: MACUNKOY_1_DN_2, arrival: "09:06:27", departure: "09:06:57", dwell_s: 30}
-      - {station: AKYURT_1, platform: AKYURT_1_DN_4, arrival: "09:09:35", departure: "09:10:05", dwell_s: 30}
-      - {station: AKYURT_1, platform: AKYURT_1_UP_4, arrival: "09:14:10", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_UP_1, departure: "07:55:01", dwell_s: 30}
+      - {station: MACUNKOY_1, platform: MACUNKOY_1_UP_1, arrival: "07:57:38", departure: "07:58:08", dwell_s: 30}
+      - {station: GOLBASI_1, platform: GOLBASI_1_UP_1, arrival: "08:01:21", departure: "08:01:51", dwell_s: 30}
+      - {station: TEKNOPARK_1, platform: TEKNOPARK_1_UP_1, arrival: "08:04:22", departure: "08:04:52", dwell_s: 30}
+      - {station: AKYURT_2, platform: AKYURT_2_UP_1, arrival: "08:08:25", departure: "08:08:55", dwell_s: 30}
+      - {station: MACUNKOY_2, platform: MACUNKOY_2_UP_1, arrival: "08:11:34", departure: "08:12:04", dwell_s: 30}
+      - {station: GOLBASI_2, platform: GOLBASI_2_UP_1, arrival: "08:15:28", departure: "08:15:58", dwell_s: 30}
+      - {station: TEKNOPARK_2, platform: TEKNOPARK_2_UP_1, arrival: "08:18:29", departure: "08:18:59", dwell_s: 30}
+      - {station: AKYURT_3, platform: AKYURT_3_UP_1, arrival: "08:22:57", departure: "08:23:27", dwell_s: 30}
+      - {station: MACUNKOY_3, platform: MACUNKOY_3_UP_1, arrival: "08:26:14", departure: "08:26:44", dwell_s: 30}
+      - {station: GOLBASI_3, platform: GOLBASI_3_UP_1, arrival: "08:29:34", departure: "08:30:04", dwell_s: 30}
+      - {station: GOLBASI_3, platform: GOLBASI_3_DN_1, arrival: "08:34:30", departure: "08:35:00", dwell_s: 30}
+      - {station: MACUNKOY_3, platform: MACUNKOY_3_DN_1, arrival: "08:37:50", departure: "08:38:20", dwell_s: 30}
+      - {station: AKYURT_3, platform: AKYURT_3_DN_1, arrival: "08:41:07", departure: "08:41:37", dwell_s: 30}
+      - {station: TEKNOPARK_2, platform: TEKNOPARK_2_DN_1, arrival: "08:45:36", departure: "08:46:06", dwell_s: 30}
+      - {station: GOLBASI_2, platform: GOLBASI_2_DN_1, arrival: "08:48:37", departure: "08:49:07", dwell_s: 30}
+      - {station: MACUNKOY_2, platform: MACUNKOY_2_DN_1, arrival: "08:52:31", departure: "08:53:01", dwell_s: 30}
+      - {station: AKYURT_2, platform: AKYURT_2_DN_1, arrival: "08:55:40", departure: "08:56:10", dwell_s: 30}
+      - {station: TEKNOPARK_1, platform: TEKNOPARK_1_DN_1, arrival: "08:59:43", departure: "09:00:13", dwell_s: 30}
+      - {station: GOLBASI_1, platform: GOLBASI_1_DN_1, arrival: "09:02:44", departure: "09:03:14", dwell_s: 30}
+      - {station: MACUNKOY_1, platform: MACUNKOY_1_DN_1, arrival: "09:06:27", departure: "09:06:57", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_DN_1, arrival: "09:09:35", departure: "09:10:05", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_UP_1, arrival: "09:14:10", dwell_s: 30}

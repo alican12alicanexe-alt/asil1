@@ -12,11 +12,10 @@ distance between trains - which is the thing a signalling comparison is trying
 to measure. A lap has no such place: every train is running, both lines are
 worked at once, and the only reason to wait is that something is in the way.
 
-Booked times come from running one service unimpeded over its own roads, one
-probe per distinct set of roads. So every booked time is what that service
-achieves with the railway to itself, and any delay in a full run belongs to
-trains getting in each other's way rather than to a plan that was never
-possible.
+Booked times come from running one service unimpeded over the roads every lap
+takes. So every booked time is what a service achieves with the railway to
+itself, and any delay in a full run belongs to trains getting in each other's
+way rather than to a plan that was never possible.
 
     python scenarios/ring/_generate_timetable.py
     python scenarios/ring/_generate_timetable.py 180 timetable-close
@@ -78,15 +77,21 @@ def roads(station, line):
             if plat.station == station and plat.track == line]
 
 
-def road(station, line, index):
-    """The road service ``index`` takes - the roads are used in turn."""
-    available = roads(station, line)
-    return available[index % len(available)]
+def road(station, line):
+    """The road every service takes - the first one the layout declares.
+
+    The flight used to be spread across the faces, service by service, so that
+    neighbouring laps stood at different platforms. Every lap now calls at the
+    same face at every station, which is the harder case and the one worth
+    measuring: the platform, not the following distance, is what the interval
+    has to fit through.
+    """
+    return roads(station, line)[0]
 
 
-def calls(shift=0, index=0):
+def calls(shift=0):
     entries = [{"station": station,
-                "platform": road(station, line, index),
+                "platform": road(station, line),
                 "dwell_s": dwell}
                for station, line, dwell in LAP]
     entries[0]["departure"] = format_clock(BASE + shift)
@@ -129,7 +134,7 @@ def simulation(timetable, duration_s=12000, system="fixed_block_3aspect"):
                                   routes=INFRA.routes, automatic_signals=False))
 
 
-def probe(index=0):
+def probe():
     """One lap, alone on the railway, timed at every call.
 
     Times are read off the train as it goes rather than out of
@@ -143,7 +148,7 @@ def probe(index=0):
         {"stock": [STOCK],
          "services": [{"id": "P", "stock": "EMU", "departure": format_clock(BASE),
                        "ready_lead_s": READY_LEAD,
-                       "calls": calls(index=index)}]}, INFRA)
+                       "calls": calls()}]}, INFRA)
     sim = simulation(timetable, duration_s=12000)
     arrivals, departures = {}, {}
     was_index, was_state = None, None
@@ -171,16 +176,12 @@ def probe(index=0):
 def probe_all(count=COUNT):
     """An unimpeded lap per service, keyed by service index.
 
-    Two services taking the same roads get the same answer, so the probe is run
-    once per distinct set of roads rather than once per service.
+    Every service takes the same roads, so they all achieve the same times and
+    one probe answers for the whole flight. Still keyed by index, because that
+    is what the flight and the sweep ask for.
     """
-    times, seen = {}, {}
-    for index in range(count):
-        key = tuple(road(station, line, index) for station, line, _ in LAP)
-        if key not in seen:
-            seen[key] = probe(index)
-        times[index] = seen[key]
-    return times
+    times = probe()
+    return {index: times for index in range(count)}
 
 
 #: (id prefix, name) for the flight. One direction of travel: a ring has only
@@ -208,7 +209,7 @@ def flight_spec(times, headway_s, count=COUNT, indices=None, stock=None):
         entries = []
         for position, (station, line, dwell) in enumerate(LAP):
             arrival, departure = times[n][position]
-            entry = {"station": station, "platform": road(station, line, n),
+            entry = {"station": station, "platform": road(station, line),
                      "dwell_s": dwell}
             if arrival is not None:
                 entry["arrival"] = format_clock(round(arrival) + shift)
