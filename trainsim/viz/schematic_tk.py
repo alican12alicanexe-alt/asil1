@@ -17,6 +17,8 @@ Controls
     q or escape  quit
 """
 
+import math
+
 import tkinter as tk
 from tkinter import font as tkfont
 
@@ -473,47 +475,113 @@ class TkSchematicView(SchematicView):
         taper = (x1 - x0) * self.ROAD_TAPER_FRAC
         return (x0, y_track, x0 + taper, y_seg, x1 - taper, y_seg, x1, y_track)
 
-    #: How far a horseshoe reaches past the end of the line, as a fraction of
-    #: the gap between the two roads it joins. Set in that gap rather than in
-    #: kilometres on purpose: a horseshoe is a *shape*, and it has to keep it at
-    #: every zoom. 0.6 makes the curve about as wide as it is deep, which is
-    #: what reads as a half circle.
-    TURN_REACH_FRAC = 0.6
-    #: Straight pieces the curve is flattened into. Sixteen is past the point
-    #: where more of them change the picture at any zoom this window reaches.
-    TURN_STEPS = 16
+    #: The straight run-in and run-out either side of the half circle, as a
+    #: fraction of its radius. Without them the curve starts turning the instant
+    #: it leaves the running line, which reads as a kink rather than as a
+    #: junction; a short tangent is what makes the eye see one road leaving
+    #: another.
+    TURN_LEAD_FRAC = 0.35
+    #: Straight pieces the curve is flattened into. Thirty-two puts about three
+    #: pixels between samples at the size this draws at, which is past the point
+    #: where more of them change the picture.
+    TURN_STEPS = 32
 
-    def _turn_points(self, x0, y0, x1, y1):
-        """A U for a turning loop, rather than the ramp a crossover gets.
+    def _turn_geometry(self, x0, y0, x1, y1):
+        """A horseshoe as three pieces: run out, half circle, run back.
 
         A crossover is a diagonal and is honestly drawn as one. A horseshoe is
         not: the train leaves the up line still going up, sweeps round 180
         degrees, and comes back down the down line. Drawn as a straight line
-        between its two ends it reads as a train cutting a corner at about 120
-        degrees - which is the wrong shape, and worse, it is the shape a
-        crossover has, so the one place on this railway where a train turns
-        round looks like the eight places where it does not.
+        between its two ends it read as a corner cut at about 120 degrees -
+        the wrong shape, and worse, the shape a crossover has, so the one place
+        on a ring where a train turns round looked like the ten places where it
+        does not.
 
-        So: a cubic whose control points both sit on the same outer x. That
-        forces the curve horizontal at both ends - away from the line where it
-        leaves, back towards it where it joins - which is the whole of what a
-        half circle looks like on a schematic. It reaches past the end of the
-        railway, because that is where a turning loop is: the curve is the last
-        thing on the line, not something tucked inside it.
+        A cubic with both control points on one outer x was tried first and is
+        not this. It gets the tangents right and the middle wrong: a Bezier is
+        not a circle, so the apex came out flat and the two shoulders too tight,
+        which is what a badly drawn U looks like. This is an actual half circle
+        of radius half the gap between the two roads, joined to each road by a
+        short tangent, so every part of it has the same curvature - which is the
+        whole of what makes a curve read as a curve.
+
+        Returned as ``(centre_x, middle_y, radius, sign, outward, run_in, arc,
+        run_out)``, measured in pixels along the drawing, so that
+        :meth:`_turn_xy` can find a point at a distance rather than at a
+        parameter. That matters: a train moving at a steady speed has to look
+        like it, and a Bezier parameter is not arc length.
         """
-        reach = abs(y1 - y0) * self.TURN_REACH_FRAC
+        radius = abs(y1 - y0) / 2.0
+        middle = (y0 + y1) / 2.0
+        # Which way round the circle is swept, and which way it bulges. Outward
+        # is simply where the curve leaves from: a horseshoe always rejoins
+        # back down the line, so the leaving end is the far end of the railway.
+        sign = 1.0 if y1 > y0 else -1.0
         outward = 1.0 if x0 >= x1 else -1.0
-        x_out = (max(x0, x1) if outward > 0 else min(x0, x1)) + outward * reach
+        lead = radius * self.TURN_LEAD_FRAC
+        centre = (max(x0, x1) if outward > 0 else min(x0, x1)) + outward * lead
+        return (centre, middle, radius, sign, outward,
+                abs(centre - x0), math.pi * radius, abs(centre - x1))
+
+    @staticmethod
+    def _turn_xy(geometry, distance):
+        """The point ``distance`` pixels along a horseshoe from where it leaves."""
+        centre, middle, radius, sign, outward, run_in, arc, run_out = geometry
+        if distance <= run_in:
+            return (centre - outward * (run_in - distance),
+                    middle - sign * radius)
+        distance -= run_in
+        if distance <= arc:
+            angle = math.pi * distance / arc if arc > 0.0 else 0.0
+            return (centre + outward * radius * math.sin(angle),
+                    middle - sign * radius * math.cos(angle))
+        distance = min(distance - arc, run_out)
+        return (centre - outward * distance, middle + sign * radius)
+
+    def _turn_points(self, x0, y0, x1, y1):
+        """The polyline a turning loop is drawn as."""
+        geometry = self._turn_geometry(x0, y0, x1, y1)
+        total = geometry[5] + geometry[6] + geometry[7]
         points = []
         for step in range(self.TURN_STEPS + 1):
-            t = float(step) / self.TURN_STEPS
-            u = 1.0 - t
-            # Both control points at x_out, on their own end's y.
-            points.append(u * u * u * x0 + 3 * u * u * t * x_out
-                          + 3 * u * t * t * x_out + t * t * t * x1)
-            points.append(u * u * u * y0 + 3 * u * u * t * y0
-                          + 3 * u * t * t * y1 + t * t * t * y1)
+            points.extend(self._turn_xy(geometry, total * step / self.TURN_STEPS))
         return tuple(points)
+
+    def _path_xy(self, path, chainage_m):
+        """Where a point on a train's path sits on the drawing.
+
+        Everywhere but a horseshoe this is the km and the alignment, read
+        straight off the path. On a horseshoe it is not: the drawing goes round
+        a curve the km axis knows nothing about, and a train placed by km alone
+        cuts the chord and leaves the rails - which is exactly what it did.
+        """
+        entry = path.entry_at(chainage_m)
+        segment = entry.segment
+        if segment.turns:
+            layout = self.layout
+            geometry = self._turn_geometry(
+                layout.x(segment.km_start), layout.y(segment.y),
+                layout.x(segment.km_end), layout.y(segment.end_y))
+            total = geometry[5] + geometry[6] + geometry[7]
+            along = (chainage_m - entry.start_m) / max(1e-6, segment.length_m)
+            return self._turn_xy(geometry, total * min(1.0, max(0.0, along)))
+        return (self.layout.x(path.km_at(chainage_m)),
+                self.layout.y(path.y_at(chainage_m)))
+
+    #: Samples taken along a train, its braking envelope and anything else drawn
+    #: as a length of railway rather than a point on one. Straight track needs
+    #: two; the rest are for the curve, and on straight track they are collinear
+    #: and cost a few floats.
+    PATH_STEPS = 8
+
+    def _path_polyline(self, path, from_m, to_m, steps=None):
+        """A flat coordinate list following the path from one chainage to another."""
+        steps = self.PATH_STEPS if steps is None else steps
+        points = []
+        for step in range(steps + 1):
+            points.extend(self._path_xy(
+                path, from_m + (to_m - from_m) * step / steps))
+        return points
 
     def _road_span(self, segment, track_y):
         """The x range over which a road runs at its own alignment.
@@ -1146,7 +1214,6 @@ class TkSchematicView(SchematicView):
     MIN_TRAIN_PX = 3
 
     def _draw_trains(self) -> None:
-        layout = self.layout
         tracks = self.scenario.infrastructure.tracks
         live = set()
 
@@ -1154,10 +1221,8 @@ class TkSchematicView(SchematicView):
             if not train.is_active:
                 continue
             live.add(train.id)
-            front_km = train.path.km_at(train.chainage_m)
-            rear_km = train.path.km_at(max(0.0, train.rear_m))
-            y = layout.y(train.path.y_at(train.chainage_m))
             segment = train.path.entry_at(train.chainage_m).segment
+            points, nose = self._train_points(train)
 
             # A train is drawn from its rear to its nose, and where that is too
             # few pixels to see it is padded BACKWARDS from the nose. Padding
@@ -1171,36 +1236,42 @@ class TkSchematicView(SchematicView):
             # thing being positioned. The kernel never thought so - chainage_m
             # is the front and always was - so this was the picture lying about
             # the model, which is the worst way round.
-            x_front, x_rear = layout.x(front_km), layout.x(rear_km)
-            if abs(x_front - x_rear) < self.MIN_TRAIN_PX:
-                ahead = 1.0 if segment.km_end >= segment.km_start else -1.0
-                x_rear = x_front - ahead * self.MIN_TRAIN_PX
-            x_rear, x_front = min(x_rear, x_front), max(x_rear, x_front)
-
             direction = tracks.get(segment.track, {}).get("direction", "up")
             if train.state == "dwelling":
                 colour = PALETTE["train_dwelling"]
             else:
                 colour = PALETTE["train_up"] if direction == "up" else PALETTE["train_down"]
 
-            self._draw_zone(train, y)
-            self._draw_authority(train, y)
+            self._draw_zone(train)
+            self._draw_authority(train)
 
             items = self._train_items.get(train.id)
             if items is None:
-                body = self.canvas.create_rectangle(
-                    0, 0, 0, 0, fill=colour, outline=PALETTE["train_outline"],
+                # Two lines rather than a rectangle: a rectangle cannot follow a
+                # curve, and on the horseshoe the train was drawn as a level bar
+                # across the middle of it, off the rails entirely. The lower,
+                # wider line in the background colour is what the rectangle's
+                # outline used to be - it keeps the train from merging into the
+                # road it is standing on.
+                halo = self.canvas.create_line(
+                    0, 0, 0, 0, fill=PALETTE["train_outline"],
+                    width=10, capstyle=tk.BUTT,
+                )
+                body = self.canvas.create_line(
+                    0, 0, 0, 0, fill=colour, width=8, capstyle=tk.BUTT,
                 )
                 label = self.canvas.create_text(
                     0, 0, text=train.id, fill=PALETTE["label_bright"],
                     font=self.mono_small,
                 )
-                items = (body, label)
+                items = (halo, body, label)
                 self._train_items[train.id] = items
-            body, label = items
-            self.canvas.coords(body, x_rear, y - 4, x_front, y + 4)
+            halo, body, label = items
+            self.canvas.coords(halo, *points)
+            self.canvas.coords(body, *points)
             self.canvas.itemconfig(body, fill=colour)
-            self.canvas.coords(label, (x_rear + x_front) / 2.0, y - 14)
+            self.canvas.coords(label, nose[0], nose[1] - 14)
+            self.canvas.tag_raise(halo)
             self.canvas.tag_raise(body)
             self.canvas.tag_raise(label)
 
@@ -1212,13 +1283,59 @@ class TkSchematicView(SchematicView):
         for train_id in [t for t in self._authority_items if t not in live]:
             self.canvas.delete(self._authority_items.pop(train_id))
 
+    #: How far back along the rails a heading is taken from when a train is too
+    #: short to draw. Far enough that the two samples are not the same point at
+    #: any zoom, short enough to be the direction the nose is actually going.
+    MIN_TRAIN_M = 20.0
+
+    @staticmethod
+    def _polyline_length(points) -> float:
+        total = 0.0
+        for i in range(0, len(points) - 3, 2):
+            total += math.hypot(points[i + 2] - points[i],
+                                points[i + 3] - points[i + 1])
+        return total
+
+    def _train_points(self, train):
+        """The line a train is drawn as, rear to nose, and where its nose is.
+
+        A train is drawn from its rear to its nose, and where that is too few
+        pixels to see it is padded BACKWARDS from the nose. Padding around the
+        centre - which this used to do - draws the nose ahead of where the train
+        actually is, and by a long way: sixty kilometres across a window is
+        about 24 m to the pixel, so a 160 m train is three pixels on open line
+        and was being inflated to twelve about its midpoint. The drawn nose then
+        stood 240 m past the real one, over-running the signal the train was
+        actually standing at, and every train looked as though its middle was
+        the thing being positioned. The kernel never thought so - chainage_m is
+        the front and always was - so this was the picture lying about the model,
+        which is the worst way round.
+        """
+        path = train.path
+        nose = self._path_xy(path, train.chainage_m)
+        points = self._path_polyline(path, max(0.0, train.rear_m),
+                                     train.chainage_m)
+        if self._polyline_length(points) >= self.MIN_TRAIN_PX:
+            return points, nose
+        behind = self._path_xy(
+            path, max(0.0, train.chainage_m - self.MIN_TRAIN_M))
+        dx, dy = nose[0] - behind[0], nose[1] - behind[1]
+        span = math.hypot(dx, dy)
+        if span < 1e-6:
+            segment = path.entry_at(train.chainage_m).segment
+            dx, dy, span = (1.0 if segment.km_end >= segment.km_start
+                            else -1.0), 0.0, 1.0
+        scale = self.MIN_TRAIN_PX / span
+        return ([nose[0] - dx * scale, nose[1] - dy * scale, nose[0], nose[1]],
+                nose)
+
     #: Half-height of the limit tick, in pixels. Taller than the train body
     #: (4) and than the braking zone (6) on purpose: the three marks belong to
     #: one train and stack into a picture, and the outermost of them is the one
     #: that is a limit rather than a thing occupying the railway.
     AUTHORITY_TICK = 9
 
-    def _draw_authority(self, train, y) -> None:
+    def _draw_authority(self, train) -> None:
         """Where this train's movement authority runs out.
 
         A tick was tried here before and taken out, for two reasons. One was
@@ -1250,7 +1367,6 @@ class TkSchematicView(SchematicView):
 
         So all three are drawn and each has a key.
         """
-        layout = self.layout
         tick = self._authority_items.get(train.id)
         if tick is None:
             tick = self.canvas.create_line(
@@ -1267,13 +1383,13 @@ class TkSchematicView(SchematicView):
         if end - train.chainage_m < 1.0:
             self.canvas.itemconfigure(tick, state="hidden")
             return
-        x = layout.x(train.path.km_at(min(train.path.total_m, end)))
+        x, tick_y = self._path_xy(train.path, min(train.path.total_m, end))
         half = self.AUTHORITY_TICK
-        self.canvas.coords(tick, x, y - half, x, y + half)
+        self.canvas.coords(tick, x, tick_y - half, x, tick_y + half)
         self.canvas.itemconfigure(tick, state="normal")
         self.canvas.tag_raise(tick)
 
-    def _draw_zone(self, train, y) -> None:
+    def _draw_zone(self, train) -> None:
         """The braking envelope: how much railway this train needs to stop in.
 
         This is what a moving block actually is: not a fixed length of track that
@@ -1286,12 +1402,11 @@ class TkSchematicView(SchematicView):
         :meth:`_draw_authority` draws how much it HAS. Neither says the other,
         and the gap between them is the margin the train is running on.
         """
-        layout = self.layout
         zone = self._zone_items.get(train.id)
         if zone is None:
-            zone = self.canvas.create_rectangle(
-                0, 0, 0, 0, fill=PALETTE["braking_zone"], outline="",
-                stipple="gray25",
+            zone = self.canvas.create_line(
+                0, 0, 0, 0, fill=PALETTE["braking_zone"], width=12,
+                stipple="gray25", capstyle=tk.BUTT,
             )
             self._zone_items[train.id] = zone
 
@@ -1300,10 +1415,8 @@ class TkSchematicView(SchematicView):
             return
         needed = train.stopping_distance_m(self.reaction_s)
         end = min(train.path.total_m, train.chainage_m + needed)
-        x_a = layout.x(train.km)
-        x_b = layout.x(train.path.km_at(end))
-        left, right = min(x_a, x_b), max(x_a, x_b)
-        self.canvas.coords(zone, left, y - 6, right, y + 6)
+        self.canvas.coords(
+            zone, *self._path_polyline(train.path, train.chainage_m, end))
         self.canvas.itemconfigure(zone, state="normal")
 
     # ------------------------------------------------------------------- header
