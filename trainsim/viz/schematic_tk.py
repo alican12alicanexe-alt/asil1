@@ -565,18 +565,102 @@ class TkSchematicView(SchematicView):
             total = geometry[5] + geometry[6] + geometry[7]
             along = (chainage_m - entry.start_m) / max(1e-6, segment.length_m)
             return self._turn_xy(geometry, total * min(1.0, max(0.0, along)))
-        return (self.layout.x(path.km_at(chainage_m)),
-                self.layout.y(path.y_at(chainage_m)))
+        x = self.layout.x(path.km_at(chainage_m))
+        track_y = self._splay_of(segment)
+        if track_y is not None:
+            return (x, self._splay_y(segment, track_y, x))
+        return (x, self.layout.y(path.y_at(chainage_m)))
+
+    def _splay_of(self, segment):
+        """The running line an offset road splays off, or ``None``.
+
+        A loop or a second platform is drawn ``\\____/``: it leaves the line's
+        alignment, runs parallel to it for most of its length and comes back.
+        Only the flat middle is at the road's own y. A junction link is not
+        this - it ramps from one alignment to the other and ends there - and
+        neither is a horseshoe.
+        """
+        if abs(segment.end_y - segment.y) > 1e-6:
+            return None
+        track_y = self.scenario.infrastructure.tracks.get(
+            segment.track, {}).get("y", segment.y)
+        if abs(segment.y - track_y) < 1e-6:
+            return None
+        return track_y
+
+    def _splay_y(self, segment, track_y, x):
+        """Where the drawn rail of an offset road is at pixel ``x``.
+
+        The path does not know about the splay. ``Path.y_at`` interpolates a
+        junction link, because that segment declares an end_y, and returns a
+        flat y for everything else - so a train on an offset platform road was
+        drawn at the road's own alignment from the moment it entered the road,
+        while the rail it is on was still out at the running line for the first
+        eighteen per cent of it. The train jumped the offset in one tick at
+        each end: ``______|------`` where the rail is drawn ``______/------``,
+        and for the length of the taper it stood beside the road rather than on
+        it.
+
+        This is the same fault the horseshoe had and the same fix. Read off the
+        drawing rather than off the km axis, so there is one answer to where a
+        road is and everything - the rail, the train, its braking envelope, its
+        limit of authority - uses it.
+
+        In x rather than along the road, because that is how
+        :meth:`_segment_points` lays the taper out, and interpolating the two
+        the same way is what keeps them on top of each other to the pixel.
+        """
+        layout = self.layout
+        y_seg, y_track = layout.y(segment.y), layout.y(track_y)
+        x0, x1 = layout.x(segment.km_start), layout.x(segment.km_end)
+        taper = (x1 - x0) * self.ROAD_TAPER_FRAC
+        if abs(taper) < 1e-9:
+            return y_seg
+        # Distance into each taper, as a fraction of it. Signed division, so a
+        # road worked towards lower km - where x1 is left of x0 - reads the
+        # same way round.
+        fraction = min((x - x0) / taper, (x1 - x) / taper)
+        return y_track + (y_seg - y_track) * min(1.0, max(0.0, fraction))
 
     #: Samples taken along a train, its braking envelope and anything else drawn
     #: as a length of railway rather than a point on one. Straight track needs
-    #: two; the rest are for the curve, and on straight track they are collinear
+    #: two; the rest are for the bends, and on straight track they are collinear
     #: and cost a few floats.
     PATH_STEPS = 8
+    #: Ceiling on that, for a stopping envelope kilometres long with a bend in
+    #: a few metres of it. Past this the extra samples are smaller than a pixel.
+    MAX_PATH_STEPS = 200
+
+    def _path_steps(self, path, from_m, to_m):
+        """How finely to sample a stretch of path: as fine as its bends need.
+
+        Even sampling over the whole stretch, so the count has to be set by the
+        worst of it. A horseshoe and the splay at each end of an offset road
+        are the only two places the drawing leaves the straight, and a braking
+        envelope three kilometres long carrying one of them in its last two
+        hundred metres would, at eight samples, put one point either side of
+        the bend and draw a chord across it. So a bend in range raises the
+        count in proportion to how little of the range it occupies.
+        """
+        lo, hi = min(from_m, to_m), max(from_m, to_m)
+        steps = self.PATH_STEPS
+        if hi - lo <= 0.0:
+            return steps
+        for entry in path.entries:
+            if entry.end_m <= lo or entry.start_m >= hi:
+                continue
+            segment = entry.segment
+            if not segment.turns and self._splay_of(segment) is None:
+                continue
+            share = min(hi, entry.end_m) - max(lo, entry.start_m)
+            if share > 0.0:
+                steps = max(steps, int(math.ceil(
+                    self.TURN_STEPS * (hi - lo) / share)))
+        return min(steps, self.MAX_PATH_STEPS)
 
     def _path_polyline(self, path, from_m, to_m, steps=None):
         """A flat coordinate list following the path from one chainage to another."""
-        steps = self.PATH_STEPS if steps is None else steps
+        steps = self._path_steps(path, from_m, to_m) if steps is None else steps
         points = []
         for step in range(steps + 1):
             points.extend(self._path_xy(
@@ -638,6 +722,14 @@ class TkSchematicView(SchematicView):
                 if platform_end is not None:
                     x = platform_end
                     pinned.add(signal.id)
+            if not signal.from_segment:
+                # A buffer-stop signal, and not one of a throat's alternatives
+                # however the node groups it. Two of them at a depot are the
+                # stop blocks of two separate roads, at the far end from the
+                # points; taking the group's rearmost x would drag the offset
+                # road's lamp back to where its road is still leaving the
+                # running line, and hang it in the air beside the splay.
+                pinned.add(signal.id)
             wanted[signal.id] = x
 
         groups = {}
@@ -720,12 +812,23 @@ class TkSchematicView(SchematicView):
         one post on the ground, and :meth:`_plan_shared_lamps` has already
         picked which of them carries it.
 
-        Neither is a signal with no road behind it. Those stand at the buffer
-        stops, reading into a depot road from beyond the end of the railway,
-        and no train can ever be where one would be read from. They were drawn
-        dark, which was better than the red they used to show, but a lamp at a
-        buffer stop is not a lamp that is out of use - there is no signal there
-        at all. :meth:`_draw_buffer_stops` draws what IS there instead.
+        A signal with no road behind it IS drawn, dark, alongside the buffer
+        stop :meth:`_draw_buffer_stops` puts there. It stands at the far end of
+        a depot road, reading into it from beyond the end of the railway, and
+        no train can ever be where it would be read from - so on this railway
+        it is a lamp that never lights. It is drawn anyway, because it is a
+        real boundary of a real block and the layout can grow into it: a
+        connection laid beyond that stop block - a junction, an extension, a
+        second depot road worked through - gives it an approach and it starts
+        working, and a schematic that had quietly left it out would then be
+        showing a signal fewer than the railway has. Leaving it out also made
+        a depot road read as one post where a platform road has two at each
+        end, which is not the difference between them: the difference is that
+        one end of a depot road is the end of the line.
+
+        It is dark rather than red, and :meth:`_signals_out_of_use` is what
+        makes it so. Dark is the right word for it - *not this way* - and red
+        would be a danger signal held against a train that cannot exist.
 
         Every signal on a stretch worked both ways IS drawn, each on its own
         road at its own end. They used to share one lamp per boundary that moved
@@ -736,7 +839,7 @@ class TkSchematicView(SchematicView):
         ends. Which of them is in force is carried by
         :meth:`_signals_out_of_use` darkening the rest.
         """
-        if signal.id in self._sharing_lamp or not signal.from_segment:
+        if signal.id in self._sharing_lamp:
             return
         layout = self.layout
         x = signal_x.get(signal.id, layout.x(signal.km))
@@ -812,13 +915,17 @@ class TkSchematicView(SchematicView):
         This is what leaves one lamp per place as an invariant of the drawing,
         which matters more than it sounds: two lamps at one spot showing
         different things is the picture of a failed signal.
+
+        A signal with no approach is in this, and has to be now that it is
+        drawn: it holds a place like any other lamp. Which of a merged pair
+        anchors it does not matter, because a lamp shows the least restrictive
+        of the ones IN FORCE and a signal with no approach is never one of
+        them - :meth:`_signals_out_of_use` darkens it, so it can only ever be
+        outvoted by the signal it shares the place with.
         """
         places = {}
         for signal in infra.signals.values():
-            if signal.id in self._sharing_lamp or not signal.from_segment:
-                # A signal with no approach is not drawn, so it must not be the
-                # one that keeps a place's lamp either - that would take a real
-                # signal off the schematic with it.
+            if signal.id in self._sharing_lamp:
                 continue
             key = (round(signal_x.get(signal.id, 0.0), 1),
                    round(self._signal_y(signal), 1))
