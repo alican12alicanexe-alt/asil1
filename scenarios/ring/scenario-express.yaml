@@ -33,6 +33,10 @@
 #     seconds standing floors the interval around a minute all by itself -
 #     which is the range the answer lives in.
 #
+# It does NOT put the constraint on the line. That was the intention and it is
+# not what happened - see WHAT BINDS IT below, which is measured rather than
+# assumed, and which is the more useful half of this scenario.
+#
 # Same drawing, same unit, same speed profile, same twelve services. So the
 # comparison against the ring is a comparison of what trains are asked to do.
 #
@@ -63,13 +67,50 @@
 #   Hybrid L3 -> moving block   10 s       10 s
 #   moving block -> virtual      7 s        7 s
 #
-# Not a bigger share of a smaller number - the identical figures. Virtual
-# coupling removes one term from the follower's separation, the room the train
-# in front needs to stop, and at these speeds that term is worth seven seconds.
-# The platform sat on top of it as a constant, so it changed how big seven
-# seconds LOOKED - 9% of a stopping interval, 18% of a non-stop one - without
-# ever changing what it was. That is why nothing moved it: not an emergency
-# brake of 1.2, not a service brake of 0.6, not the convoy braking rule.
+# Not a bigger share of a smaller number - the identical figures.
+#
+# WHAT BINDS IT
+#
+# The all-green headway is the shortest interval at which no train is ever
+# checked. So ask where the first check is, at one second under each system's
+# own limit. Every one of them, under both systems:
+#
+#   moving block at 38 s    11 checks   all at chainage 440 m, all at 1.8 km/h
+#   virtual coupling at 31 s 11 checks   all at chainage 440 m, all at 1.8 km/h
+#
+# Eleven checks for twelve services is one per follower. Chainage 440 m is a
+# train just starting to move off the platform at Akyurt 1. In seventy
+# kilometres of running this flight is never checked on the line at all - the
+# number is set entirely by how quickly one train can follow another OFF THE
+# PLATFORM, and taking the twenty-one intermediate stops away did not move that
+# and could not have.
+#
+# Which finally explains the seven seconds. At 1.8 km/h a braking distance is
+# a tenth of a metre. The term virtual coupling removes is worth nothing at all
+# where the binding event happens, so no brake rate could ever have moved it -
+# not an emergency brake of 1.2, not a service brake of 0.6, not the convoy
+# braking rule. What the seven seconds measures is the difference between two
+# systems' rules for starting a train behind one that has just left: moving
+# block holds it until the leader's rear is clear by its margin, virtual
+# coupling lets it close up until the INTERLOCKING stops it, which is what
+# "VC: no route set" in the trace above is. It is a terminus figure and an
+# interlocking figure. It is not a following-distance figure.
+#
+# Below the all-green boundary this stops being true, and the line does start
+# to bind:
+#
+#                        checks   in the first km
+#   moving block  38 s       11        100%
+#                 30 s     1287         17%
+#                 26 s     2953          8%
+#   virtual       31 s       11        100%
+#   coupling      26 s      148         45%
+#                 22 s     1567         14%
+#
+# So the table above is honest about what it measured and this scenario's own
+# title was not. Both flights are platform-limited at their all-green headway;
+# what the non-stop one removed is twenty-one platforms out of twenty-two, and
+# the twenty-second still sets the number.
 #
 # The percentage is the number that moves, and the percentage is the number
 # papers quote. Both of these runs are honest and they disagree by a factor of
@@ -79,12 +120,15 @@
 # WHAT IT DOES NOT SAY
 #
 # Twelve trains, one unit, one brake rate, 80 km/h, and a terminus with four
-# faces at one end of the flight. The seven seconds is this railway's answer at
-# this speed - the term it removes goes as v squared over 2b, so a faster
-# railway has more of it to remove and a slower one less.
+# faces at one end of the flight. Since the binding event turns out to be at
+# the terminus and at walking pace, this railway has never measured what the
+# literature measures - two trains closing up at line speed, where the term
+# virtual coupling removes is worth something. Doing that needs a flight with
+# no terminus in it, which this circuit cannot provide while every service
+# starts and finishes at Akyurt 1.
 
 name: ring express
-description: "The 70 km circuit run non-stop, so what the interval fits through is the following distance rather than a platform road."
+description: "The 70 km circuit run non-stop - which turns out to be platform-limited at its all-green headway too, and says so."
 
 infrastructure: infrastructure.yaml
 timetable: timetable-express.yaml
