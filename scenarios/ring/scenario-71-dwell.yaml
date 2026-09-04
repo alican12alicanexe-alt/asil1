@@ -39,6 +39,36 @@
 #   taken away, the recovery behaviour is real. If it does not, the win was the
 #   slack, and this directory should say so.
 #
+# WHAT THE CONTROL ACTUALLY SAID
+#
+# It said the win is the slack. Measured, with the door fault:
+#
+#   same timetable, both at 78 s     moving block 982 s knock-on
+#                                    virtual coupling 829 s        -153 s, 16%
+#
+#   each at its own limit, 78 v 71   moving block 982 s
+#                                    virtual coupling 976 s          -6 s, 0.6%
+#
+# Six seconds out of nine hundred and eighty. Booked to what it can actually
+# hold, virtual coupling takes a door fault almost exactly as badly as moving
+# block does; the two incidents together say the same, 1162 s against 1156 s.
+# So there is no separate recovery behaviour to sell. What the technology
+# provides is seven seconds of headroom and nothing else, and the two
+# comparisons above are the same seven seconds spent two different ways:
+#
+#   spend it on trains       nine per cent more of them, and a new timetable
+#   spend it on robustness   the same trains, sixteen per cent less knock-on
+#
+# Not both. That is a narrower claim than "virtual coupling recovers better",
+# it is the one the measurement supports, and it is still a real choice for an
+# operator - robustness is the cheaper of the two to take, because it needs no
+# retiming.
+#
+# The restriction pair is not a clean comparison in part B and should not be
+# quoted as one: the two timetables put different numbers of trains inside the
+# restriction's hour, so 455 s against 365 s is confounded by the booking as
+# well as by the signalling.
+#
 # WHAT THIS ARGUMENT ADMITS
 #
 # That the benefit is proportional to how much disruption there is. A railway
