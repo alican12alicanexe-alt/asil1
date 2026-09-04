@@ -38,33 +38,38 @@
 #
 # WHAT IT SAYS
 #
-# The ladder, all-green headway, twelve non-stop laps:
+# All-green headway, twelve laps, the same railway both ways:
 #
-#   fixed block 3-aspect   139 s
-#   ETCS L2                112 s
-#   Hybrid L3               49 s
-#   moving block            39 s
-#   virtual coupling        32 s
+#                          stopping   non-stop   the platform
+#   fixed block 3-aspect      148 s      139 s          9 s
+#   ETCS L2                   118 s      112 s          6 s
+#   Hybrid L3                  88 s       49 s         39 s
+#   moving block               78 s       39 s         39 s
+#   virtual coupling           71 s       32 s         39 s
 #
-# and against the stopping flight on the same railway:
+# Read the last column first. The platform costs the two lineside systems
+# almost nothing and the three distance-separated ones exactly thirty-nine
+# seconds each. That is the whole finding, and both halves of it say the same
+# thing: a railway only pays for the constraint that binds it. Under fixed
+# block and L2 the block section is already longer than a platform occupancy,
+# so taking the stops away frees six or nine seconds and then runs into the
+# block. Under L3, moving block and virtual coupling the following distance is
+# shorter than the platform's hold, so the platform is what binds and removing
+# it is worth the same 39 s to all three.
 #
-#                        stopping     non-stop
-#   moving block            78 s         39 s
-#   virtual coupling        71 s         32 s
-#   the spread               7 s          7 s
-#                          (9.0%)      (17.9%)
+# Which means the gaps between them survive intact:
 #
-# The platform was worth 39 s, and it was worth 39 s TO BOTH SYSTEMS EQUALLY.
-# Take it away and virtual coupling is still exactly seven seconds better than
-# moving block - the same seven seconds, not a bigger share of a smaller number
-# but the identical figure.
+#                          stopping   non-stop
+#   Hybrid L3 -> moving block   10 s       10 s
+#   moving block -> virtual      7 s        7 s
 #
-# That is what relative braking actually buys on this railway, and it explains
-# why nothing moved it. Virtual coupling removes one term from the follower's
-# separation: the distance the train in front needs to stop. At these speeds
-# that term is worth about seven seconds and no more. The platform sat on top
-# of it as a constant, so it changed how big seven seconds LOOKED - 9% of a
-# stopping interval, 18% of a non-stop one - without ever changing what it was.
+# Not a bigger share of a smaller number - the identical figures. Virtual
+# coupling removes one term from the follower's separation, the room the train
+# in front needs to stop, and at these speeds that term is worth seven seconds.
+# The platform sat on top of it as a constant, so it changed how big seven
+# seconds LOOKED - 9% of a stopping interval, 18% of a non-stop one - without
+# ever changing what it was. That is why nothing moved it: not an emergency
+# brake of 1.2, not a service brake of 0.6, not the convoy braking rule.
 #
 # The percentage is the number that moves, and the percentage is the number
 # papers quote. Both of these runs are honest and they disagree by a factor of
