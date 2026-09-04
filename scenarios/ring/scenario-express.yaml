@@ -1,0 +1,109 @@
+# ring express - the same circuit, run non-stop, to take the platform out of
+# the way and leave the signalling.
+#
+#   python run.py scenarios/ring/scenario-express.yaml --headless
+#   python run.py scenarios/ring/scenario-express.yaml --compare    (the ladder)
+#   python scenarios/ring/_sweep_express.py virtual_coupling
+#   python scenarios/ring/_generate_express.py 120   (rebuild the timetable)
+#
+# WHAT THIS SCENARIO IS FOR
+#
+# scenarios/ring ends by naming its own limitation, three times over. Every
+# service on it calls at all eleven stations twice a lap, so once the interval
+# is tight enough what it has to fit through is a platform road rather than the
+# distance between two trains - and a signalling system that closes that
+# distance has nothing left to buy. Moving block held 78 s there and virtual
+# coupling 71 s, and that 7 s would not move: not for an emergency brake of 1.2
+# instead of 1.5, not for a service brake of 0.6 instead of 1.0, not for
+# crediting the train in front with its service brake instead of its emergency
+# one. A measurement that refuses to respond to its own inputs is measuring
+# something else.
+#
+# This is that experiment run properly, and it is what scenarios/express does
+# to scenarios/capacity. Two things change from the ring, and nothing else:
+#
+#   - nothing stops. A service is booked at Akyurt 1 on the up line and again
+#     at Akyurt 1 on the down line; the twenty-one calls between them are run
+#     through. That is the circuit less the final horseshoe - it cannot be the
+#     whole lap, because a service needs a path from its origin to its
+#     destination and there is no path from a platform to itself.
+#   - the four faces at Akyurt 1 are used in turn. Everywhere else on this
+#     railway the flight is put on one face on purpose, because that is the
+#     harder case; here it would be the only case, since one face and thirty
+#     seconds standing floors the interval around a minute all by itself -
+#     which is the range the answer lives in.
+#
+# Same drawing, same unit, same speed profile, same twelve services. So the
+# comparison against the ring is a comparison of what trains are asked to do.
+#
+# WHAT IT SAYS
+#
+# The ladder, all-green headway, twelve non-stop laps:
+#
+#   fixed block 3-aspect   139 s
+#   ETCS L2                112 s
+#   Hybrid L3               49 s
+#   moving block            39 s
+#   virtual coupling        32 s
+#
+# and against the stopping flight on the same railway:
+#
+#                        stopping     non-stop
+#   moving block            78 s         39 s
+#   virtual coupling        71 s         32 s
+#   the spread               7 s          7 s
+#                          (9.0%)      (17.9%)
+#
+# The platform was worth 39 s, and it was worth 39 s TO BOTH SYSTEMS EQUALLY.
+# Take it away and virtual coupling is still exactly seven seconds better than
+# moving block - the same seven seconds, not a bigger share of a smaller number
+# but the identical figure.
+#
+# That is what relative braking actually buys on this railway, and it explains
+# why nothing moved it. Virtual coupling removes one term from the follower's
+# separation: the distance the train in front needs to stop. At these speeds
+# that term is worth about seven seconds and no more. The platform sat on top
+# of it as a constant, so it changed how big seven seconds LOOKED - 9% of a
+# stopping interval, 18% of a non-stop one - without ever changing what it was.
+#
+# The percentage is the number that moves, and the percentage is the number
+# papers quote. Both of these runs are honest and they disagree by a factor of
+# two, which is worth remembering when reading a capacity figure that comes
+# with no stopping pattern attached.
+#
+# WHAT IT DOES NOT SAY
+#
+# Twelve trains, one unit, one brake rate, 80 km/h, and a terminus with four
+# faces at one end of the flight. The seven seconds is this railway's answer at
+# this speed - the term it removes goes as v squared over 2b, so a faster
+# railway has more of it to remove and a slower one less.
+
+name: ring express
+description: "The 70 km circuit run non-stop, so what the interval fits through is the following distance rather than a platform road."
+
+infrastructure: infrastructure.yaml
+timetable: timetable-express.yaml
+
+simulation:
+  dt: 1.0
+  start_time: "06:57:00"
+  duration_s: 12000
+  strict: false
+
+signalling:
+  system: fixed_block_3aspect
+  sighting_distance_m: 250
+
+interlocking:
+  route_request_distance_m: 2000
+  route_request_lead_s: 60
+  automatic_signals: false
+  route_lookahead: 2
+
+driver:
+  reaction_time_s: 2.0
+  safety_margin_m: 25.0
+
+view:
+  title: "ring express - a non-stop lap of the circuit"
+  speed: 20

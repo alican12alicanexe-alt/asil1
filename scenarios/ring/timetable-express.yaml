@@ -1,0 +1,131 @@
+# ring express timetable - generated, do not edit by hand.
+#
+#   python scenarios/ring/_generate_express.py 120
+#
+# 12 non-stop laps of the circuit, booked 120 seconds apart, all of them the same
+# unit. A lap is two calls: away from Akyurt 1 on the up line, round HS_EAST,
+# back down the down line and into Akyurt 1 again, running through the twenty-one
+# stations in between. The four faces at Akyurt 1 are used in turn, so what the
+# interval has to fit through is the line rather than the terminus. Every booked
+# time is what that service achieves with the railway to itself.
+
+stock:
+  - id: EMU
+    name: Ring unit
+    length_m: 120
+    max_speed_kmh: 90
+    max_accel: 1.0
+    service_brake: 1.0
+    emergency_brake: 1.5
+    etcs_level: none
+    tims: false
+
+services:
+
+  - id: X01
+    name: 07:00 Akyurt 1 circuit non-stop
+    stock: EMU
+    departure: "07:00:00"
+    ready_lead_s: 30
+    calls:
+      - {station: AKYURT_1, platform: AKYURT_1_UP_1, departure: "07:00:01", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_DN_1, arrival: "07:57:08", dwell_s: 30}
+
+  - id: X02
+    name: 07:02 Akyurt 1 circuit non-stop
+    stock: EMU
+    departure: "07:02:00"
+    ready_lead_s: 30
+    calls:
+      - {station: AKYURT_1, platform: AKYURT_1_UP_2, departure: "07:02:01", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_DN_2, arrival: "07:59:08", dwell_s: 30}
+
+  - id: X03
+    name: 07:04 Akyurt 1 circuit non-stop
+    stock: EMU
+    departure: "07:04:00"
+    ready_lead_s: 30
+    calls:
+      - {station: AKYURT_1, platform: AKYURT_1_UP_3, departure: "07:04:01", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_DN_3, arrival: "08:01:08", dwell_s: 30}
+
+  - id: X04
+    name: 07:06 Akyurt 1 circuit non-stop
+    stock: EMU
+    departure: "07:06:00"
+    ready_lead_s: 30
+    calls:
+      - {station: AKYURT_1, platform: AKYURT_1_UP_4, departure: "07:06:01", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_DN_4, arrival: "08:03:08", dwell_s: 30}
+
+  - id: X05
+    name: 07:08 Akyurt 1 circuit non-stop
+    stock: EMU
+    departure: "07:08:00"
+    ready_lead_s: 30
+    calls:
+      - {station: AKYURT_1, platform: AKYURT_1_UP_1, departure: "07:08:01", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_DN_1, arrival: "08:05:08", dwell_s: 30}
+
+  - id: X06
+    name: 07:10 Akyurt 1 circuit non-stop
+    stock: EMU
+    departure: "07:10:00"
+    ready_lead_s: 30
+    calls:
+      - {station: AKYURT_1, platform: AKYURT_1_UP_2, departure: "07:10:01", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_DN_2, arrival: "08:07:08", dwell_s: 30}
+
+  - id: X07
+    name: 07:12 Akyurt 1 circuit non-stop
+    stock: EMU
+    departure: "07:12:00"
+    ready_lead_s: 30
+    calls:
+      - {station: AKYURT_1, platform: AKYURT_1_UP_3, departure: "07:12:01", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_DN_3, arrival: "08:09:08", dwell_s: 30}
+
+  - id: X08
+    name: 07:14 Akyurt 1 circuit non-stop
+    stock: EMU
+    departure: "07:14:00"
+    ready_lead_s: 30
+    calls:
+      - {station: AKYURT_1, platform: AKYURT_1_UP_4, departure: "07:14:01", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_DN_4, arrival: "08:11:08", dwell_s: 30}
+
+  - id: X09
+    name: 07:16 Akyurt 1 circuit non-stop
+    stock: EMU
+    departure: "07:16:00"
+    ready_lead_s: 30
+    calls:
+      - {station: AKYURT_1, platform: AKYURT_1_UP_1, departure: "07:16:01", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_DN_1, arrival: "08:13:08", dwell_s: 30}
+
+  - id: X10
+    name: 07:18 Akyurt 1 circuit non-stop
+    stock: EMU
+    departure: "07:18:00"
+    ready_lead_s: 30
+    calls:
+      - {station: AKYURT_1, platform: AKYURT_1_UP_2, departure: "07:18:01", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_DN_2, arrival: "08:15:08", dwell_s: 30}
+
+  - id: X11
+    name: 07:20 Akyurt 1 circuit non-stop
+    stock: EMU
+    departure: "07:20:00"
+    ready_lead_s: 30
+    calls:
+      - {station: AKYURT_1, platform: AKYURT_1_UP_3, departure: "07:20:01", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_DN_3, arrival: "08:17:08", dwell_s: 30}
+
+  - id: X12
+    name: 07:22 Akyurt 1 circuit non-stop
+    stock: EMU
+    departure: "07:22:00"
+    ready_lead_s: 30
+    calls:
+      - {station: AKYURT_1, platform: AKYURT_1_UP_4, departure: "07:22:01", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_DN_4, arrival: "08:19:08", dwell_s: 30}

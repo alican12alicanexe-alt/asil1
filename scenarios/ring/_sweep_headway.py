@@ -62,6 +62,12 @@ TAIL_S = 7200
 #: the following distance is.
 HEADWAYS = (300, 240, 195, 165, 135, 120, 105, 90, 75, 60, 50, 45, 40, 35, 30)
 
+#: What the flight is, for the line main() prints above the table. A constant
+#: because _sweep_express.py runs this same sweep over a non-stop flight, and a
+#: sweep that says it is measuring twenty-two calls a lap when it is measuring
+#: none is a sweep nobody can read.
+FLIGHT_DESCRIPTION = "every one calling at all eleven stations twice"
+
 
 def stock_for(system):
     """A copy of :data:`STOCK` fitted for ``system``."""
@@ -136,8 +142,8 @@ def main(system="fixed_block_3aspect"):
     # if the roads are ever spread across the faces again.
     alone = sum(run(times, HEADWAYS[0], system, indices=[n]).total_restrained_s
                 for n in range(COUNT))
-    print("%d laps of the circuit, every one calling at all eleven stations twice, "
-          "under %s" % (COUNT, system))
+    print("%d laps of the circuit, %s, under %s"
+          % (COUNT, FLIGHT_DESCRIPTION, system))
     print("the flight alone is restrained %.0f s at the controlled station "
           "signals; the column below is over that.\n" % alone)
     print("  headway   restrained   mean delay      worst   completed")
