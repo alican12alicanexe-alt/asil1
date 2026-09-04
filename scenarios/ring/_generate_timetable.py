@@ -54,8 +54,24 @@ STOCK = {"id": "EMU", "name": "Ring unit", "length_m": 120,
          "max_speed_kmh": 90, "max_accel": 1.0, "service_brake": 1.0,
          "emergency_brake": 1.5, "etcs_level": "none", "tims": False}
 
-INFRA = build_infrastructure(
-    read_data_file(os.path.join(HERE, "infrastructure.yaml")))
+#: The drawing everything here is built from. ``use_infrastructure`` swaps it,
+#: which is how the merge experiment runs on a railway that has a branch on it
+#: without the circuit's own scenarios carrying a junction they never book.
+INFRA_FILE = "infrastructure.yaml"
+INFRA = build_infrastructure(read_data_file(os.path.join(HERE, INFRA_FILE)))
+
+
+def use_infrastructure(filename):
+    """Rebuild ``INFRA`` from another drawing in this directory.
+
+    Everything here reads ``INFRA`` at call time, so rebinding it is enough -
+    the same arrangement ``OPTIONS`` uses below, and for the same reason: the
+    call sites should not have to know which railway they are being run on.
+    """
+    global INFRA_FILE, INFRA
+    INFRA_FILE = filename
+    INFRA = build_infrastructure(read_data_file(os.path.join(HERE, filename)))
+    return INFRA
 
 #: The eleven stations in up-line order. A lap calls at every one of them
 #: twice, once on each road.

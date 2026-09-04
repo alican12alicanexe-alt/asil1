@@ -31,12 +31,20 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(os.path.dirname(HERE)))
 sys.path.insert(0, HERE)
 
-from _generate_timetable import (BASE, COUNT, DWELL, HEADER, INFRA, LAP,
+import _generate_timetable as ring
+from _generate_timetable import (BASE, COUNT, DWELL, LAP,
                                  READY_LEAD, STATIONS, STOCK, flight_spec,
                                  format_clock, probe_all, road, roads,
                                  simulation,
                                  stock_yaml)
 from trainsim.scenario.loader import build_timetable
+
+#: The branch is on its own drawing, so the circuit's own scenarios stay a
+#: railway whose only constraint is a platform. Swapping it here rather than in
+#: _generate_timetable.py means everything imported above - probe_all included -
+#: is timed on the railway this experiment actually runs on.
+INFRA_FILE = "infrastructure-merge.yaml"
+ring.use_infrastructure(INFRA_FILE)
 
 #: How many branch services, and where the branch calls before it reaches the
 #: circuit. Sincan is twelve kilometres out, Örnek six.
@@ -92,7 +100,7 @@ def probe_branch():
          "services": [{"id": "B", "stock": "EMU",
                        "departure": format_clock(BASE),
                        "ready_lead_s": READY_LEAD, "calls": branch_calls()}]},
-        INFRA)
+        ring.INFRA)
     sim = simulation(timetable, duration_s=14000)
     arrivals, departures = {}, {}
     was_index, was_state = None, None

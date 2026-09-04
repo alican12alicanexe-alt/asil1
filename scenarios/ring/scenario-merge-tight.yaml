@@ -4,6 +4,10 @@
 #   python run.py scenarios/ring/scenario-merge-tight.yaml --headless --system etcs_moving_block
 #   python scenarios/ring/_generate_merge.py 180 180 timetable-merge-tight
 #
+# The branch is on infrastructure-merge.yaml, not on the circuit's own
+# infrastructure.yaml: these two scenarios are the only ones that want a
+# junction, and the other nine should not carry 41 routes they never book.
+#
 # WHY THIS EXISTS
 #
 # Every other measurement on this circuit comes back saying the same thing: the
@@ -123,7 +127,7 @@
 name: ring-merge-tight
 description: "A 70 km circuit with eleven stations and a horseshoe at each end - a stopping-service capacity test with no terminus to hide behind."
 
-infrastructure: infrastructure.yaml
+infrastructure: infrastructure-merge.yaml
 timetable: timetable-merge-tight.yaml
 
 simulation:
