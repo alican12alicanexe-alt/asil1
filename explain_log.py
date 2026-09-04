@@ -96,7 +96,13 @@ def cost_kmh(row):
         # held when it is simply not clear of the restriction yet.
         return 0.0
     try:
-        return max(0.0, float(row["limit_kmh"]) - float(row["target_kmh"]))
+        target = float(row["target_kmh"])
+        if float(row["speed_kmh"]) < target - 0.05:
+            # Still accelerating: the target is above the train, not on it. A
+            # permitted 79.5 km/h costs nothing at all to a train doing 51, and
+            # the reason column names the constraint just the same.
+            return 0.0
+        return max(0.0, float(row["limit_kmh"]) - target)
     except (KeyError, TypeError, ValueError):
         return 0.0
 
