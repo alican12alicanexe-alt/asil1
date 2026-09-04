@@ -98,6 +98,12 @@ stations:
   - {id: MACUNKOY_3,  name: "Macunköy 3",  km: 30.70}
   - {id: GOLBASI_3,   name: "Gölbaşı 3",   km: 33.40}
 
+  # The Sincan branch. Its kilometres are the circuit's own, so the branch runs
+  # "inward" from km 0.20 to Akyurt 1 at km 2.60 - two kilometres of branch and
+  # a 400 m junction link at the end of it.
+  - {id: SINCAN,      name: "Sincan",      km: -9.40}
+  - {id: ORNEK,       name: "Örnek",       km: -3.60}
+
 tracks:
   - id: UP
     direction: up
@@ -204,6 +210,56 @@ tracks:
       - {from_km: 33.85, to_km: 34.90, max_speed_kmh: 70}
       - {from_km: 34.90, to_km: 36.00, max_speed_kmh: 80}
 
+  # ------------------------------------------------------------- the branch
+  #
+  # Two kilometres of double track from Sincan, joining the circuit at Akyurt 1.
+  # It exists to put a flat junction on a railway that otherwise has none, so
+  # that a signalling comparison has a conflict to be measured at rather than
+  # only a platform.
+  #
+  # WHY AKYURT 1 AND NOT THE TIGHTEST GAP
+  #
+  # The tightest gap on the circuit is the 2.5 km between Akyurt 1 and Macunköy
+  # 1, and merging into the middle of it would be the obvious choice. It would
+  # also measure the wrong thing: Macunköy 1 has one face per line, so the
+  # platform would bind before the junction did and the answer would be the
+  # platform's again. Akyurt 1 has four faces a side, so its platform has room
+  # to spare and what binds there is the merge itself.
+  #
+  # WHY ONLY ONE HALF OF IT CONFLICTS
+  #
+  # The branch sits beyond the down line, at y 0.8. A train joining the up line
+  # therefore has to get across the down line to reach it, and that crossing is
+  # a diamond: no train changes lines on it, but two cannot be on it at once.
+  # A train leaving the circuit takes the down line to the branch and crosses
+  # nothing. The junction is used twice by every branch service and only the
+  # joining half costs the circuit anything - which is a property of which side
+  # the branch is on, and is what a real railway would arrange on purpose.
+  #
+  # The builder derives that crossing from the drawing rather than from a
+  # declaration: a link ramping from y 0.8 to y 0.0 crosses whatever is at y 0.4.
+  # Setting grade_separated on the junction turns it into a flyover and takes
+  # the conflict away, which is the control for any measurement made here.
+  #
+  # Both branch roads are drawn on the same alignment. On a schematic that is
+  # only cosmetic - it keeps the up link's single crossing single, where
+  # staggering them would make the down link cross the up branch as well.
+  - id: SINCAN_UP
+    direction: up
+    y: 0.8
+    max_speed_kmh: 80
+    block_length_m: 700
+    serves: [SINCAN, ORNEK, AKYURT_1]
+    junction: {track: UP, at: AKYURT_1, length_m: 400, max_speed_kmh: 40}
+
+  - id: SINCAN_DN
+    direction: down
+    y: 0.8
+    max_speed_kmh: 80
+    block_length_m: 700
+    serves: [AKYURT_1, ORNEK, SINCAN]
+    junction: {track: DN, at: AKYURT_1, length_m: 400, max_speed_kmh: 40}
+
 platforms:
   # One road per line at every station: a single through face at line speed,
   # so a train at the platform blocks the line rather than being passed. That
@@ -274,6 +330,13 @@ platforms:
   # - {id: GOLBASI_3_UP_2, station: GOLBASI_3, track: UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.4}
   - {id: GOLBASI_3_DN_1, station: GOLBASI_3, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.0}
   # - {id: GOLBASI_3_DN_2, station: GOLBASI_3, track: DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.4}
+
+  # The branch. Akyurt 1 is not listed: a branch does not lay out its own
+  # platforms at the junction station, it calls at the ones already there.
+  - {id: SINCAN_UP_1, station: SINCAN, track: SINCAN_UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.0}
+  - {id: ORNEK_UP_1,  station: ORNEK,  track: SINCAN_UP, length_m: 240, max_speed_kmh: 80, y_offset: -0.0}
+  - {id: SINCAN_DN_1, station: SINCAN, track: SINCAN_DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.25}
+  - {id: ORNEK_DN_1,  station: ORNEK,  track: SINCAN_DN, length_m: 240, max_speed_kmh: 80, y_offset:  0.25}
 
 crossovers:
   # One in every gap between neighbouring stations, at the middle of the gap.

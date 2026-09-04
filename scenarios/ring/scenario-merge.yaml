@@ -1,0 +1,151 @@
+# ring + the Sincan branch - a flat junction, so there is a conflict to measure.
+#
+#   python run.py scenarios/ring/scenario-merge.yaml --headless --system virtual_coupling
+#   python run.py scenarios/ring/scenario-merge-tight.yaml --headless --system etcs_moving_block
+#   python scenarios/ring/_generate_merge.py 180 360     (rebuild the timetable)
+#
+# WHY THIS EXISTS
+#
+# Every other measurement on this circuit comes back saying the same thing: the
+# constraint is a platform, and a platform is not a following distance, so the
+# signalling has almost nothing to work on. The all-green headway is 78 s under
+# moving block and 71 s under virtual coupling, a 7 s spread - while putting the
+# commented-out second platform faces back is worth 35 s on its own, and cutting
+# the stopping pattern from 23 calls to 6 is worth nothing at all.
+#
+# So this puts the other kind of constraint on the railway. Six services a
+# direction work in from Sincan, twelve kilometres out, and join the up line at
+# Akyurt 1 - crossing the down line on the level to get there. That crossing is
+# a diamond: no train changes lines on it, but two cannot be on it at once, and
+# under every system here that stays true. What virtual coupling can shorten is
+# the queue behind it and the following distance of the merged flow, not the
+# crossing itself, so the gain is bounded before the run starts. Saying so in
+# advance is the point: a scenario that can only flatter the technology is not
+# measuring it.
+#
+# WHY AKYURT 1
+#
+# The tightest gap on the circuit is the 2.5 km between Akyurt 1 and Macunköy 1
+# and merging into the middle of it looks like the obvious choice. It measures
+# the wrong thing: Macunköy 1 has one face a line, so the platform binds before
+# the junction does. Akyurt 1 has four a side. The branch flight takes the
+# second face and the circuit flight keeps the first, which is what leaves the
+# junction as the thing under test - and what stops two flights being booked
+# into one face, which under fixed block is a block exclusivity violation
+# rather than a delay.
+#
+# WHY ONLY HALF THE JUNCTION COSTS ANYTHING
+#
+# The branch is beyond the down line. Joining, a train has to get across the
+# down line; leaving, it takes the down line to the branch and crosses nothing.
+# The builder derives that from the drawing rather than from a declaration, so
+# it is visible in --check as "DN_037 x SINCAN_UP_JN" and in no other pairing.
+# Set grade_separated on the SINCAN_UP junction to turn it into a flyover, which
+# is the control for anything measured here.
+#
+# WHAT THE UNDERLYING CIRCUIT IS
+#
+# A capacity experiment on a railway with no ends. Thirty-six kilometres each
+# way joined by a horseshoe at both ends, so a service is a seventy kilometre
+# lap: out on the up line calling at eleven stations, round HS_EAST, back on the
+# down line calling at the same eleven, round HS_WEST, into Akyurt 1 facing the
+# way it set off. Twenty-two calls, thirty seconds at each. Nothing reverses and
+# nothing stands in a depot.
+#
+# The other two capacity railways here are out-and-back, and both of them ran
+# into the same thing: past a certain interval the constraint stopped being the
+# distance between trains and became the despatch sequence at the terminus -
+# trains standing on a road, then accelerating from rest. No signalling system
+# changes how long a train takes to get going, so that part of the interval is
+# common to all of them and the comparison flattens out.
+#
+# A ring removes that. Every train is running, the up line and the down line are
+# both fully worked at once, and the only reason to wait is that something else
+# is in the way. What the sweep measures is therefore the signalling.
+#
+# WHAT IT IS NOT
+#
+# Not an easy case for relative braking. Every train calls at every station -
+# twenty-two stops in a lap, one about every three kilometres - so a good deal
+# of every lap is spent below line speed, and the benefit of relative-braking
+# separation is bought with speed: in time it is about
+#
+#     v/2 x (1/b - 1/b_emergency)
+#
+# which for this unit is about 0.17 v, so 3.7 s of headway at 80 km/h and
+# nothing at a stand. scenarios/express is the favourable case, where nothing
+# stops and the trains run at 120. This is the other end: a stopping service on
+# a slower railway, which is what most of them are.
+#
+# Read the two together. If virtual coupling still separates from moving block
+# here, it separates on a railway anybody would recognise.
+#
+# THE LAYOUT, IN ONE PLACE
+#
+#   rails            36.0 km each way, km 0.0 to 36.0
+#   the lap          69.6 km - UP km 1.8 to 35.4, HS_EAST, DN km 34.2 to 0.6,
+#                    HS_WEST - so 34.8 km in each direction, curve included
+#   stations         11, from km 2.6 to km 33.4, every 2.5 to 4.0 km (mean 3.1)
+#   line speed       80, over thirty-seven irregular sections averaging 71
+#   crossovers       10 scissors, one in the middle of every gap between
+#                    neighbouring stations, at 40
+#   horseshoes       HS_EAST leaves UP at km 35.4 and rejoins DN at km 34.2
+#                    HS_WEST leaves DN at km  0.6 and rejoins UP at km  1.8
+#                    1200 m apiece, at 50
+#   blocks           900 m
+#   platforms        2 faces per line at every station, 4 at Akyurt 1
+#   unit             120 m, 90 km/h, 1.0 accel, 1.0 service, 1.5 emergency
+#
+# A lap with the railway to itself takes 79 min 09 s, of which 11 min is
+# standing at platforms. That is 61 km/h while running and 53 km/h door to door
+# against a mean line limit of 71 - the gap between the two is what a stop every
+# three kilometres costs, and it is the reason a railway like this one is a
+# harder case for relative braking than a non-stop one.
+#
+# WHAT IT LOOKS LIKE BEFORE THE SWEEP
+#
+# The base timetable is twelve laps five minutes apart and runs all-green: no
+# violations, every train on time. Under fixed block the same flight is already
+# being checked at 300 s; both cab systems are clean well below that. Where each
+# of them stops is what _sweep_headway.py is for.
+#
+# THE STATIONS ARE NOT EVENLY SPACED, AND THAT IS DELIBERATE
+#
+# The out-and-back railways here space their stations evenly on the argument
+# that a capacity figure is a property of the tightest place on the line, so an
+# even layout measures the signalling rather than the geography. That is true
+# and it is also why those railways cannot answer the question this one is for.
+# A real timetable has a tightest place; what an operator wants to know is
+# whether a signalling system helps at it. Uneven spacing puts one there on
+# purpose - the 2.5 km between Akyurt 1 and Macunköy 1 is where this circuit
+# will bind first - and the systems can then be compared at it.
+
+name: ring-merge
+description: "A 70 km circuit with eleven stations and a horseshoe at each end - a stopping-service capacity test with no terminus to hide behind."
+
+infrastructure: infrastructure.yaml
+timetable: timetable-merge.yaml
+
+simulation:
+  dt: 1.0
+  start_time: "06:57:00"
+  duration_s: 9000
+  strict: false
+
+signalling:
+  system: fixed_block_3aspect
+  sighting_distance_m: 250
+
+interlocking:
+  route_request_distance_m: 2000
+  route_request_lead_s: 60
+  automatic_signals: false
+  route_lookahead: 2
+
+driver:
+  reaction_time_s: 2.0
+  safety_margin_m: 25.0
+
+view:
+  title: "ring - a lap of the circuit"
+  speed: 20
