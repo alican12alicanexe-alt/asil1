@@ -1,0 +1,144 @@
+# ring, booked at 90 s, with one thing going wrong - what an incident spreads.
+#
+#   python run.py scenarios/ring/scenario-90.yaml --propagation --system etcs_moving_block
+#   python run.py scenarios/ring/scenario-90.yaml --propagation --system virtual_coupling
+#
+# WHY THIS VARIANT EXISTS
+#
+# The sweep asks how close trains may be booked before one checks another. That
+# is a threshold, and a threshold is decided by the single worst moment on the
+# circuit - which on this railway is a platform, not a following distance. It
+# therefore measures the platform and reports it as a signalling figure.
+#
+# This asks the other question, and it is the one an operator asks: the railway
+# is working to a plan it can keep, one train has a door fault, how much of that
+# does everybody else end up paying? Primary delay is the incident and is the
+# same under every system - a stuck door does not care what is signalling the
+# railway. Reactionary delay is the signalling and nothing else, which makes it
+# the cleanest measurement of a train control system on offer here.
+#
+# 90 s is chosen because Hybrid L3, moving block and virtual coupling all keep
+# it undisturbed, so the three are compared against the same clean railway.
+# Fixed block and Level 2 do not: at 90 s they are already checking each other
+# before anything goes wrong, so their propagation figures are measured against
+# an already-degraded baseline and are not like for like. Read them, if at all,
+# as the cost of not holding the timetable rather than as the cost of the
+# incident.
+#
+# One subtlety worth knowing before writing another disruptions block: a lap
+# calls at every station TWICE, once on each road, and a disruption keyed by
+# station fires at both. The 90 s below therefore costs its service 180 s.
+#
+# WHAT THE UNDERLYING RAILWAY IS
+#
+# A capacity experiment on a railway with no ends. Thirty-six kilometres each
+# way joined by a horseshoe at both ends, so a service is a seventy kilometre
+# lap: out on the up line calling at eleven stations, round HS_EAST, back on the
+# down line calling at the same eleven, round HS_WEST, into Akyurt 1 facing the
+# way it set off. Twenty-two calls, thirty seconds at each. Nothing reverses and
+# nothing stands in a depot.
+#
+# The other two capacity railways here are out-and-back, and both of them ran
+# into the same thing: past a certain interval the constraint stopped being the
+# distance between trains and became the despatch sequence at the terminus -
+# trains standing on a road, then accelerating from rest. No signalling system
+# changes how long a train takes to get going, so that part of the interval is
+# common to all of them and the comparison flattens out.
+#
+# A ring removes that. Every train is running, the up line and the down line are
+# both fully worked at once, and the only reason to wait is that something else
+# is in the way. What the sweep measures is therefore the signalling.
+#
+# WHAT IT IS NOT
+#
+# Not an easy case for relative braking. Every train calls at every station -
+# twenty-two stops in a lap, one about every three kilometres - so a good deal
+# of every lap is spent below line speed, and the benefit of relative-braking
+# separation is bought with speed: in time it is about
+#
+#     v/2 x (1/b - 1/b_emergency)
+#
+# which for this unit is about 0.17 v, so 3.7 s of headway at 80 km/h and
+# nothing at a stand. scenarios/express is the favourable case, where nothing
+# stops and the trains run at 120. This is the other end: a stopping service on
+# a slower railway, which is what most of them are.
+#
+# Read the two together. If virtual coupling still separates from moving block
+# here, it separates on a railway anybody would recognise.
+#
+# THE LAYOUT, IN ONE PLACE
+#
+#   rails            36.0 km each way, km 0.0 to 36.0
+#   the lap          69.6 km - UP km 1.8 to 35.4, HS_EAST, DN km 34.2 to 0.6,
+#                    HS_WEST - so 34.8 km in each direction, curve included
+#   stations         11, from km 2.6 to km 33.4, every 2.5 to 4.0 km (mean 3.1)
+#   line speed       80, over thirty-seven irregular sections averaging 71
+#   crossovers       10 scissors, one in the middle of every gap between
+#                    neighbouring stations, at 40
+#   horseshoes       HS_EAST leaves UP at km 35.4 and rejoins DN at km 34.2
+#                    HS_WEST leaves DN at km  0.6 and rejoins UP at km  1.8
+#                    1200 m apiece, at 50
+#   blocks           900 m
+#   platforms        2 faces per line at every station, 4 at Akyurt 1
+#   unit             120 m, 90 km/h, 1.0 accel, 1.0 service, 1.5 emergency
+#
+# A lap with the railway to itself takes 79 min 09 s, of which 11 min is
+# standing at platforms. That is 61 km/h while running and 53 km/h door to door
+# against a mean line limit of 71 - the gap between the two is what a stop every
+# three kilometres costs, and it is the reason a railway like this one is a
+# harder case for relative braking than a non-stop one.
+#
+# WHAT IT LOOKS LIKE BEFORE THE SWEEP
+#
+# The base timetable is twelve laps five minutes apart and runs all-green: no
+# violations, every train on time. Under fixed block the same flight is already
+# being checked at 300 s; both cab systems are clean well below that. Where each
+# of them stops is what _sweep_headway.py is for.
+#
+# THE STATIONS ARE NOT EVENLY SPACED, AND THAT IS DELIBERATE
+#
+# The out-and-back railways here space their stations evenly on the argument
+# that a capacity figure is a property of the tightest place on the line, so an
+# even layout measures the signalling rather than the geography. That is true
+# and it is also why those railways cannot answer the question this one is for.
+# A real timetable has a tightest place; what an operator wants to know is
+# whether a signalling system helps at it. Uneven spacing puts one there on
+# purpose - the 2.5 km between Akyurt 1 and Macunköy 1 is where this circuit
+# will bind first - and the systems can then be compared at it.
+
+name: ring-90s
+description: "The ring booked at 90 s with a door fault at Macunkoy 2 - how far one incident spreads, and how much of that the signalling decides."
+
+infrastructure: infrastructure.yaml
+timetable: timetable-90.yaml
+
+simulation:
+  dt: 1.0
+  start_time: "06:57:00"
+  duration_s: 16000
+  strict: false
+
+signalling:
+  system: fixed_block_3aspect
+  sighting_distance_m: 250
+
+interlocking:
+  route_request_distance_m: 2000
+  route_request_lead_s: 60
+  automatic_signals: false
+  route_lookahead: 2
+
+driver:
+  reaction_time_s: 2.0
+  safety_margin_m: 25.0
+
+view:
+  title: "ring - a lap of the circuit"
+  speed: 20
+
+disruptions:
+  - kind: dwell_overrun
+    service: R06
+    station: MACUNKOY_2
+    seconds: 90
+    reason: door fault at Macunkoy 2
