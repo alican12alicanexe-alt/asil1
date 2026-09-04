@@ -1,0 +1,171 @@
+# ring at 71 s - an hour-long 40 km/h restriction over 3 km of the up line.
+#
+#   python run.py scenarios/ring/scenario-71-tsr.yaml --headless --system etcs_moving_block
+#   python run.py scenarios/ring/scenario-71-tsr.yaml --headless --system virtual_coupling
+#
+# WHAT THE INCIDENT IS
+#
+# a track defect is found and the up line is restricted from km 10 to km
+# 13 for an hour. Every train that passes in that hour is slowed, so unlike
+# the dwell case there is no single culprit.
+#
+# MEASURE THIS ONE WITH --headless, NOT --propagation. The propagation
+# report separates the service a disruption was applied to from the ones it
+# got in the way of, and a restriction is applied to the track: every train
+# over it counts as directly hit, so the report comes back with the whole
+# delay as primary and nothing as knock-on. That is the report being honest
+# about what it can attribute, not a bug, but it means the figure to compare
+# here is total and worst delay.
+#
+# WHY 78 s AND 71 s
+#
+# They are the two systems' own all-green limits on this circuit: moving block
+# holds 78 s and virtual coupling 71 s. Seven seconds, or nine per cent, and
+# that is the whole capacity difference between them here - too small a number
+# to build an argument on, and the rest of this scenario directory explains at
+# length why it is small (the constraint is a platform, and a platform is not a
+# following distance).
+#
+# So these ask the other question. Booked at an interval it can just hold, how
+# well does each system take a bad day?
+#
+# READ THEM AS TWO COMPARISONS, AND THE SECOND ONE MATTERS MORE
+#
+#   Same timetable. Run BOTH systems on the 78 s files. That is the interval an
+#   operator already runs under moving block, and it says what fitting virtual
+#   coupling buys without retiming anything - which is the version of the
+#   argument an operator can act on, because "nine per cent more trains" costs a
+#   new timetable, new diagrams and new rosters, and "the same trains, fewer of
+#   them late" costs only the fitment.
+#
+#   Each at its own limit. Moving block on the 78 s files against virtual
+#   coupling on the 71 s ones. Here neither has any slack left, which is the
+#   control: on the same timetable virtual coupling starts seven seconds ahead
+#   and would cope better for that reason alone. If it still wins with the slack
+#   taken away, the recovery behaviour is real. If it does not, the win was the
+#   slack, and this directory should say so.
+#
+# WHAT THIS ARGUMENT ADMITS
+#
+# That the benefit is proportional to how much disruption there is. A railway
+# that runs to plan gets nothing from any of this, and a well-run one gets less
+# than a badly-run one. That is an uncomfortable sentence and it belongs here
+# rather than in a footnote - it is true of most things bought for robustness,
+# and it is the honest shape of the claim. The capacity headline is nine per
+# cent; the resilience one is worth measuring, and it is a different claim.
+#
+# WHAT THE UNDERLYING CIRCUIT IS
+## A capacity experiment on a railway with no ends. Thirty-six kilometres each
+# way joined by a horseshoe at both ends, so a service is a seventy kilometre
+# lap: out on the up line calling at eleven stations, round HS_EAST, back on the
+# down line calling at the same eleven, round HS_WEST, into Akyurt 1 facing the
+# way it set off. Twenty-two calls, thirty seconds at each. Nothing reverses and
+# nothing stands in a depot.
+#
+# The other two capacity railways here are out-and-back, and both of them ran
+# into the same thing: past a certain interval the constraint stopped being the
+# distance between trains and became the despatch sequence at the terminus -
+# trains standing on a road, then accelerating from rest. No signalling system
+# changes how long a train takes to get going, so that part of the interval is
+# common to all of them and the comparison flattens out.
+#
+# A ring removes that. Every train is running, the up line and the down line are
+# both fully worked at once, and the only reason to wait is that something else
+# is in the way. What the sweep measures is therefore the signalling.
+#
+# WHAT IT IS NOT
+#
+# Not an easy case for relative braking. Every train calls at every station -
+# twenty-two stops in a lap, one about every three kilometres - so a good deal
+# of every lap is spent below line speed, and the benefit of relative-braking
+# separation is bought with speed: in time it is about
+#
+#     v/2 x (1/b - 1/b_emergency)
+#
+# which for this unit is about 0.17 v, so 3.7 s of headway at 80 km/h and
+# nothing at a stand. scenarios/express is the favourable case, where nothing
+# stops and the trains run at 120. This is the other end: a stopping service on
+# a slower railway, which is what most of them are.
+#
+# Read the two together. If virtual coupling still separates from moving block
+# here, it separates on a railway anybody would recognise.
+#
+# THE LAYOUT, IN ONE PLACE
+#
+#   rails            36.0 km each way, km 0.0 to 36.0
+#   the lap          69.6 km - UP km 1.8 to 35.4, HS_EAST, DN km 34.2 to 0.6,
+#                    HS_WEST - so 34.8 km in each direction, curve included
+#   stations         11, from km 2.6 to km 33.4, every 2.5 to 4.0 km (mean 3.1)
+#   line speed       80, over thirty-seven irregular sections averaging 71
+#   crossovers       10 scissors, one in the middle of every gap between
+#                    neighbouring stations, at 40
+#   horseshoes       HS_EAST leaves UP at km 35.4 and rejoins DN at km 34.2
+#                    HS_WEST leaves DN at km  0.6 and rejoins UP at km  1.8
+#                    1200 m apiece, at 50
+#   blocks           900 m
+#   platforms        2 faces per line at every station, 4 at Akyurt 1
+#   unit             120 m, 90 km/h, 1.0 accel, 1.0 service, 1.5 emergency
+#
+# A lap with the railway to itself takes 79 min 09 s, of which 11 min is
+# standing at platforms. That is 61 km/h while running and 53 km/h door to door
+# against a mean line limit of 71 - the gap between the two is what a stop every
+# three kilometres costs, and it is the reason a railway like this one is a
+# harder case for relative braking than a non-stop one.
+#
+# WHAT IT LOOKS LIKE BEFORE THE SWEEP
+#
+# The base timetable is twelve laps five minutes apart and runs all-green: no
+# violations, every train on time. Under fixed block the same flight is already
+# being checked at 300 s; both cab systems are clean well below that. Where each
+# of them stops is what _sweep_headway.py is for.
+#
+# THE STATIONS ARE NOT EVENLY SPACED, AND THAT IS DELIBERATE
+#
+# The out-and-back railways here space their stations evenly on the argument
+# that a capacity figure is a property of the tightest place on the line, so an
+# even layout measures the signalling rather than the geography. That is true
+# and it is also why those railways cannot answer the question this one is for.
+# A real timetable has a tightest place; what an operator wants to know is
+# whether a signalling system helps at it. Uneven spacing puts one there on
+# purpose - the 2.5 km between Akyurt 1 and Macunköy 1 is where this circuit
+# will bind first - and the systems can then be compared at it.
+
+name: ring-71-tsr
+description: "A 70 km circuit with eleven stations and a horseshoe at each end - a stopping-service capacity test with no terminus to hide behind."
+
+infrastructure: infrastructure.yaml
+timetable: timetable-71.yaml
+
+simulation:
+  dt: 1.0
+  start_time: "06:57:00"
+  duration_s: 16000
+  strict: false
+
+signalling:
+  system: fixed_block_3aspect
+  sighting_distance_m: 250
+
+interlocking:
+  route_request_distance_m: 2000
+  route_request_lead_s: 60
+  automatic_signals: false
+  route_lookahead: 2
+
+driver:
+  reaction_time_s: 2.0
+  safety_margin_m: 25.0
+
+view:
+  title: "ring - a lap of the circuit"
+  speed: 20
+
+disruptions:
+  - kind: speed_restriction
+    track: UP
+    from_km: 10.0
+    to_km: 13.0
+    max_speed_kmh: 40
+    from_time: "07:20:00"
+    to_time: "08:20:00"
+    reason: emergency speed restriction, track defect
