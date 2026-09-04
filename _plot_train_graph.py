@@ -170,15 +170,23 @@ if __name__ == "__main__":
         print("%-20s booked %d s   worst delay %5.0f s   %d trace rows"
               % (system, headway, late, len(rows)))
 
-    gaps = Chart("The interval the railway actually ran",
-                 "km along the lap", "seconds between consecutive trains",
-                 note="solid: the widest of the eleven intervals at that point. "
-                      "dashed: their mean. Both flights are booked at %d s."
-                      % headway,
-                 width=560, height=300, y_min=20.0, y_max=40.0)
+    gaps = Chart(
+        "The interval twelve trains actually ran",
+        "km along the lap",
+        "seconds between one train and the next",
+        note="Booked %d s apart. Solid: the widest of the eleven intervals at "
+             "that point. Dashed: their mean." % headway,
+        width=980, height=420, y_min=20.0, y_max=44.0)
     for label, (mean, widest), colour in profiles:
         gaps.line(label, widest, colour=colour)
         gaps.line("", mean, colour=colour, dash=True)
+    # The reference the two are being read against, drawn rather than left to
+    # the reader to hold in their head: a system that ran what it was booked is
+    # a flat line on top of this one.
+    span = [point[0] for point in profiles[0][1][1]]
+    gaps.line("booked %d s" % headway,
+              [(span[0], float(headway)), (span[-1], float(headway))],
+              colour="#999999", dash=True)
     charts.append(gaps)
 
     with open(out, "w") as handle:
@@ -191,3 +199,19 @@ if __name__ == "__main__":
                        "in front.",
             columns=1))
     print("wrote %s" % out)
+
+    # The interval panel again on its own page. It is the one that carries the
+    # finding, and at a third of a shared page it is being asked to do that in
+    # 300 pixels.
+    alone = os.path.splitext(out)[0] + "-interval" + os.path.splitext(out)[1]
+    with open(alone, "w") as handle:
+        handle.write(document(
+            [gaps],
+            heading="What the railway ran, against what it was booked",
+            subheading="scenarios/ring/scenario-express.yaml - twelve non-stop "
+                       "laps booked %d s apart, run twice. Virtual coupling "
+                       "holds the booked interval the whole way round; moving "
+                       "block cannot, and opens it to whatever it can hold."
+                       % headway,
+            columns=1))
+    print("wrote %s" % alone)
