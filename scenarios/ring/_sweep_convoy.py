@@ -46,7 +46,42 @@ Three runs, same flight, same interval, same trains:
                   credited with the cap's effect or charged for it.
   incentive       the rule above.
 
-WHAT CAME BACK
+WHAT CAME BACK - THE INTERVAL EACH CAN BE BOOKED AT
+
+``--headway``. Worst arrival in seconds, negative being early; each row booked
+against the unimpeded times its OWN fleet achieves, or a capped run would be
+late against a plan it was never able to keep.
+
+  interval             60   50   42   36   32   28   24   20   17   14
+  ------------------------------------------------------------------
+  line speed           -1   -1   -1   -1   -1   -1    2   26   56   88
+  capped 70            -1   -1   -1   -1   -1   -1   -1   14   43   76
+  incentive + 800      -6   -6   -6   -6   -6   -6   -6   -6   -5   28
+  incentive + 1000     -6   -6   -6   -6   -6   -6   -6   -6   -5   28
+
+  tightest interval held        <= 1 s    <= 3 s   <= 30 s
+  -------------------------------------------------------
+  line speed                      28 s      24 s      20 s
+  capped 70                       24 s      24 s      20 s
+  incentive + 800                 17 s      17 s      14 s
+  incentive + 1000                17 s      17 s      14 s
+
+The incentive holds 17 s where plain virtual coupling breaks at 24 s: 212
+trains an hour against 129. That is the capacity case for the rule, and it is
+much stronger than the 60 s snapshot below suggests, because at 60 s the trains
+are a kilometre apart and the rule is barely firing.
+
+READ IT WITH THE CAVEAT. Every row is booked against its own probe, and a probe
+train has nothing in front of it - so under the incentive it is uncoupled for
+its whole lap and its plan is a 70 km/h plan, while its coupled trains run at
+80. That is why the row sits 6 s early everywhere. Some of the 17 s is real
+density and some is recovery margin against a slower plan, and this table does
+not separate them.
+
+Note also that 30 s is worth four to eight seconds of capacity that is not
+there. Nothing here should be quoted off it.
+
+WHAT CAME BACK - WHAT IT DOES AT ONE INTERVAL
 
 Twelve non-stop laps at 60 s, all under virtual coupling.
 
@@ -266,7 +301,16 @@ INTERVALS = (60, 50, 42, 36, 32, 28, 24, 20, 17, 14)
 #: _sweep_headway.keeps_time uses. The tighter two are here because 30 s of
 #: lateness on a 60 s interval is half a headway, which is not a railway
 #: keeping time - it is one about to stop doing so.
-THRESHOLDS = (0.0, 1.0, 3.0, 30.0)
+#:
+#: NO ZERO-DELAY THRESHOLD, deliberately. Nothing here is entitled to assume a
+#: flight arrives dead on its booked time, and this railway could not
+#: demonstrate it if it were: probe() in _generate_timetable.py reads the clock
+#: after Simulation.step() has already advanced it, so every booked time is one
+#: tick later than the moment the train reached it and an undisturbed service
+#: reports -1 s. A 0 s threshold would therefore be measuring that artefact
+#: rather than the railway. 1 s is the tightest figure this model can honestly
+#: carry - and it answered the same as 0 s in every cell below anyway.
+THRESHOLDS = (1.0, 3.0, 30.0)
 
 
 def scan(label, cap_kmh, **run_kwargs):
