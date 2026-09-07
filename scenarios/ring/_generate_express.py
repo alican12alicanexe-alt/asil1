@@ -115,9 +115,13 @@ EXPRESS_HEADER = '''# ring express timetable - generated, do not edit by hand.
 '''
 
 
-def render(times, headway_s, count=COUNT):
-    out = [EXPRESS_HEADER % (headway_s, count, headway_s) + stock_yaml(STOCK)]
-    for service in express_spec(times, headway_s, count)["services"]:
+def render(times, headway_s, count=COUNT, header=EXPRESS_HEADER, stock=None):
+    # ``header`` and ``stock`` because _generate_convoy.py writes the same
+    # flight with a different preamble and a fitted fleet. The services in
+    # between are identical, which is the point of it sharing this.
+    unit = stock or STOCK
+    out = [header % (headway_s, count, headway_s) + stock_yaml(unit)]
+    for service in express_spec(times, headway_s, count, stock=unit)["services"]:
         lines = ["  - id: %s" % service["id"],
                  "    name: %s" % service["name"],
                  "    stock: %s" % service["stock"],

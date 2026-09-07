@@ -48,6 +48,14 @@ virtual coupling's 1053 m, for 5 % of every journey on the railway. Below a
 600 m radius it never fires; above 1500 m it is "no cap" with extra steps. The
 slow-leader route in section 1 remains the one worth building.
 
+The flight has its own generator, `_generate_convoy.py`, and needs one: it is
+booked at 70 km/h rather than line speed, because a service alone on the
+railway never closes up on anything and 70 is its unimpeded speed, and it is
+written on stock fitted with a train-to-train link. Until that existed the
+scenario used the express timetable and ran as fixed block with a virtual
+coupling label - worst arrival +11:43, no convoy possible. Fixed, it keeps
+time 12 of 12 and the trains arrive in pairs 17 s apart.
+
 ## 2. The junction - BUILT AND REMOVED
 
 `infrastructure-cross.yaml` put two railways across each other at grade with

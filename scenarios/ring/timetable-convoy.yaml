@@ -1,13 +1,18 @@
-# ring express timetable - generated, do not edit by hand.
+# ring convoy timetable - generated, do not edit by hand.
 #
-#   python scenarios/ring/_generate_express.py 60
+#   python scenarios/ring/_generate_convoy.py 60
 #
 # 12 non-stop laps of the circuit, booked 60 seconds apart, all of them the same
 # unit. A lap is two calls: away from Akyurt 1 on the up line, round HS_EAST,
 # back down the down line and into Akyurt 1 again, running through the twenty-one
-# stations in between. The four faces at Akyurt 1 are used in turn, so what the
-# interval has to fit through is the line rather than the terminus. Every booked
-# time is what that service achieves with the railway to itself.
+# stations in between, with the four faces at Akyurt 1 used in turn.
+#
+# BOOKED AT THE CAP, NOT AT LINE SPEED. scenario-convoy.yaml holds every train
+# to 70 km/h unless it is closing up on the one in front, and a service alone on
+# the railway never closes up on anything - so 70 km/h is the fastest an
+# undisturbed lap can be run and these are the times it takes. The stock below
+# still says 90: the trains must be able to take the release when they earn it.
+# Run this timetable under any other scenario and it has 20 km/h of slack in it.
 
 stock:
   - id: EMU
@@ -17,8 +22,9 @@ stock:
     max_accel: 1.0
     service_brake: 1.0
     emergency_brake: 1.5
-    etcs_level: none
-    tims: false
+    etcs_level: l3
+    tims: true
+    v2v: true
 
 services:
 
@@ -29,7 +35,7 @@ services:
     ready_lead_s: 30
     calls:
       - {station: AKYURT_1, platform: AKYURT_1_UP_1, departure: "07:00:01", dwell_s: 30}
-      - {station: AKYURT_1, platform: AKYURT_1_DN_1, arrival: "07:57:08", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_DN_1, arrival: "08:00:41", dwell_s: 30}
 
   - id: X02
     name: 07:01 Akyurt 1 circuit non-stop
@@ -38,7 +44,7 @@ services:
     ready_lead_s: 30
     calls:
       - {station: AKYURT_1, platform: AKYURT_1_UP_2, departure: "07:01:01", dwell_s: 30}
-      - {station: AKYURT_1, platform: AKYURT_1_DN_2, arrival: "07:58:08", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_DN_2, arrival: "08:01:41", dwell_s: 30}
 
   - id: X03
     name: 07:02 Akyurt 1 circuit non-stop
@@ -47,7 +53,7 @@ services:
     ready_lead_s: 30
     calls:
       - {station: AKYURT_1, platform: AKYURT_1_UP_3, departure: "07:02:01", dwell_s: 30}
-      - {station: AKYURT_1, platform: AKYURT_1_DN_3, arrival: "07:59:08", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_DN_3, arrival: "08:02:41", dwell_s: 30}
 
   - id: X04
     name: 07:03 Akyurt 1 circuit non-stop
@@ -56,7 +62,7 @@ services:
     ready_lead_s: 30
     calls:
       - {station: AKYURT_1, platform: AKYURT_1_UP_4, departure: "07:03:01", dwell_s: 30}
-      - {station: AKYURT_1, platform: AKYURT_1_DN_4, arrival: "08:00:08", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_DN_4, arrival: "08:03:41", dwell_s: 30}
 
   - id: X05
     name: 07:04 Akyurt 1 circuit non-stop
@@ -65,7 +71,7 @@ services:
     ready_lead_s: 30
     calls:
       - {station: AKYURT_1, platform: AKYURT_1_UP_1, departure: "07:04:01", dwell_s: 30}
-      - {station: AKYURT_1, platform: AKYURT_1_DN_1, arrival: "08:01:08", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_DN_1, arrival: "08:04:41", dwell_s: 30}
 
   - id: X06
     name: 07:05 Akyurt 1 circuit non-stop
@@ -74,7 +80,7 @@ services:
     ready_lead_s: 30
     calls:
       - {station: AKYURT_1, platform: AKYURT_1_UP_2, departure: "07:05:01", dwell_s: 30}
-      - {station: AKYURT_1, platform: AKYURT_1_DN_2, arrival: "08:02:08", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_DN_2, arrival: "08:05:41", dwell_s: 30}
 
   - id: X07
     name: 07:06 Akyurt 1 circuit non-stop
@@ -83,7 +89,7 @@ services:
     ready_lead_s: 30
     calls:
       - {station: AKYURT_1, platform: AKYURT_1_UP_3, departure: "07:06:01", dwell_s: 30}
-      - {station: AKYURT_1, platform: AKYURT_1_DN_3, arrival: "08:03:08", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_DN_3, arrival: "08:06:41", dwell_s: 30}
 
   - id: X08
     name: 07:07 Akyurt 1 circuit non-stop
@@ -92,7 +98,7 @@ services:
     ready_lead_s: 30
     calls:
       - {station: AKYURT_1, platform: AKYURT_1_UP_4, departure: "07:07:01", dwell_s: 30}
-      - {station: AKYURT_1, platform: AKYURT_1_DN_4, arrival: "08:04:08", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_DN_4, arrival: "08:07:41", dwell_s: 30}
 
   - id: X09
     name: 07:08 Akyurt 1 circuit non-stop
@@ -101,7 +107,7 @@ services:
     ready_lead_s: 30
     calls:
       - {station: AKYURT_1, platform: AKYURT_1_UP_1, departure: "07:08:01", dwell_s: 30}
-      - {station: AKYURT_1, platform: AKYURT_1_DN_1, arrival: "08:05:08", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_DN_1, arrival: "08:08:41", dwell_s: 30}
 
   - id: X10
     name: 07:09 Akyurt 1 circuit non-stop
@@ -110,7 +116,7 @@ services:
     ready_lead_s: 30
     calls:
       - {station: AKYURT_1, platform: AKYURT_1_UP_2, departure: "07:09:01", dwell_s: 30}
-      - {station: AKYURT_1, platform: AKYURT_1_DN_2, arrival: "08:06:08", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_DN_2, arrival: "08:09:41", dwell_s: 30}
 
   - id: X11
     name: 07:10 Akyurt 1 circuit non-stop
@@ -119,7 +125,7 @@ services:
     ready_lead_s: 30
     calls:
       - {station: AKYURT_1, platform: AKYURT_1_UP_3, departure: "07:10:01", dwell_s: 30}
-      - {station: AKYURT_1, platform: AKYURT_1_DN_3, arrival: "08:07:08", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_DN_3, arrival: "08:10:41", dwell_s: 30}
 
   - id: X12
     name: 07:11 Akyurt 1 circuit non-stop
@@ -128,4 +134,4 @@ services:
     ready_lead_s: 30
     calls:
       - {station: AKYURT_1, platform: AKYURT_1_UP_4, departure: "07:11:01", dwell_s: 30}
-      - {station: AKYURT_1, platform: AKYURT_1_DN_4, arrival: "08:08:08", dwell_s: 30}
+      - {station: AKYURT_1, platform: AKYURT_1_DN_4, arrival: "08:11:41", dwell_s: 30}

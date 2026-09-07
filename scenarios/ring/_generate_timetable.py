@@ -254,7 +254,19 @@ HEADER = '''# ring timetable - generated, do not edit by hand.
 
 
 def stock_yaml(unit):
-    return '''stock:
+    """The stock block, with whatever fitment ``unit`` carries.
+
+    Most flights here are written for a system that asks nothing of the train,
+    so the fitment keys are optional and absent means unfitted - which is what
+    every generated timetable but the convoy one wants. A flight written for a
+    system that DOES ask (virtual coupling needs tims and v2v, or the trains
+    keep a block apart and the run is fixed block wearing another name) passes
+    a unit with them set, as _generate_convoy.py does.
+    """
+    fitted = dict(unit)
+    for key in ("tims", "v2v"):
+        fitted[key] = "true" if fitted.get(key) else "false"
+    block = '''stock:
   - id: %(id)s
     name: %(name)s
     length_m: %(length_m)d
@@ -263,10 +275,11 @@ def stock_yaml(unit):
     service_brake: %(service_brake)s
     emergency_brake: %(emergency_brake)s
     etcs_level: %(etcs_level)s
-    tims: false
-
-services:
-''' % unit
+    tims: %(tims)s
+''' % fitted
+    if fitted["v2v"] == "true":
+        block += "    v2v: true\n"
+    return block + "\nservices:\n"
 
 
 def render(times, headway_s, count=COUNT):

@@ -3,6 +3,7 @@
 #   python run.py scenarios/ring/scenario-convoy.yaml --headless
 #   python run.py scenarios/ring/scenario-convoy.yaml          (watch it form)
 #   python scenarios/ring/_sweep_convoy.py                     (the measurement)
+#   python scenarios/ring/_generate_convoy.py 60               (rebuild the flight)
 #
 # WHAT THIS SCENARIO IS FOR
 #
@@ -30,10 +31,37 @@
 #
 # WHAT CAME BACK
 #
-# Twelve non-stop laps at 60 s, all under virtual coupling. Journey time is the
-# honest cost - the flight is booked at times a service achieves UNCAPPED, so a
-# capped run is late against a plan it was never able to keep, and the delay
-# column would only be measuring that. Median gap is the honest benefit.
+# Twelve non-stop laps at 60 s, all under virtual coupling. The sweep books
+# every row at times a service achieves UNCAPPED, so that the three rows are
+# compared against one plan - which means a capped row is late by construction
+# and the delay column would only be measuring the cap. Journey time is the
+# honest cost there, and median gap the honest benefit.
+#
+# THIS SCENARIO'S OWN TIMETABLE IS BOOKED DIFFERENTLY, at 70 km/h, by
+# _generate_convoy.py, and on a fleet fitted for virtual coupling. Both matter
+# and both were wrong until the generator existed - the flight came out of
+# _generate_express.py, booked at 90 km/h against a rule that forbids 90, on
+# stock with no train-to-train link, so every train fell back to block
+# granularity and what ran was fixed block with a virtual coupling label. The
+# worst arrival was +11:43 and no convoy could form at all.
+#
+# Booked at the cap instead, a service alone on the railway is asked for the
+# lap it can actually run, and the release is worth 20 km/h of recovery to a
+# train held up behind another. That is the only slack anywhere on this circuit
+# and it is where the rule's gain at a tight interval comes from - not from a
+# convoy going faster, which it cannot.
+#
+#   twelve services at 60 s, fitted, booked at 70:  12 of 12 keep time
+#
+#     X01 on time   X02 -0:49   X03 on time   X04 -0:53   X05 on time ...
+#
+# READ THE PAIRS. Services arrive two at a time, seventeen seconds apart on a
+# sixty second booking, the second of each pair a minute early. That is the
+# incentive doing exactly what it was written to do: the follower closes up,
+# earns line speed, and the two of them run round as a unit. It is the clearest
+# picture of the mechanism anywhere in this study - and it is still worth only
+# six seconds of interval when the platforms are put back in, for the reason
+# under "SO: THE MECHANISM IS REAL AND THE TRADE IS BAD" below.
 #
 #   run             journey   released    median gap   when released
 #   ---------------------------------------------------------------
