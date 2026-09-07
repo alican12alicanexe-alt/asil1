@@ -1,0 +1,120 @@
+# ring convoy - paying a train, in line speed, to close up on the one in front.
+#
+#   python run.py scenarios/ring/scenario-convoy.yaml --headless
+#   python run.py scenarios/ring/scenario-convoy.yaml          (watch it form)
+#   python scenarios/ring/_sweep_convoy.py                     (the measurement)
+#
+# WHAT THIS SCENARIO IS FOR
+#
+# Every other measurement on this circuit keeps arriving at the same negative
+# finding. Virtual coupling lets trains run closer; nothing in it makes them
+# GET closer. Closing up is a speed manoeuvre, and on a fleet of identical
+# units all sitting on line speed there is no speed difference to close with -
+# over a 30 km leg with no station, not one tick had two trains within 200 m.
+#
+# The one run that did assemble a convoy needed a train class capped below line
+# speed, and there the settled gap fell to 163 m against moving block's 301 m:
+# 46 %, against the 9 % the headway sweep reports. That is where the concept
+# pays, and it needs a speed difference to exist.
+#
+# So this scenario manufactures one with an operating rule instead of a second
+# train class:
+#
+#   Every train is held to 70 km/h. A train within its own braking distance
+#   plus a margin of the train in front is released to line speed.
+#
+# The follower is paid, in line speed, for closing up. Nothing about the
+# physics changed - it is a rule somebody would write, and it lives in
+# VirtualCoupling.uncoupled_speed_kmh as a setting rather than as a claim about
+# what virtual coupling is.
+#
+# WHAT CAME BACK
+#
+# Twelve non-stop laps at 60 s, all under virtual coupling. Journey time is the
+# honest cost - the flight is booked at times a service achieves UNCAPPED, so a
+# capped run is late against a plan it was never able to keep, and the delay
+# column would only be measuring that. Median gap is the honest benefit.
+#
+#   run             journey   released    median gap   when released
+#   ---------------------------------------------------------------
+#   line speed      3457.0 s      0.0 %      1053 m         -
+#   capped 70       3670.0 s      0.0 %       997 m         -
+#   + 50 m margin   3665.0 s      0.0 %       999 m         -
+#   + 400 m         3665.0 s      0.0 %       999 m         -
+#   + 600 m         3661.5 s      3.0 %       982 m       694 m
+#   + 800 m         3637.0 s     49.6 %       954 m       192 m   <- this file
+#   + 1000 m        3638.5 s     57.9 %       757 m       188 m
+#   + 1500 m        3507.7 s    100.0 %       967 m       967 m
+#
+# THREE THINGS TO READ OFF IT, AND THE ORDER MATTERS
+#
+# 1. THE RULE AS FIRST WRITTEN NEVER FIRES. Braking distance plus 50 m is about
+#    240 m at 70 km/h, and at any interval this railway is actually worked at
+#    the trains are a kilometre apart. An incentive that requires proximity
+#    cannot create proximity. That is not a detail of the number chosen; it is
+#    the shape of the idea, and every radius up to 400 m returns the capped run
+#    to three decimal places.
+#
+# 2. WIDEN IT FAR ENOUGH AND IT STOPS MEANING ANYTHING. At 1500 m every train
+#    is released every tick, the median gap when released is 967 m, and what
+#    the rule has become is "no cap" with extra steps. The journey time gives
+#    it away: 3507 s, back to within 50 s of line speed, with no convoy in it.
+#
+# 3. BETWEEN THOSE TWO THERE IS A NARROW BAND WHERE IT WORKS. At 800 m the
+#    incentive fires half the time and the trains it fires for close to 192 m -
+#    a real convoy, five times denser than the 1053 m plain virtual coupling
+#    leaves them at. It costs 180 s a journey, which is 5 %.
+#
+# SO: THE MECHANISM IS REAL AND THE TRADE IS BAD
+#
+# It genuinely assembles convoys, which nothing else in this study managed
+# without a slow train class. It buys five times the density on half the
+# train-ticks, and charges every train on the railway 5 % of its journey for
+# it - including the ones at the front, which can never earn the release
+# because there is nobody in front of them to earn it from.
+#
+# That last clause is the reason the ceiling is low. A convoy runs at the speed
+# of the train leading it, the train leading it is uncoupled by definition, so
+# the convoy runs at the cap. The incentive can pack a queue; it cannot make
+# one go faster. Which is the same finding as everywhere else here, arrived at
+# from the other direction: virtual coupling shortens following distances, and
+# a railway is not usually limited by following distances.
+#
+# WHAT THIS IS NOT
+#
+# Not a proposal, and not something any railway does. It is a rule invented to
+# test whether an incentive can do what a slow train class did, and reported
+# with the answer it gave rather than the one it was built to give.
+
+name: ring convoy
+description: "Trains capped at 70 km/h and released to line speed once they close up - whether an incentive can assemble a convoy, and what it costs."
+
+infrastructure: infrastructure.yaml
+timetable: timetable-convoy.yaml
+
+simulation:
+  dt: 1.0
+  start_time: "06:57:00"
+  duration_s: 12000
+  strict: false
+
+signalling:
+  system: virtual_coupling
+  # The rule. Take these two lines out and the run is plain virtual coupling,
+  # which is the "line speed" row of the table above.
+  uncoupled_speed_kmh: 70
+  coupling_margin_m: 800
+
+interlocking:
+  route_request_distance_m: 2000
+  route_request_lead_s: 60
+  automatic_signals: false
+  route_lookahead: 2
+
+driver:
+  reaction_time_s: 0.0
+  safety_margin_m: 25.0
+
+view:
+  title: "ring convoy - capped at 70, released to 80 on closing up"
+  speed: 20

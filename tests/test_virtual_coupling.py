@@ -93,5 +93,75 @@ class TestMargins(unittest.TestCase):
         self.assertGreater(system.fallback_margin_m, system.safety_margin_m)
 
 
+class Follower:
+    """Just enough of a train for the incentive to be asked about."""
+
+    id = "F"
+
+    def __init__(self, speed_ms=SPEED, chainage_m=0.0):
+        self.speed_ms = speed_ms
+        self.chainage_m = chainage_m
+        self.stock = STOCK
+        self.path = type("Path", (), {"total_m": 100000.0})()
+
+
+class EmptyRailway:
+    """A simulation with no other trains on it and no interlocking."""
+
+    trains = {}
+
+
+class TestTheCouplingIncentive(unittest.TestCase):
+    """The operating rule scenario-convoy.yaml measures: capped unless coupled.
+
+    Off by default, and it has to stay off - every other measurement in this
+    study is made under plain virtual coupling, and a cap that arrived by
+    default would quietly re-measure all of them.
+    """
+
+    def test_it_is_off_unless_asked_for(self):
+        system = VirtualCoupling()
+        self.assertIsNone(system.uncoupled_speed_ms)
+        self.assertIsNone(
+            system.movement_authority(Follower(), EmptyRailway()).ceiling_speed_ms)
+
+    def test_a_train_with_nothing_to_couple_to_is_capped(self):
+        """Which is why the train at the front of a convoy sets its speed: it
+        has nobody in front to earn the release from."""
+        system = VirtualCoupling(uncoupled_speed_kmh=70)
+        authority = system.movement_authority(Follower(), EmptyRailway())
+        self.assertAlmostEqual(authority.ceiling_speed_ms, kmh_to_ms(70.0))
+        self.assertIn("uncoupled", authority.reason)
+
+    def test_coupled_is_a_braking_distance_plus_the_margin(self):
+        system = VirtualCoupling(uncoupled_speed_kmh=70, coupling_margin_m=50.0)
+        follower = Follower(speed_ms=SPEED, chainage_m=1000.0)
+        reach = braking_distance(SPEED, STOCK.service_brake)
+        self.assertTrue(system._is_coupled(follower, 1000.0 + reach + 49.0))
+        self.assertFalse(system._is_coupled(follower, 1000.0 + reach + 51.0))
+
+    def test_the_reach_grows_with_speed_so_a_release_does_not_undo_itself(self):
+        """The release makes a train accelerate. If the test got tighter as the
+        train got faster, obeying the rule would drop it out of the convoy."""
+        system = VirtualCoupling(uncoupled_speed_kmh=70)
+        gap = braking_distance(SPEED, STOCK.service_brake) + 40.0
+        self.assertTrue(system._is_coupled(Follower(SPEED), gap))
+        self.assertTrue(system._is_coupled(Follower(SPEED * 1.2), gap))
+
+    def test_a_standing_train_is_coupled_only_by_the_margin(self):
+        """No braking distance left to reach with, which is the same place the
+        rest of virtual coupling's benefit goes at a standstill."""
+        system = VirtualCoupling(uncoupled_speed_kmh=70, coupling_margin_m=50.0)
+        self.assertTrue(system._is_coupled(Follower(0.0), 49.0))
+        self.assertFalse(system._is_coupled(Follower(0.0), 51.0))
+
+    def test_the_rule_is_named_in_the_description(self):
+        """A run made under a different operating rule must say so in its own
+        report, or the table is quoted as plain virtual coupling."""
+        described = VirtualCoupling(uncoupled_speed_kmh=70).describe()
+        self.assertIn("70 km/h", described)
+        self.assertIn("incentive", described)
+
+
 if __name__ == "__main__":
     unittest.main()

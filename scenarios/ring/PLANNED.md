@@ -36,6 +36,18 @@ available. At a platform the leader is stopping and has none left to lend.
 Wants: `infrastructure-*.yaml` unchanged from the ring, a two-class timetable,
 and the gap trace above turned into a script beside `_sweep_timestep.py`.
 
+### 1a. The convoy by operating rule - BUILT, see `scenario-convoy.yaml`
+
+The other way to manufacture the speed difference: cap every train at 70 and
+release it to line speed once it is close enough to the one in front. Built as
+`VirtualCoupling(uncoupled_speed_kmh=..., coupling_margin_m=...)`, measured by
+`_sweep_convoy.py`, recorded in that script's docstring.
+
+It works, in a band, and the trade is bad - convoys at 192 m against plain
+virtual coupling's 1053 m, for 5 % of every journey on the railway. Below a
+600 m radius it never fires; above 1500 m it is "no cap" with extra steps. The
+slow-leader route in section 1 remains the one worth building.
+
 ## 2. The junction - BUILT AND REMOVED
 
 `infrastructure-cross.yaml` put two railways across each other at grade with

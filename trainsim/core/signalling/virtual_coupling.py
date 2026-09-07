@@ -20,7 +20,7 @@ degraded margin is the one moving block would have used rather than the tight
 coupled one.
 """
 
-from ..units import braking_distance
+from ..units import braking_distance, kmh_to_ms, ms_to_kmh
 from .base import SEPARATION_BY_DISTANCE, MovementAuthority, SignallingSystem
 from .common import block_danger_point, limit_by_route, train_ahead
 
@@ -50,7 +50,9 @@ class VirtualCoupling(SignallingSystem):
                  fallback_margin_m: float = 100.0,
                  v2v_latency_s: float = 0.5,
                  assume_leader_brakes: bool = True,
-                 leader_brake: str = "emergency"):
+                 leader_brake: str = "emergency",
+                 uncoupled_speed_kmh=None,
+                 coupling_margin_m: float = 50.0):
         super().__init__()
         if leader_brake not in self.LEADER_BRAKE:
             raise ValueError(
@@ -81,6 +83,29 @@ class VirtualCoupling(SignallingSystem):
         #: stopped dead. False is moving block, and is here so that the entire
         #: benefit of virtual coupling can be switched off and measured.
         self.assume_leader_brakes = bool(assume_leader_brakes)
+        #: THE COUPLING INCENTIVE. ``None``, the default, is virtual coupling as
+        #: everything else here measures it: line speed for everybody, all the
+        #: time. Set it and the railway runs a different OPERATING RULE - every
+        #: train is held to this speed unless it is coupled, and a coupled train
+        #: is released to line speed.
+        #:
+        #: This is a rule somebody would write, not a consequence of the
+        #: physics, and the model must not be read as saying otherwise. It
+        #: exists because of what scenarios/ring keeps finding: on a fleet of
+        #: identical trains at line speed there is no speed difference, so no
+        #: train ever closes on another and a convoy is never assembled. An
+        #: incentive is one way to manufacture the difference - the follower is
+        #: paid, in line speed, for closing up. What it costs is that everything
+        #: NOT in a convoy runs slower, and whether that trade is worth taking
+        #: is the measurement.
+        self.uncoupled_speed_ms = (None if uncoupled_speed_kmh is None
+                                   else kmh_to_ms(float(uncoupled_speed_kmh)))
+        #: How much clearance beyond its own braking distance a train may have
+        #: and still count as coupled. Braking distance rather than a flat gap
+        #: because the rule has to mean the same thing at every speed: a train
+        #: is coupled when it is close enough that it is following the train in
+        #: front rather than the line.
+        self.coupling_margin_m = float(coupling_margin_m)
 
     # ------------------------------------------------------------------ helpers
 
@@ -144,10 +169,24 @@ class VirtualCoupling(SignallingSystem):
         """Standing margin plus what the follower covers awaiting the news."""
         return self.safety_margin_m + follower.speed_ms * self.v2v_latency_s
 
+    def _is_coupled(self, follower, rear_m: float) -> bool:
+        """Whether ``follower`` is close enough behind to count as coupled.
+
+        Its own braking distance plus :attr:`coupling_margin_m`. Deliberately
+        wider than the separation the system settles at, so a train that has
+        coupled stays coupled: the release makes it accelerate, accelerating
+        lengthens its braking distance, and a test that got tighter as the
+        train got faster would drop trains out of the convoy for obeying it.
+        """
+        reach = braking_distance(follower.speed_ms, follower.stock.service_brake)
+        return rear_m - follower.chainage_m <= reach + self.coupling_margin_m
+
     # -------------------------------------------------------- movement authority
 
     def movement_authority(self, train, sim) -> MovementAuthority:
         ahead = train_ahead(train, sim)
+
+        leader = None
 
         if ahead is None:
             danger, reason = train.path.total_m, "clear ahead"
@@ -175,10 +214,19 @@ class VirtualCoupling(SignallingSystem):
                 danger = rear_m + self._run_on_m(leader) - self._margin_m(train)
                 reason = "coupled to %s" % other_id
 
+        ceiling = None
+        if self.uncoupled_speed_ms is not None:
+            coupled = (leader is not None and self._linked(train, leader)
+                       and self._is_coupled(train, ahead[0]))
+            if not coupled:
+                ceiling = self.uncoupled_speed_ms
+                reason = "%s, uncoupled" % reason
+
         danger, reason = limit_by_route(danger, reason, train, sim)
         return MovementAuthority(
             end_distance_m=max(0.0, danger - train.chainage_m),
             target_speed_ms=0.0,
+            ceiling_speed_ms=ceiling,
             reason="VC: %s" % reason,
         )
 
@@ -223,6 +271,12 @@ class VirtualCoupling(SignallingSystem):
         return members
 
     def describe(self) -> str:
+        if self.uncoupled_speed_ms is not None:
+            return ("virtual coupling with a coupling incentive: %.0f km/h "
+                    "uncoupled, line speed once within braking distance "
+                    "+ %.0f m of the train in front"
+                    % (ms_to_kmh(self.uncoupled_speed_ms),
+                       self.coupling_margin_m))
         if not self.assume_leader_brakes:
             return ("virtual coupling with relative braking disabled "
                     "(equivalent to moving block, margin %.0f m)"

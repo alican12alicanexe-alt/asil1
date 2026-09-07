@@ -34,7 +34,8 @@ python run.py scenarios/ring --system virtual_coupling
 
 python scenarios/ring/_sweep_headway.py etcs_moving_block   # what it holds
 python scenarios/ring/_sweep_express.py etcs_moving_block   # without the platforms
-python run_tests.py                             # 283 tests, ~15 s
+python scenarios/ring/_sweep_convoy.py                      # can a rule build one
+python run_tests.py                             # 289 tests, ~15 s
 ```
 
 **[COMMANDS.md](COMMANDS.md)** is the full command reference. Every scenario
@@ -81,6 +82,16 @@ uncapped, non-stop lap. The convoy forms at km 18 and holds to the end:
 contradiction — in a convoy the leader is *moving*, so the brake credit relative
 braking rests on is fully available. At a platform the leader is stopping and has
 none left to lend.
+
+**An operating rule cannot manufacture that speed difference cheaply.**
+`scenario-convoy.yaml` caps every train at 70 km/h and releases it to line speed
+once it is within braking distance plus a margin of the train in front — paying
+a follower, in line speed, for closing up. It does assemble convoys, at 192 m
+against plain virtual coupling's 1053 m. It also never fires below a ~600 m
+radius (an incentive that requires proximity cannot create proximity), becomes
+"no cap" above ~1500 m, and in the band where it works costs every train 5 % of
+its journey — including the train at the front, which can never earn the release
+because there is nobody ahead of it to earn it from.
 
 **At a junction it buys little.** `tests/railways/junction` runs the same flat
 junction under every system and against a flyover control. Moving block gains far
@@ -228,7 +239,8 @@ scenarios do not load routes they never book:
   junction: read the header before quoting anything from it.
 
 and its own experiment scripts — `_sweep_headway.py`, `_sweep_express.py`,
-`_sweep_timestep.py`, each with its results recorded in its docstring.
+`_sweep_convoy.py`, `_sweep_timestep.py`, each with its results recorded in its
+docstring.
 
 ### `tests/railways/` — fixtures
 
@@ -287,7 +299,7 @@ subset these files use, and a test asserts the two agree on every shipped file.
 
 ## Verification
 
-`python run_tests.py` — **283 tests, about 15 seconds**, parallel by default
+`python run_tests.py` — **289 tests, about 15 seconds**, parallel by default
 (`--serial` and `-v` to escape, or name modules to run a subset).
 
 The tests worth knowing about are the ones that stop a result being quietly
