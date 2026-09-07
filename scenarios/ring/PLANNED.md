@@ -56,6 +56,12 @@ scenario used the express timetable and ran as fixed block with a virtual
 coupling label - worst arrival +11:43, no convoy possible. Fixed, it keeps
 time 12 of 12 and the trains arrive in pairs 17 s apart.
 
+`--stopping` writes the same flight on the twenty-two call lap
+(`scenario-convoy-stopping.yaml`), and that one is the sharper result: a
+station stop hands the incentive a free speed difference and the convoys still
+do not form - 12 services at 60 s arrive 59 to 64 s apart, no pairs at all.
+What the follower closes up to is a platform that is not free yet.
+
 ## 2. The junction - BUILT AND REMOVED
 
 `infrastructure-cross.yaml` put two railways across each other at grade with

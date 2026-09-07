@@ -115,31 +115,13 @@ EXPRESS_HEADER = '''# ring express timetable - generated, do not edit by hand.
 '''
 
 
-def render(times, headway_s, count=COUNT, header=EXPRESS_HEADER, stock=None):
-    # ``header`` and ``stock`` because _generate_convoy.py writes the same
-    # flight with a different preamble and a fitted fleet. The services in
-    # between are identical, which is the point of it sharing this.
-    unit = stock or STOCK
-    out = [header % (headway_s, count, headway_s) + stock_yaml(unit)]
-    for service in express_spec(times, headway_s, count, stock=unit)["services"]:
-        lines = ["  - id: %s" % service["id"],
-                 "    name: %s" % service["name"],
-                 "    stock: %s" % service["stock"],
-                 '    departure: "%s"' % service["departure"],
-                 "    ready_lead_s: %d" % READY_LEAD,
-                 "    calls:"]
-        for entry in service["calls"]:
-            bits = ["station: %s" % entry["station"],
-                    "platform: %s" % entry["platform"]]
-            if "arrival" in entry:
-                bits.append('arrival: "%s"' % entry["arrival"])
-            if "departure" in entry:
-                bits.append('departure: "%s"' % entry["departure"])
-            bits.append("dwell_s: %d" % entry["dwell_s"])
-            lines.append("      - {%s}" % ", ".join(bits))
-        out.append("\n".join(lines))
-        out.append("")
-    return "\n".join(out)
+def render(times, headway_s, count=COUNT, header=None, stock=None):
+    """The non-stop flight. ring.render does the writing; only the lap and the
+    preamble differ, and the lap is express_spec."""
+    return ring.render(times, headway_s, count,
+                       header if header is not None
+                       else EXPRESS_HEADER % (headway_s, count, headway_s),
+                       stock, express_spec)
 
 
 if __name__ == "__main__":

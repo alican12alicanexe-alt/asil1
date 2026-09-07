@@ -282,9 +282,19 @@ def stock_yaml(unit):
     return block + "\nservices:\n"
 
 
-def render(times, headway_s, count=COUNT):
-    out = [HEADER % (count, headway_s) + stock_yaml(STOCK)]
-    for service in flight_spec(times, headway_s, count)["services"]:
+def render(times, headway_s, count=COUNT, header=None, stock=None,
+           spec=None):
+    """The flight as timetable YAML.
+
+    ``header`` arrives already formatted, and ``spec`` says which flight to
+    write - _generate_express.py and _generate_convoy.py write different laps
+    on the same railway with the same unit, and everything below the preamble
+    was identical in all three.
+    """
+    out = [(header if header is not None else HEADER % (count, headway_s))
+           + stock_yaml(stock or STOCK)]
+    for service in (spec or flight_spec)(times, headway_s, count,
+                                         stock=stock)["services"]:
         lines = ["  - id: %s" % service["id"],
                  "    name: %s" % service["name"],
                  "    stock: %s" % service["stock"],

@@ -1,0 +1,86 @@
+# ring convoy, calling at every station - the same rule where the railway binds.
+#
+#   python run.py scenarios/ring/scenario-convoy-stopping.yaml --headless
+#   python run.py scenarios/ring/scenario-convoy-stopping.yaml   (watch it form)
+#   python scenarios/ring/_generate_convoy.py --stopping         (rebuild)
+#   python scenarios/ring/_sweep_convoy.py --headway --stopping  (the boundary)
+#
+# scenario-convoy.yaml carries the argument, the results table and what the
+# rule is for. This is that scenario with the platforms put back: the circuit's
+# own twenty-two call lap, eleven stations out on the up line and the same
+# eleven back, thirty seconds at each.
+#
+# WHY BOTH EXIST
+#
+# The non-stop flight is the mechanism with nothing in the way - what an
+# incentive does to trains that are only ever limited by each other. It is the
+# clearer picture and the weaker claim, because this railway is not limited by
+# following distances. What it is limited by is a platform road, and that is
+# only in the run that calls at platforms.
+#
+# So the two flights measure the two halves. Non-stop, the incentive takes the
+# interval from 28 s to 17 s. Calling everywhere, from 71 s to 65 s. Same rule,
+# same trains, same drawing - and the difference between an eleven second gain
+# and a six second one is the platforms, not the signalling.
+#
+# A STOPPING LAP FEEDS THE INCENTIVE FOR FREE, which is the reason to expect
+# more of it than it gives. The rule needs a speed difference to work with, and
+# on the open line it has to manufacture one by capping everybody. At a station
+# it is handed one: a train standing thirty seconds is a train the one behind
+# closes on at 70 km/h for nothing. Every call is a chance for a convoy to
+# assemble itself.
+#
+# WHAT THE RUN SHOWS, AND IT IS NOT WHAT THE NON-STOP ONE SHOWS
+#
+# Twelve services at 60 s all keep time, and they arrive strung out at 59 to
+# 64 second intervals - no pairs, nothing like the seventeen second pairs the
+# non-stop flight forms at the same booking:
+#
+#   08:22:29  08:23:28  08:24:32  08:25:34  08:26:38  08:27:40  08:28:44
+#   08:29:46  08:30:50  08:31:51  08:32:53  08:33:55
+#
+# The free speed difference is there and the convoys still do not assemble,
+# which is the whole finding in one run. What the follower closes up TO is a
+# platform the train in front has not left yet, so closing up means standing at
+# a signal rather than coupling. The incentive can only pay a train to do
+# something the railway is already letting it do.
+#
+# Booked at 70 km/h by _generate_convoy.py, on stock fitted with the
+# train-to-train link, for the reasons in that generator's docstring. An
+# undisturbed lap at the cap is 82 min 28 s against 79 min 09 s at line speed.
+
+name: ring convoy, stopping
+description: "The coupling incentive on the circuit's own twenty-two call lap - the same rule measured where a platform road is what binds, not the distance between trains."
+
+infrastructure: infrastructure.yaml
+timetable: timetable-convoy-stopping.yaml
+
+simulation:
+  dt: 1.0
+  start_time: "06:57:00"
+  duration_s: 9000
+  strict: false
+
+signalling:
+  system: virtual_coupling
+  # The rule. Take these two lines out and the run is plain virtual coupling -
+  # but regenerate the flight if you do, because _generate_convoy.py books it
+  # at whatever uncoupled_speed_kmh says here. Run a plan written for one cap
+  # against a rule that applies another and every service is out by the
+  # difference, most visibly the first one, which nothing ever obstructs.
+  uncoupled_speed_kmh: 70
+  coupling_margin_m: 800
+
+interlocking:
+  route_request_distance_m: 2000
+  route_request_lead_s: 60
+  automatic_signals: false
+  route_lookahead: 2
+
+driver:
+  reaction_time_s: 0.0
+  safety_margin_m: 25.0
+
+view:
+  title: "ring convoy, stopping - capped at 70, released to 80 on closing up"
+  speed: 20
