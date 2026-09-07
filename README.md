@@ -338,6 +338,13 @@ error: it is the running-time supplement real timetables carry, about 5 % here.
 - **No field validation.** The model is calibrated against nothing. Every figure
   here is internal to it.
 - **A performance model is used where a real railway would use a safety model.**
+- **The V2V link is assumed never to drop a packet.** `v2v_latency_s` charges
+  virtual coupling 0.5 s of stale news on a *working* link, every tick. There is
+  no loss and no link-loss event: `_linked()` reads static fitment flags that
+  nothing mutates during a run, so `fallback_margin_m` is what an *unfitted*
+  train gets rather than what a fitted one falls back to. A fitted train never
+  makes the transition and never pays the detection timeout before it. That is
+  the assumption virtual coupling's safety case leans on hardest here.
 - **Four of IEEE 1698 Annex E's ten braking-distance components** are implemented;
   the rest are lumped into a 25 m margin.
 - **The timestep is 1.0 s**, and a check shorter than one tick is never sampled.

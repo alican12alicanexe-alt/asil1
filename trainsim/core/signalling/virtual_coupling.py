@@ -18,6 +18,18 @@ the follower keeps running for a moment after the leader starts braking; and
 the whole justification disappears when the link does, which is why the
 degraded margin is the one moving block would have used rather than the tight
 coupled one.
+
+THE LINK IS ASSUMED NEVER TO DROP A PACKET, and that assumption is load-bearing.
+:attr:`v2v_latency_s` prices news that is late on a link that is WORKING. It
+does not price news that never arrives. Nor is there any event in this model
+that takes a link away: :meth:`_linked` reads ``stock.v2v`` and ``stock.tims``,
+which are fitment flags set once and mutated by nothing, so
+:attr:`fallback_margin_m` is what an unfitted train gets rather than what a
+fitted one falls back to. A fitted train never crosses into the degraded mode,
+and never pays the supervision timeout it would spend on the tight coupled
+margin against stale data before noticing. Modelling that would need a
+link-loss disruption and a detection delay; until then, every figure here is
+virtual coupling with a perfect radio.
 """
 
 from ..units import braking_distance, kmh_to_ms, ms_to_kmh
