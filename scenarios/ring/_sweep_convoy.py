@@ -128,10 +128,25 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(os.path.dirname(HERE)))
 sys.path.insert(0, HERE)
 
-import _generate_express as express     # rebinds ring.LAP  (must come first)
-import _generate_timetable as ring
+#: Which flight to run this on, decided at import time because that is when the
+#: rebinding below has to happen. The default is the NON-STOP flight, where the
+#: binding constraint is the distance between two trains and an incentive to
+#: close that distance has something to work on. ``--stopping`` runs the
+#: circuit's own twenty-two-call lap instead, where virtual coupling holds 71 s
+#: and what it is queueing for is a platform road.
+STOPPING = "--stopping" in sys.argv
 
-ring.flight_spec = express.express_spec
+#: What the flight is, for the line every table prints above itself. A sweep
+#: that says it is measuring a non-stop lap when it is measuring twenty-two
+#: calls is a sweep nobody can read.
+FLIGHT = ("laps calling at all eleven stations twice" if STOPPING
+          else "non-stop laps")
+
+import _generate_timetable as ring      # noqa: E402
+
+if not STOPPING:
+    import _generate_express as express  # rebinds ring.LAP  (must come first)
+    ring.flight_spec = express.express_spec
 
 import _sweep_headway as sweep          # noqa: E402 - after the rebind
 from trainsim.analysis.kpi import measure
@@ -143,7 +158,7 @@ from trainsim.scenario.loader import build_timetable
 #: boundary: a denser run charged for its own extra traffic is not a comparison.
 #: 60 s is comfortably above the 32 s virtual coupling holds here, so nothing in
 #: the table is a queue.
-HEADWAY_S = 60
+HEADWAY_S = 150 if STOPPING else 60
 
 #: The cap, and the clearance beyond a train's own braking distance that still
 #: earns line speed.
@@ -266,8 +281,8 @@ HEAD = ("  run             journey   released    median gap   when released  "
 
 
 def main(headway_s=HEADWAY_S, uncoupled_kmh=UNCOUPLED_KMH):
-    print("%d non-stop laps of the circuit at %d s, under %s\n"
-          % (ring.COUNT, headway_s, SYSTEM))
+    print("%d %s of the circuit at %d s, under %s\n"
+          % (ring.COUNT, FLIGHT, headway_s, SYSTEM))
     print(HEAD)
     print("  " + "-" * 74)
     report("line speed", *run(headway_s))
@@ -294,7 +309,8 @@ def main(headway_s=HEADWAY_S, uncoupled_kmh=UNCOUPLED_KMH):
 #: the boundary at every threshold at once, which a bisection does not: a
 #: bisection has to be told the criterion before it starts, and the criterion is
 #: exactly what is in question here.
-INTERVALS = (60, 50, 42, 36, 32, 28, 24, 20, 17, 14)
+INTERVALS = ((150, 120, 100, 90, 80, 75, 71, 65, 60, 55) if STOPPING
+             else (60, 50, 42, 36, 32, 28, 24, 20, 17, 14))
 
 #: How late the worst arrival may be and the flight still counts as workable.
 #: 30 s is where the simulator itself stops printing "on time" and is what
@@ -362,8 +378,8 @@ def boundaries(rows):
 
 def headways(uncoupled_kmh=UNCOUPLED_KMH):
     """What each configuration can be booked at, not what it does at 60 s."""
-    print("worst arrival, %d non-stop laps, all under %s"
-          % (ring.COUNT, SYSTEM))
+    print("worst arrival, %d %s, all under %s"
+          % (ring.COUNT, FLIGHT, SYSTEM))
     print("each booked at times its own fleet achieves with the railway to "
           "itself.\n")
     print("  %-16s%s" % ("interval", "".join("%7d" % h for h in INTERVALS)))
@@ -372,7 +388,9 @@ def headways(uncoupled_kmh=UNCOUPLED_KMH):
             ("capped %d" % uncoupled_kmh,
              scan("capped %d" % uncoupled_kmh, uncoupled_kmh,
                   max_speed_kmh=uncoupled_kmh))]
-    for margin in (800.0, 1000.0):
+    # 800 m only. On the non-stop flight 1000 m answered identically in every
+    # cell, so a second radius is another ten runs for a repeated row.
+    for margin in (800.0,):
         global COUPLING_MARGIN_M
         COUPLING_MARGIN_M = margin
         label = "incentive + %.0f" % margin
