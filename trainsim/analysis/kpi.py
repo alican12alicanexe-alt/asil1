@@ -26,6 +26,7 @@ yet; these are the subset needed to compare train control systems honestly.
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
+from ..core.driver import BY_SIGNALLING
 from ..core.units import format_delay
 
 
@@ -69,19 +70,6 @@ class RunMetrics:
         return sum(self.delays.values()) / len(self.delays)
 
 
-#: Reasons that mean "the signalling is holding this train back", as opposed to
-#: line speed or a booked stop. Matched as substrings of the governing reason.
-RESTRAINT_MARKERS = (
-    "caution", "danger", "block", "rear of", "no route",
-    "vss", ".1 ", ".2 ", ".3 ", ".4 ",
-    # Virtual coupling words the same thing its own way: a train held down
-    # behind the one in front, whether over the link or on absolute braking
-    # distance once the link is gone. Without these the column reads near zero
-    # under virtual coupling and the system looks free of a cost it is paying.
-    "coupled to", "absolute distance",
-)
-
-
 def measure(sim, description: str = "") -> RunMetrics:
     """Run ``sim`` to completion, collecting metrics as it goes."""
     metrics = RunMetrics(system=sim.signalling.name,
@@ -96,8 +84,7 @@ def measure(sim, description: str = "") -> RunMetrics:
         for train in sim.trains.values():
             if train.state != "running":
                 continue
-            reason = (train.authority_reason or "").lower()
-            if any(marker in reason for marker in RESTRAINT_MARKERS):
+            if train.governed_by == BY_SIGNALLING:
                 metrics.restrained_s[train.id] = (
                     metrics.restrained_s.get(train.id, 0.0) + sim.dt
                 )

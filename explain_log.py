@@ -10,9 +10,10 @@ carry signal and block ids, so twelve trains held at the same place look like
 two hundred different reasons. This groups them by kind, says what each kind
 means, and then locates the ones that are the signalling holding a train back.
 
-What counts as "held back" is not decided here: it is RESTRAINT_MARKERS in
-trainsim.analysis.kpi, the same list the comparison table's restrained column
-uses, so a reason cannot be a bottleneck in one report and not the other.
+What counts as "held back" is not decided here either: it is the trace's own
+``governed_by`` column, which the driver wrote at the time, and which the
+comparison table's restrained column is summed from - so a sample cannot be a
+bottleneck in one report and not the other.
 
 Stdlib only, and it reads a file rather than running anything, so it works on a
 trace somebody else sent you.
@@ -28,7 +29,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from trainsim.analysis.kpi import RESTRAINT_MARKERS  # noqa: E402
+from trainsim.core.driver import BY_SIGNALLING  # noqa: E402
+
 
 #: ``(pattern, kind, what it means)``, tried in order: the first match names the
 #: sample. Ids are stripped by the patterns themselves, which is what collapses
@@ -107,10 +109,16 @@ def cost_kmh(row):
         return 0.0
 
 
-def held_back(reason):
-    """Whether this reason is the signalling holding a train down."""
-    low = reason.lower()
-    return any(marker in low for marker in RESTRAINT_MARKERS)
+def held_back(row):
+    """Whether the signalling is what is holding this train down.
+
+    Read off the trace's ``governed_by`` column, which is the driver's own
+    answer to that question. It used to be guessed by matching substrings
+    against the reason text, which meant a phrase invented in a signalling
+    system had to be remembered here as well, and a system whose words nobody
+    added silently read as costing nothing.
+    """
+    return row.get("governed_by") == BY_SIGNALLING
 
 
 def read(path):
@@ -157,7 +165,7 @@ def report(rows):
     lines.append("  governed. A fraction of a km/h means it bound first and cost")
     lines.append("  nothing - the train was not being held.")
 
-    restrained = [r for r in rows if held_back(r["reason"])]
+    restrained = [r for r in rows if held_back(r)]
     lines.append("")
     if not restrained:
         lines.append("Nothing was held back by the signalling: every sample was "
@@ -223,11 +231,13 @@ def selfcheck():
     # A booked stop and line speed are the timetable, not the signalling; a red
     # and a yellow are. Getting this backwards would put the bottleneck in the
     # wrong half of the report.
-    assert not held_back("line speed")
-    assert not held_back("station stop MACUNKOY_1")
-    assert held_back("signal at danger")
-    assert held_back("obeying caution")
-    assert held_back("VC: coupled to R03")
+    assert not held_back({"governed_by": "line speed"})
+    assert not held_back({"governed_by": "station stop"})
+    assert not held_back({"governed_by": "speed restriction"})
+    assert held_back({"governed_by": BY_SIGNALLING})
+    # An older trace has no such column. Better to report nothing held back than
+    # to guess from the words again.
+    assert not held_back({"reason": "signal at danger"})
     print("selfcheck: %d reason strings classified as expected" % len(cases))
 
 

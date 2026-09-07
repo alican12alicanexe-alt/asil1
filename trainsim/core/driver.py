@@ -19,6 +19,15 @@ from .disruption import SpeedLimits
 from .units import braking_distance, speed_from_braking_distance
 
 
+#: What is holding the train down, as opposed to which one of them in words.
+#: :data:`BY_SIGNALLING` is the cost of the train control system and the only
+#: one the capacity metrics count; the other three are the railway and the plan.
+BY_LINE_SPEED = "line speed"
+BY_SIGNALLING = "signalling"
+BY_STOP = "station stop"
+BY_LIMIT = "speed restriction"
+
+
 @dataclass(frozen=True)
 class DriverConfig:
     """Driver behaviour parameters, from the scenario file."""
@@ -59,8 +68,16 @@ class Driver:
         self.limits = SpeedLimits()
 
     def decide(self, train, authority, dt: float,
-               limits=None) -> Tuple[float, float, str]:
-        """Return ``(acceleration, target_speed_ms, governing_reason)``.
+               limits=None) -> Tuple[float, float, str, str]:
+        """Return ``(acceleration, target_speed_ms, reason, governing_source)``.
+
+        ``governing_source`` names *what kind* of thing is holding the train
+        down - :data:`BY_SIGNALLING`, :data:`BY_STOP`, :data:`BY_LIMIT` - as
+        opposed to ``reason``, which says which one in words. The metrics need
+        the kind and were reading it out of the words, by matching substrings
+        against every phrase the six systems happen to use. That is a list which
+        has to be kept in step with prose written elsewhere, and when it falls
+        out of step the cost of a signalling system silently reads as zero.
 
         ``limits`` says what the line speed is here and ahead. It defaults to the
         speeds written into the infrastructure; a run with a temporary speed
@@ -80,10 +97,12 @@ class Driver:
         target = min(stock.max_speed_ms,
                      limits.over(train, train.rear_m, train.chainage_m))
         reason = "line speed"
+        source = BY_LINE_SPEED
 
         if authority.ceiling_speed_ms is not None and authority.ceiling_speed_ms < target:
             target = authority.ceiling_speed_ms
             reason = authority.reason or "authority ceiling"
+            source = BY_SIGNALLING
 
         # The rate to compute braking curves against. Not the brake's own rate:
         # a falling gradient takes some of it away, and the curve has to hold
@@ -93,7 +112,7 @@ class Driver:
         lost_to_buildup = dynamics.brake_buildup_distance_m(stock, speed)
 
         constraints = self._constraints(train, authority, speed, limits, rate)
-        for distance, limit, label in constraints:
+        for distance, limit, label, kind in constraints:
             # Braking effectively starts a moment after it is demanded, so the
             # distance the curve may count on is short by what the train covers
             # while the brake builds up.
@@ -102,6 +121,7 @@ class Driver:
             if allowed < target:
                 target = allowed
                 reason = label
+                source = kind
 
         target = max(0.0, target)
 
@@ -111,7 +131,7 @@ class Driver:
         # rather than asymptotic.
         exact = self._exact_stop_accel(constraints, speed, dt, stock)
         if exact is not None:
-            return exact[0], 0.0, exact[1]
+            return exact[0], 0.0, exact[1], exact[2]
 
         delta = target - speed
         if delta > cfg.speed_deadband_ms:
@@ -120,7 +140,7 @@ class Driver:
             accel = max(-stock.service_brake, delta / dt)
         else:
             accel = delta / dt
-        return accel, target, reason
+        return accel, target, reason, source
 
     # ---------------------------------------------------------------- internals
 
@@ -133,11 +153,11 @@ class Driver:
 
     def _constraints(self, train, authority, speed: float, limits,
                      rate: Optional[float] = None
-                     ) -> List[Tuple[float, float, str]]:
-        """``(distance, speed_at_that_point, label)`` for everything ahead."""
+                     ) -> List[Tuple[float, float, str, str]]:
+        """``(distance, speed_at_that_point, label, kind)`` for everything ahead."""
         cfg = self.config
         stock = train.stock
-        found: List[Tuple[float, float, str]] = []
+        found: List[Tuple[float, float, str, str]] = []
 
         # The movement authority, held back by a standing margin and by how far the
         # train runs before the driver reacts.
@@ -147,13 +167,15 @@ class Driver:
             max(0.0, ma_distance),
             authority.target_speed_ms,
             authority.reason or "movement authority",
+            BY_SIGNALLING,
         ))
 
         # The next scheduled stop.
         to_stop = train.distance_to_next_stop()
         if to_stop is not None:
             stop = train.next_stop()
-            found.append((max(0.0, to_stop), 0.0, "station stop %s" % stop.station))
+            found.append((max(0.0, to_stop), 0.0,
+                          "station stop %s" % stop.station, BY_STOP))
 
         # Slower stretches coming up - permanent, like a loop road, or a
         # temporary restriction laid on for this run. Brake before reaching them.
@@ -161,26 +183,27 @@ class Driver:
             stock.max_speed_ms, rate or stock.service_brake) + 200.0
         for distance, limit in limits.ahead(train, train.chainage_m, lookahead):
             if limit < speed:
-                found.append((max(0.0, distance), limit, "speed restriction"))
+                found.append((max(0.0, distance), limit,
+                              "speed restriction", BY_LIMIT))
 
         return found
 
     def _exact_stop_accel(self, constraints, speed: float, dt: float, stock
-                          ) -> Optional[Tuple[float, str]]:
+                          ) -> Optional[Tuple[float, str, str]]:
         """Deceleration that stops exactly on a stopping point inside this tick."""
         if speed <= 0.0:
             return None
         reach = speed * dt
-        best: Optional[Tuple[float, str]] = None
-        for distance, limit, label in constraints:
+        best: Optional[Tuple[float, str, str]] = None
+        for distance, limit, label, kind in constraints:
             if limit > 0.0:
                 continue
             if distance > reach:
                 continue
             if distance <= self.config.stop_tolerance_m:
-                return -min(speed / dt, stock.emergency_brake), label
+                return -min(speed / dt, stock.emergency_brake), label, kind
             needed = (speed * speed) / (2.0 * distance)
             accel = -min(needed, stock.emergency_brake)
             if best is None or accel < best[0]:
-                best = (accel, label)
+                best = (accel, label, kind)
         return best

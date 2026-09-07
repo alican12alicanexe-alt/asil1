@@ -32,7 +32,7 @@ COLUMNS = [
     "target_kmh", "limit_kmh", "grade_permille",
     "authority_m", "service_brake_m", "emergency_brake_m",
     "ahead", "gap_m", "headway_s",
-    "delay_s", "next_stop", "reason",
+    "delay_s", "next_stop", "reason", "governed_by",
 ]
 
 
@@ -112,6 +112,7 @@ def _row(train, sim):
         round(train.delay_s, 1),
         "" if stop is None else stop.station,
         train.authority_reason,
+        train.governed_by,
     ]
 
 
