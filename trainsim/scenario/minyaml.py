@@ -44,17 +44,60 @@ def parse(text: str) -> Any:
 # --------------------------------------------------------------------- tokenize
 
 def _tokenize(text: str) -> List[Tuple[int, str, int]]:
-    """Return ``(indent, content, line_number)`` for every meaningful line."""
+    """Return ``(indent, content, line_number)`` for every meaningful line.
+
+    A flow sequence or mapping left open at the end of a line is continued onto
+    the next, which is how a long ``serves: [...]`` list is written so it can be
+    read. The lines are joined into one token, so the block parser below never
+    has to know that flow style can span lines.
+    """
     tokens = []
-    for number, raw in enumerate(text.splitlines(), start=1):
+    raws = text.splitlines()
+    number = 0
+    while number < len(raws):
+        raw = raws[number]
+        number += 1
         if "\t" in raw[: len(raw) - len(raw.lstrip())]:
             raise MiniYamlError("line %d: tabs cannot be used for indentation" % number)
         stripped = _strip_comment(raw)
         if not stripped.strip():
             continue
         indent = len(stripped) - len(stripped.lstrip(" "))
-        tokens.append((indent, stripped.strip(), number))
+        content = stripped.strip()
+        depth = _flow_depth(content)
+        while depth > 0 and number < len(raws):
+            more = _strip_comment(raws[number]).strip()
+            number += 1
+            if not more:
+                continue
+            content += " " + more
+            depth = _flow_depth(content)
+        if depth > 0:
+            raise MiniYamlError(
+                "line %d: unterminated flow sequence or mapping" % number)
+        tokens.append((indent, content, number))
     return tokens
+
+
+def _flow_depth(line: str) -> int:
+    """How many ``[`` or ``{`` are still open at the end of ``line``.
+
+    Brackets inside quotes are text, not structure - a station named ``"A [old]"``
+    does not open anything.
+    """
+    depth = 0
+    quote = None
+    for char in line:
+        if quote:
+            if char == quote:
+                quote = None
+        elif char in ("'", '"'):
+            quote = char
+        elif char in "[{":
+            depth += 1
+        elif char in "]}":
+            depth -= 1
+    return depth
 
 
 def _strip_comment(line: str) -> str:

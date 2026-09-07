@@ -1,0 +1,72 @@
+# metro - the moving block scenario.
+#
+#   python run.py scenarios/metro                 live schematic, moving block
+#   python run.py scenarios/metro --compare       all five systems, same timetable
+#   python run.py scenarios/metro --check         signal spacing against braking
+#   python run.py scenarios/metro --system fixed_block_3aspect    watch it bunch
+#
+# corridor3 asks how much ETCS helps a main line. This asks the sharper question:
+# is this timetable deliverable at all? Twelve trains an hour each way on a
+# six-station urban line, every train calling everywhere, no loops and nothing to
+# overtake. Under fixed block the answer is no - the flight bunches behind each
+# station until every train is a full headway late. Under moving block the same
+# trains, the same brakes and the same plan work exactly as booked.
+#
+# Press `b` in the view to see why. Each train carries its braking envelope: the
+# space it needs to stop, which is what moving block separates trains by. At line
+# speed that is 284 m; on the platform approach at 10 m/s it is 45 m. Fixed block
+# cannot use that, because a section is 500 or 600 m whatever the train is doing.
+# So it holds a following train a whole section back from a train that is
+# standing still with its doors open, and that is where the timetable is lost.
+#
+# Hybrid Level 3 is the interesting middle case, and it does not transfer from
+# corridor3 unchanged. Four virtual sub-sections per section is 150 m here, which
+# is coarse next to the 145 m a moving-block authority leaves on a platform
+# approach - so out of the box it recovers most of the gap but not all of it.
+# Sweeping the granularity on this timetable:
+#
+#     vss_per_block   4 (150 m)   +4 s late   591 s restrained
+#                     6 (100 m)   +3 s        232 s
+#                     8 ( 75 m)   on time     108 s
+#                    12 ( 50 m)   on time       0 s   - matches moving block
+#
+# So sub-sections want sizing against braking distance at the local speed, not
+# counting per block. That is a design conclusion the scenario produced rather
+# than one built into it, and it is exactly the sort of thing an HL3 deployment
+# has to decide.
+#
+# There are two variants alongside this one:
+#   scenario-60.yaml     the same flight at 60 s, which nothing delivers - moving
+#                        block has a floor too, and it is dwell time, not signals
+#   scenario-mixed.yaml  two units in the flight without integrity monitoring
+
+name: metro
+description: "12 km six-station urban line, twelve trains an hour each way at a 75-second headway - a timetable only distance separation delivers."
+
+infrastructure: infrastructure.yaml
+timetable: timetable.yaml
+
+simulation:
+  dt: 1.0
+  start_time: "06:58:00"
+  duration_s: 5400        # long enough for fixed block to finish, badly
+  strict: false
+
+signalling:
+  system: etcs_moving_block
+  # How close a following train may come to the rear of the train ahead. This is
+  # the one number moving block adds, and it is the honest place for the safety
+  # case to live: odometry error, the age of the position report, and the
+  # location accuracy the balises give. CBTC installations run tighter.
+  safety_margin_m: 100
+
+driver:
+  # Shorter than the main-line 2.0 s: urban stock, short sections, and a driver
+  # working to a supervised braking curve rather than reading lineside lamps.
+  reaction_time_s: 1.5
+  safety_margin_m: 20.0
+  stop_tolerance_m: 1.0
+
+view:
+  title: "metro - 75 second headway under moving block"
+  speed: 20

@@ -1,0 +1,141 @@
+# corridor3, worked hard: twelve up services at a 90-second interval.
+#
+# The point of this timetable is that it asks for more than fixed block can give.
+# The blocks on this line are 1500-2250 m, so a fixed-block headway is roughly
+# two blocks plus a train length at line speed - about 80-120 seconds. Booking
+# trains 90 seconds apart therefore sits right on that limit, and under
+# conventional signalling or ETCS Level 2 the trains bunch: each one is checked
+# down behind the one in front and arrives late.
+#
+# Distance-based separation does not have that limit. Moving block needs only
+# braking distance plus a safety margin plus the train's length - about 1380 m,
+# or 35 seconds at 140 km/h - so the same trains run unimpeded. Hybrid Level 3
+# lands in between, at the granularity of its virtual sub-sections.
+#
+# Run it with:
+#   python run.py scenarios/corridor3/scenario-intensive.yaml --compare
+#
+# The default corridor3 timetable is deliberately *not* like this. At a two-minute
+# interval the line is well below capacity, and there Level 2 captures essentially
+# all the available benefit while moving block adds nothing - which is itself the
+# right answer, and the reason a capacity claim needs the traffic stated with it.
+
+stock:
+  - id: EMU_FAST
+    name: Fast EMU
+    length_m: 200
+    max_speed_kmh: 140
+    max_accel: 0.9
+    service_brake: 0.7
+    emergency_brake: 1.2
+    etcs_level: l2
+    tims: true
+
+services:
+  - id: I01
+    name: intensive 01
+    stock: EMU_FAST
+    departure: "07:00:00"
+    ready_lead_s: 40
+    calls:
+      - {station: ALPHA, platform: ALPHA_1, departure: "07:00:00", dwell_s: 20}
+      - {station: GAMMA, platform: GAMMA_1, arrival: "07:14:00", dwell_s: 30}
+
+  - id: I02
+    name: intensive 02
+    stock: EMU_FAST
+    departure: "07:01:30"
+    ready_lead_s: 40
+    calls:
+      - {station: ALPHA, platform: ALPHA_1, departure: "07:01:30", dwell_s: 20}
+      - {station: GAMMA, platform: GAMMA_1, arrival: "07:15:30", dwell_s: 30}
+
+  - id: I03
+    name: intensive 03
+    stock: EMU_FAST
+    departure: "07:03:00"
+    ready_lead_s: 40
+    calls:
+      - {station: ALPHA, platform: ALPHA_1, departure: "07:03:00", dwell_s: 20}
+      - {station: GAMMA, platform: GAMMA_1, arrival: "07:17:00", dwell_s: 30}
+
+  - id: I04
+    name: intensive 04
+    stock: EMU_FAST
+    departure: "07:04:30"
+    ready_lead_s: 40
+    calls:
+      - {station: ALPHA, platform: ALPHA_1, departure: "07:04:30", dwell_s: 20}
+      - {station: GAMMA, platform: GAMMA_1, arrival: "07:18:30", dwell_s: 30}
+
+  - id: I05
+    name: intensive 05
+    stock: EMU_FAST
+    departure: "07:06:00"
+    ready_lead_s: 40
+    calls:
+      - {station: ALPHA, platform: ALPHA_1, departure: "07:06:00", dwell_s: 20}
+      - {station: GAMMA, platform: GAMMA_1, arrival: "07:20:00", dwell_s: 30}
+
+  - id: I06
+    name: intensive 06
+    stock: EMU_FAST
+    departure: "07:07:30"
+    ready_lead_s: 40
+    calls:
+      - {station: ALPHA, platform: ALPHA_1, departure: "07:07:30", dwell_s: 20}
+      - {station: GAMMA, platform: GAMMA_1, arrival: "07:21:30", dwell_s: 30}
+
+  - id: I07
+    name: intensive 07
+    stock: EMU_FAST
+    departure: "07:09:00"
+    ready_lead_s: 40
+    calls:
+      - {station: ALPHA, platform: ALPHA_1, departure: "07:09:00", dwell_s: 20}
+      - {station: GAMMA, platform: GAMMA_1, arrival: "07:23:00", dwell_s: 30}
+
+  - id: I08
+    name: intensive 08
+    stock: EMU_FAST
+    departure: "07:10:30"
+    ready_lead_s: 40
+    calls:
+      - {station: ALPHA, platform: ALPHA_1, departure: "07:10:30", dwell_s: 20}
+      - {station: GAMMA, platform: GAMMA_1, arrival: "07:24:30", dwell_s: 30}
+
+  - id: I09
+    name: intensive 09
+    stock: EMU_FAST
+    departure: "07:12:00"
+    ready_lead_s: 40
+    calls:
+      - {station: ALPHA, platform: ALPHA_1, departure: "07:12:00", dwell_s: 20}
+      - {station: GAMMA, platform: GAMMA_1, arrival: "07:26:00", dwell_s: 30}
+
+  - id: I10
+    name: intensive 10
+    stock: EMU_FAST
+    departure: "07:13:30"
+    ready_lead_s: 40
+    calls:
+      - {station: ALPHA, platform: ALPHA_1, departure: "07:13:30", dwell_s: 20}
+      - {station: GAMMA, platform: GAMMA_1, arrival: "07:27:30", dwell_s: 30}
+
+  - id: I11
+    name: intensive 11
+    stock: EMU_FAST
+    departure: "07:15:00"
+    ready_lead_s: 40
+    calls:
+      - {station: ALPHA, platform: ALPHA_1, departure: "07:15:00", dwell_s: 20}
+      - {station: GAMMA, platform: GAMMA_1, arrival: "07:29:00", dwell_s: 30}
+
+  - id: I12
+    name: intensive 12
+    stock: EMU_FAST
+    departure: "07:16:30"
+    ready_lead_s: 40
+    calls:
+      - {station: ALPHA, platform: ALPHA_1, departure: "07:16:30", dwell_s: 20}
+      - {station: GAMMA, platform: GAMMA_1, arrival: "07:30:30", dwell_s: 30}

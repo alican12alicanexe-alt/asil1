@@ -1,0 +1,47 @@
+# The same junction with a flyover.
+#
+#   python run.py scenarios/junction/scenario-flyover.yaml --headless
+#
+# The control for scenario-flat.yaml. Identical railway, identical timetable,
+# identical trains, identical signalling - and one line different in the
+# infrastructure file: the up branch connection is `grade_separated: true`, a
+# flyover carrying it over the down main rather than across it.
+#
+# Run both and subtract. Whatever is left is what the diamond costs, and that
+# figure is the whole of a junction remodelling business case: a flyover is a
+# very large amount of concrete, and the thing it buys is the seconds in that
+# difference, multiplied by every train, every day, for fifty years.
+#
+# The down branch connection is deliberately *not* grade separated. It still
+# crosses the up branch line, because a flyover is normally built for the move
+# that fouls the main line and not for every move at the junction - so this is a
+# realistic partial remedy rather than an idealised one.
+
+name: junction-flyover
+description: "The same junction with the up branch carried over the down main - the control run that says what the flat layout costs."
+
+infrastructure: infrastructure-flyover.yaml
+timetable: timetable.yaml
+
+simulation:
+  dt: 1.0
+  start_time: "06:58:00"
+  duration_s: 5400
+  strict: false
+
+signalling:
+  system: fixed_block_3aspect
+  sighting_distance_m: 250
+
+interlocking:
+  route_request_distance_m: 2500
+  route_request_lead_s: 60
+
+driver:
+  reaction_time_s: 2.0
+  safety_margin_m: 25.0
+  stop_tolerance_m: 1.0
+
+view:
+  title: "junction - grade separated, the branch flies over"
+  speed: 30
