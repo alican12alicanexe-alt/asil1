@@ -36,34 +36,9 @@ available. At a platform the leader is stopping and has none left to lend.
 Wants: `infrastructure-*.yaml` unchanged from the ring, a two-class timetable,
 and the gap trace above turned into a script beside `_sweep_timestep.py`.
 
-## 2. The junction, measured without a platform in the way
+## 2. The junction - BUILT, see `scenario-cross.yaml`
 
-`infrastructure-merge.yaml` puts the Sincan branch into Akyurt 1, which is a
-station - so it measures the platform again, which is the one thing this
-circuit was built to escape. Only half of it conflicts, too: joining crosses
-the down line, leaving crosses nothing.
-
-Stations sit at km 2.6, 5.1, 8.2, 11.0, 14.8, 17.3, 20.8, 23.6, 27.6, 30.7
-and 33.4. The widest gap is 4.0 km, so there is nowhere on the running lines
-to put a junction that is clear of a platform. The fix is the flight, not the
-geometry: run the NON-STOP lap over it and nothing stops anywhere, so the
-crossing is the only thing in the way wherever it sits. The control is already
-measured - the ring's own express sweep, 39 s under moving block and 32 s
-under virtual coupling, on the same railway with no junction at all.
-
-Wants: `infrastructure-cross.yaml` - a second double-track railway crossing
-the circuit at grade, sharing no track with it, so the diamond is the only
-interaction in the model and every movement on both railways conflicts. The
-in-file control is `grade_separated` on the junction, which turns it into a
-flyover.
-
-Measure movements per hour through the diamond before delay runs away, not
-headway. Stated before the run, as this repository does: the ceiling should
-barely move. A diamond's occupancy is train length plus crossing length over
-speed, plus route setting and release, and no system here shortens any of
-those. What virtual coupling can shorten is the approach - the next train is
-nearer when the slot opens - and how fast a queue clears once it has built.
-
-If the ceiling does not move, that is the finding, and it generalises the
-study: virtual coupling shortens following distances, it does not shorten
-occupancies, and this railway is limited by occupancies.
+Done. `infrastructure-cross.yaml`, `_generate_cross.py`, `_sweep_cross.py`
+and `tests/test_cross.py`. Virtual coupling is checked 28 % less at a flat
+crossing and arrives exactly as late - 475 s against 475 s. The numbers and
+the reasoning are in `scenario-cross.yaml`'s header.

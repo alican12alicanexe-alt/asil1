@@ -1,0 +1,87 @@
+# ring + a railway crossing it on the level - a junction with no platform in it.
+#
+#   python run.py scenarios/ring/scenario-cross.yaml --headless --system virtual_coupling
+#   python run.py scenarios/ring/scenario-cross.yaml --check      (the crossings)
+#   python scenarios/ring/_sweep_cross.py                         (what it costs)
+#   python scenarios/ring/_generate_cross.py 120 240              (rebuild the plan)
+#
+# WHY THIS AND NOT scenario-merge.yaml
+#
+# scenario-merge.yaml puts a flat junction on this circuit already, and it is
+# the wrong instrument. The branch joins at Akyurt 1, which is a STATION, so
+# what binds there is a platform road - the one thing this circuit exists to get
+# away from. And only half of it conflicts: a branch train joining crosses the
+# down line, a branch train leaving crosses nothing, so half the traffic is free
+# and dilutes whatever the junction costs.
+#
+# Here two railways cross at km 26.60 and share nothing else. No connection, no
+# common platform, no merged flow beyond the crossing. The diamond is the only
+# interaction in the model and every movement on both railways conflicts with
+# the other railway, so nothing is free and nothing else is being measured.
+# Nothing calls anywhere on the circuit either, because stations sit every three
+# kilometres and there is nowhere to put a crossing clear of one - with a
+# non-stop flight it does not have to be.
+#
+# WHAT IT MEASURED
+#
+# Each system run at its own all-green headway on this same non-stop flight with
+# no crossing at all (139, 49, 39 and 32 s, from _sweep_express.py), then run
+# again with grade_separated on all four diamonds - the same two railways with
+# the conflict taken away. Every flyover run came back at 0 s restrained and
+# 28 of 28 completed, which is the check that the plan itself was workable.
+#
+#                          headway   restrained   mean delay    worst
+#   fixed block 3-aspect     139 s      + 887 s     +29.4 s     +128 s
+#   ETCS hybrid L3 (VSS)      49 s      +3006 s     +92.1 s     +580 s
+#   ETCS moving block         39 s      +2895 s     +64.4 s     +475 s
+#   virtual coupling          32 s      +1473 s     +47.9 s     +401 s
+#
+# Those rows are not comparable: the interval differs in each, so a system that
+# holds a tighter headway is being charged for the extra trains it sends over
+# the crossing. Hold the interval still - both at 39 s, moving block's own
+# boundary - and the comparison appears:
+#
+#                          restrained   mean delay    worst
+#   ETCS moving block         2895 s      64.4 s      475 s
+#   virtual coupling          2076 s      63.7 s      475 s
+#
+# Virtual coupling is checked 28 % less and arrives EXACTLY as late - 475 s
+# against 475 s, to the second. Relative braking buys the queue standing closer
+# to the crossing, which is a following distance and is the one thing it
+# shortens. It cannot buy a turn over the diamond, because a diamond is held for
+# as long as a train is on it: length plus block over speed, three quantities no
+# system on this ladder touches.
+#
+# Which is the general statement the study was missing. Virtual coupling
+# shortens following distances. It does not shorten occupancies. A railway with
+# platforms and junctions in it is limited by occupancies.
+
+name: ring-cross
+description: "Two railways crossing on the level at km 26.60, sharing nothing else - what a flat junction costs when no platform is in the way."
+
+infrastructure: infrastructure-cross.yaml
+timetable: timetable-cross.yaml
+
+simulation:
+  dt: 1.0
+  start_time: "06:57:00"
+  duration_s: 9000
+  strict: false
+
+signalling:
+  system: fixed_block_3aspect
+  sighting_distance_m: 250
+
+interlocking:
+  route_request_distance_m: 2000
+  route_request_lead_s: 60
+  automatic_signals: false
+  route_lookahead: 2
+
+driver:
+  reaction_time_s: 2.0
+  safety_margin_m: 25.0
+
+view:
+  title: "ring - a flat crossing at km 26.60"
+  speed: 20
