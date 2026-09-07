@@ -33,8 +33,8 @@ python run.py scenarios/ring --compare          # all six systems, one table
 python run.py scenarios/ring --system virtual_coupling
 
 python scenarios/ring/_sweep_headway.py etcs_moving_block   # what it holds
-python scenarios/ring/_sweep_cross.py                       # what a junction costs
-python run_tests.py                             # 290 tests, ~15 s
+python scenarios/ring/_sweep_express.py etcs_moving_block   # without the platforms
+python run_tests.py                             # 283 tests, ~15 s
 ```
 
 **[COMMANDS.md](COMMANDS.md)** is the full command reference. Every scenario
@@ -82,17 +82,10 @@ contradiction — in a convoy the leader is *moving*, so the brake credit relati
 braking rests on is fully available. At a platform the leader is stopping and has
 none left to lend.
 
-**At a junction it buys nothing.** Two railways crossing on the level, same
-interval, same trains:
-
-| | restrained | mean delay | worst |
-|---|---|---|---|
-| ETCS moving block | 1636 s | 49.6 s | **410 s** |
-| virtual coupling | **1519 s** | 49.0 s | **410 s** |
-
-Checked 7 % less and *exactly* as late, to the second. A diamond is held for as
-long as a train is on it — length plus block over speed — and nothing on this
-ladder shortens any of the three.
+**At a junction it buys little.** `tests/railways/junction` runs the same flat
+junction under every system and against a flyover control. Moving block gains far
+less there than on plain line: a conflicting move has to *clear the points*, and
+that is an occupancy, not a following distance.
 
 Which is the general statement:
 
@@ -230,15 +223,12 @@ The ring carries its own experiment drawings, one per question, so the other
 scenarios do not load routes they never book:
 
 - `infrastructure.yaml` — the circuit
-- `infrastructure-merge.yaml` — a branch joining at Akyurt 1 (a flat junction, but
-  at a *station*, which is why `-cross` replaced it)
-- `infrastructure-cross.yaml` — a second railway crossing at grade at km 26.60,
-  sharing nothing. Set `grade_separated` on the four diamonds and it is a
-  flyover: the control, in the same file as the thing it controls.
+- `infrastructure-merge.yaml` — a branch joining at Akyurt 1. A flat junction,
+  but at a *station*, so what binds there is a platform road rather than the
+  junction: read the header before quoting anything from it.
 
 and its own experiment scripts — `_sweep_headway.py`, `_sweep_express.py`,
-`_sweep_cross.py`, `_sweep_timestep.py`, each with its results recorded in its
-docstring.
+`_sweep_timestep.py`, each with its results recorded in its docstring.
 
 ### `tests/railways/` — fixtures
 
@@ -278,7 +268,7 @@ platforms:
 
 crossovers:
   - {id: XO_BETA, from: UP, to: DN, km: 13.5, length_m: 400, type: scissors}
-  - {id: DIA_1,   from: CROSS_UP, to: UP, km: 26.6, type: diamond}
+  - {id: DIA_1,   from: BRANCH_UP, to: DN, km: 26.6, type: diamond}
 ```
 
 Parallel platform roads are several segments sharing a pair of nodes — no switch
@@ -297,7 +287,7 @@ subset these files use, and a test asserts the two agree on every shipped file.
 
 ## Verification
 
-`python run_tests.py` — **290 tests, about 15 seconds**, parallel by default
+`python run_tests.py` — **283 tests, about 15 seconds**, parallel by default
 (`--serial` and `-v` to escape, or name modules to run a subset).
 
 The tests worth knowing about are the ones that stop a result being quietly
@@ -321,8 +311,8 @@ erased:
   asserts the diamond then costs nothing, so a single-run figure cannot be quoted
   as *the* cost
 - **a flyover changes nothing but the conflict** — same blocks, signals and
-  routes, which is what makes the crossing experiment controlled rather than two
-  railways that resemble each other
+  routes, which is what makes the junction comparison controlled rather than two
+  railways that merely resemble each other
 - **every shipped scenario still loads**, and the run-time bound really is a bound
 - **determinism** — two runs of the same scenario agree exactly
 

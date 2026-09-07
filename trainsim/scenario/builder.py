@@ -901,18 +901,12 @@ class _Builder(object):
             "from": from_id,
             "to": to_id,
             "km": float(spec["km"]),
-            "grade_separated": bool(spec.get("grade_separated", False)),
         })
 
     def _emit_diamonds(self, network: Network) -> Dict[str, set]:
         """Turn each diamond into a crossing between the blocks that meet there."""
         crossings: Dict[str, set] = {}
         for diamond in self.diamonds:
-            # A flyover is the same two railways with the conflict taken away,
-            # which is the control every measurement made at a flat crossing
-            # wants and the only difference between the two runs.
-            if diamond["grade_separated"]:
-                continue
             blocks = []
             for track_id in (diamond["from"], diamond["to"]):
                 block_id = self._block_on_track_at(network, track_id,

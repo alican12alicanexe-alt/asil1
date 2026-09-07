@@ -74,10 +74,6 @@ PLATFORM = frozenset({
 CROSSOVER = frozenset({
     "id", "from", "to", "km", "length_m", "max_speed_kmh", "bidirectional",
     "type",
-    # Diamonds only: build the crossing as a flyover instead, which costs
-    # nothing and is the control for whatever the flat one costs. The same
-    # word means the same thing on a junction link.
-    "grade_separated",
 })
 
 #: ``timetable.yaml``

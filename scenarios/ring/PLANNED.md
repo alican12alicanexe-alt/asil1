@@ -36,9 +36,20 @@ available. At a platform the leader is stopping and has none left to lend.
 Wants: `infrastructure-*.yaml` unchanged from the ring, a two-class timetable,
 and the gap trace above turned into a script beside `_sweep_timestep.py`.
 
-## 2. The junction - BUILT, see `scenario-cross.yaml`
+## 2. The junction - BUILT AND REMOVED
 
-Done. `infrastructure-cross.yaml`, `_generate_cross.py`, `_sweep_cross.py`
-and `tests/test_cross.py`. Virtual coupling is checked 7 % less at a flat
-crossing and arrives exactly as late - 410 s against 410 s. The numbers and
-the reasoning are in `scenario-cross.yaml`'s header.
+`infrastructure-cross.yaml` put two railways across each other at grade with
+nothing shared, ran clean against a flyover control, and answered: virtual
+coupling was checked 7 % less at the diamond and arrived EXACTLY as late,
+410 s against 410 s. A true result, and a null one, so it was dropped rather
+than kept as a section nobody wants to present. Recovered from git history
+if the negative result is ever worth showing:
+
+    git show 07ec16f:scenarios/ring/infrastructure-cross.yaml
+
+The reason it came out null is worth keeping even though the files are gone:
+a diamond is held for as long as a train is ON it - length plus block, over
+speed - and no system on this ladder shortens any of the three. Any junction
+experiment built next will return the same null for the same reason, unless
+it is built so that what binds is the APPROACH to the junction rather than
+the crossing itself.
