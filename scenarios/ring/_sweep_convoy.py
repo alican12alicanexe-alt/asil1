@@ -129,14 +129,44 @@ def gap_of(train, sim):
     return None if ahead is None else ahead[0] - train.chainage_m
 
 
-def run(headway_s, max_speed_kmh=None, **options):
+_PROBES = {}
+
+
+def probe(cap_kmh=None):
+    """Unimpeded lap times for a fleet that tops out at ``cap_kmh``.
+
+    The booked times a run is judged against have to be times the fleet in that
+    run can actually keep, or every capped train is late by construction and
+    the boundary being looked for is the cap rather than the interval. A train
+    with the railway to itself has nothing in front of it, so under the
+    incentive it is uncoupled for its whole lap and 70 km/h IS its unimpeded
+    speed - which is what makes this the right plan to book the incentive
+    against too.
+
+    Cached: the probe is a full lap and the boundary search asks for it dozens
+    of times.
+    """
+    if cap_kmh in _PROBES:
+        return _PROBES[cap_kmh]
+    was = ring.STOCK["max_speed_kmh"]
+    if cap_kmh is not None:
+        ring.STOCK["max_speed_kmh"] = cap_kmh
+    try:
+        _PROBES[cap_kmh] = sweep.probe_all()
+    finally:
+        ring.STOCK["max_speed_kmh"] = was
+    return _PROBES[cap_kmh]
+
+
+def run(headway_s, max_speed_kmh=None, times=None, **options):
     """One run of the flight, with its convoy behaviour traced tick by tick."""
     ring.OPTIONS[SYSTEM] = options
     unit = sweep.stock_for(SYSTEM)
     if max_speed_kmh is not None:
         unit["max_speed_kmh"] = max_speed_kmh
     timetable = build_timetable(
-        ring.flight_spec(sweep.probe_all(), headway_s, ring.COUNT, stock=unit),
+        ring.flight_spec(times if times is not None else probe(),
+                         headway_s, ring.COUNT, stock=unit),
         ring.INFRA)
     sim = ring.simulation(timetable,
                           duration_s=headway_s * ring.COUNT + sweep.TAIL_S,
@@ -225,6 +255,50 @@ def main(headway_s=HEADWAY_S, uncoupled_kmh=UNCOUPLED_KMH):
     print("  when released  the same, over the ticks the incentive paid for")
 
 
+def boundary(label, cap_kmh, lo=10, hi=150, **run_kwargs):
+    """The tightest interval this configuration still keeps time at.
+
+    Keeps-time rather than all-green, and that is forced. All-green asks
+    whether any train was held down by the signalling, and a speed ceiling IS
+    the signalling holding a train down - so a capped run reports itself
+    restrained for its whole journey whether or not another train is anywhere
+    near it, and the criterion stops separating congestion from the cap.
+    Keeps-time asks whether the trains made their booked arrivals, which is
+    the question an operator asks and which the cap cannot answer for them.
+    """
+    times = probe(cap_kmh)
+    if not sweep.keeps_time(run(hi, times=times, **run_kwargs)[0]):
+        print("  %-16s does not keep time even at %d s" % (label, hi))
+        return None
+    while hi - lo > 1:
+        mid = (lo + hi) // 2
+        if sweep.keeps_time(run(mid, times=times, **run_kwargs)[0]):
+            hi = mid
+        else:
+            lo = mid
+    print("  %-16s %3d s   (%.1f trains an hour)" % (label, hi, 3600.0 / hi))
+    return hi
+
+
+def headways(uncoupled_kmh=UNCOUPLED_KMH):
+    """What each configuration can be booked at, not what it does at 60 s."""
+    print("keeps-time headway, %d non-stop laps, all under %s"
+          % (ring.COUNT, SYSTEM))
+    print("each booked at times its own fleet achieves with the railway to "
+          "itself.\n")
+    boundary("line speed", None)
+    boundary("capped %d" % uncoupled_kmh, uncoupled_kmh,
+             max_speed_kmh=uncoupled_kmh)
+    for margin in (800.0, 1000.0):
+        global COUPLING_MARGIN_M
+        COUPLING_MARGIN_M = margin
+        boundary("incentive + %.0f" % margin, uncoupled_kmh,
+                 uncoupled_speed_kmh=uncoupled_kmh, coupling_margin_m=margin)
+
+
 if __name__ == "__main__":
-    main(int(sys.argv[1]) if len(sys.argv) > 1 else HEADWAY_S,
-         int(sys.argv[2]) if len(sys.argv) > 2 else UNCOUPLED_KMH)
+    if "--headway" in sys.argv:
+        headways()
+    else:
+        main(int(sys.argv[1]) if len(sys.argv) > 1 else HEADWAY_S,
+             int(sys.argv[2]) if len(sys.argv) > 2 else UNCOUPLED_KMH)
