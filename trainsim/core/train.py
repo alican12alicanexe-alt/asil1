@@ -175,25 +175,63 @@ def _signal_for_leg(block, signals, leg: Optional[str]) -> Optional[str]:
     return fallback or block.signal_ids[0]
 
 
+def _project(path, other, point_m: float, near_m: float) -> Optional[float]:
+    """Where a point on ``other``'s path falls on ``path``, if it falls on it at all.
+
+    ``None`` when that piece of railway is not on this path, which is how a train
+    on the opposite line is ignored without needing a special case.
+    """
+    entry = other.path.entry_at(max(0.0, point_m))
+    return path.chainage_of(entry.segment.id, max(0.0, point_m) - entry.start_m,
+                            near_m=near_m)
+
+
 def nearest_ahead(train, others) -> Optional[Tuple[float, str]]:
     """Rear of the nearest train in front, in ``train``'s own chainage.
 
-    ``None`` when the road ahead is clear. Trains on other roads simply do not
-    map onto this path, so they are ignored without needing a special case.
+    ``None`` when the road ahead is clear. Anything not strictly in front is
+    dropped, which is right for the question this answers - what is in the way -
+    and wrong for the question :func:`overlapping` answers. See there.
     """
     nearest = None
     for other in others:
         if other.id == train.id or not other.is_active:
             continue
-        rear_entry = other.path.entry_at(max(0.0, other.rear_m))
-        offset = max(0.0, other.rear_m) - rear_entry.start_m
-        here = train.path.chainage_of(rear_entry.segment.id, offset,
-                                      near_m=train.chainage_m)
+        here = _project(train.path, other, other.rear_m, train.chainage_m)
         if here is None or here <= train.chainage_m:
             continue
         if nearest is None or here < nearest[0]:
             nearest = (here, other.id)
     return nearest
+
+
+def overlapping(train, others) -> List[Tuple[str, float]]:
+    """Trains occupying the same rails as ``train``: ``(other_id, depth_m)``.
+
+    The universal safety invariant, and it has to be asked separately rather than
+    read off :func:`nearest_ahead`. That one drops every train that is not
+    strictly in front - which includes every train that has already been run into,
+    since a follower whose nose is past the leader's rear is no longer behind it.
+    Asking it whether anything is too close therefore always answered no, however
+    badly the two were overlapped.
+
+    So this maps the whole of the other train onto this one's chainage and
+    intersects the two bodies. Both ends are projected against the same reference
+    point, and a pair that lands the wrong way round - which happens on a circuit,
+    where one segment sits on the path twice - is skipped rather than reported.
+    """
+    found = []
+    for other in others:
+        if other.id == train.id or not other.is_active:
+            continue
+        rear = _project(train.path, other, other.rear_m, train.chainage_m)
+        front = _project(train.path, other, other.chainage_m, train.chainage_m)
+        if rear is None or front is None or front <= rear:
+            continue
+        depth = min(front, train.chainage_m) - max(rear, train.rear_m)
+        if depth > 0.0:
+            found.append((other.id, depth))
+    return found
 
 
 @dataclass(frozen=True)
@@ -456,6 +494,10 @@ class Train:
 
     # Diagnostics, surfaced in the schematic view and the event log.
     authority_reason: str = "not started"
+    #: WHAT is holding this train down, one of the ``driver.BY_*`` kinds, as
+    #: opposed to ``authority_reason``, which says which one in words. The
+    #: metrics count restraint off this rather than off the prose.
+    governed_by: str = "line speed"
     #: Distance the last movement authority extended to, for metrics and the view.
     last_authority_m: Optional[float] = None
     #: WHERE that authority ended, as a chainage on this train's own path.

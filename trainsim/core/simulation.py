@@ -21,7 +21,7 @@ from typing import Dict, List, Optional, Tuple
 from .disruption import DisruptedSpeedLimits, Disruptions
 from .network import Network
 from .signals import Aspect, BlockSection, Occupancy, Signal, compute_aspects
-from .train import Train, nearest_ahead
+from .train import Train, overlapping
 from .units import format_clock, format_delay, ms_to_kmh
 
 
@@ -135,17 +135,18 @@ class Simulation(object):
                     "permits_relative_braking"
                     % (type(self.signalling).__name__, authority.target_speed_ms)
                 )
-            accel, target, reason = self.driver.decide(
+            accel, target, reason, source = self.driver.decide(
                 train, authority, self.dt, self.limits)
-            decisions.append((train, accel, target, reason, authority))
+            decisions.append((train, accel, target, reason, source, authority))
 
         # Move.
-        for train, accel, target, reason, authority in decisions:
+        for train, accel, target, reason, source, authority in decisions:
             train.authority_point_m = min(
                 train.path.total_m, train.chainage_m + authority.end_distance_m)
             train.advance(accel, self.dt)
             train.target_speed_ms = target
             train.authority_reason = reason
+            train.governed_by = source
             train.last_authority_m = authority.end_distance_m
 
         # Update the railway's view of where everyone is, then let the
@@ -278,20 +279,41 @@ class Simulation(object):
             raise AssertionError(message)
 
     def check_separation(self) -> List[str]:
-        """Trains whose front has passed the rear of the train in front of them.
+        """Trains occupying the same rails as each other.
 
         The universal safety invariant, and the one that still means something
-        when block sections no longer separate trains.
+        when block sections no longer separate trains - under moving block and
+        virtual coupling it is the only thing left that says two trains may not
+        be in the same place.
+
+        Only trains that share an occupied block are compared. Blocks tile the
+        whole railway - every segment belongs to one, which
+        ``test_separation`` asserts - so two trains on the same rails are
+        always in the same block, and everything else is a pair that cannot
+        overlap. Without that filter this is every pair on the railway, twice
+        projected, every tick: measured at over 40% of the run time of the
+        whole test suite.
+
+        Each pair is reported once, by the lower id, so one collision is one
+        violation rather than two.
         """
+        pairs = set()
+        for block_id in self.occupancy.occupied_blocks():
+            here = sorted(self.occupancy.trains_in(block_id))
+            for index, train_id in enumerate(here):
+                for other_id in here[index + 1:]:
+                    pairs.add((train_id, other_id))
+
         problems = []
-        active = [t for t in self.trains.values() if t.is_active]
-        for train in active:
-            ahead = nearest_ahead(train, active)
-            if ahead is not None and ahead[0] < train.chainage_m:
+        for train_id, other_id in sorted(pairs):
+            train = self.trains.get(train_id)
+            other = self.trains.get(other_id)
+            if train is None or other is None:
+                continue
+            for _, depth_m in overlapping(train, [other]):
                 problems.append(
-                    "%s at %.1f is past the rear of %s at %.1f"
-                    % (train.id, train.chainage_m, ahead[1], ahead[0])
-                )
+                    "%s and %s share %.1f m of railway at %.1f"
+                    % (train_id, other_id, depth_m, train.chainage_m))
         return problems
 
     # ------------------------------------------------------------------ logging
