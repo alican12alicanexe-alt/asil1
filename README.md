@@ -87,10 +87,10 @@ interval, same trains:
 
 | | restrained | mean delay | worst |
 |---|---|---|---|
-| ETCS moving block | 2895 s | 64.4 s | **475 s** |
-| virtual coupling | **2076 s** | 63.7 s | **475 s** |
+| ETCS moving block | 1636 s | 49.6 s | **410 s** |
+| virtual coupling | **1519 s** | 49.0 s | **410 s** |
 
-Checked 28 % less and *exactly* as late, to the second. A diamond is held for as
+Checked 7 % less and *exactly* as late, to the second. A diamond is held for as
 long as a train is on it — length plus block over speed — and nothing on this
 ladder shortens any of the three.
 

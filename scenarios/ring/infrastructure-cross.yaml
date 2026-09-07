@@ -151,10 +151,14 @@ stations:
   - {id: MACUNKOY_3,  name: "Macunköy 3",  km: 30.70}
   - {id: GOLBASI_3,   name: "Gölbaşı 3",   km: 33.40}
 
-  # The crossing railway. Two stations, far enough either side of the diamond
-  # that a train is at line speed when it gets there.
-  - {id: SANAYI,      name: "Sanayi",      km: 21.00}
-  - {id: BATIKENT,    name: "Batıkent",    km: 32.00}
+  # The crossing railway: one station either side of the diamond, 1.6 km out on
+  # each side. Far enough that a train is at line speed when it reaches the
+  # crossing - from rest at 1.0 m/s it takes 242 m to reach 80 - and no further,
+  # because this line is here to put trains over the diamond and every extra
+  # kilometre of it is a kilometre drawn alongside the circuit that is not
+  # crossing anything.
+  - {id: SANAYI,      name: "Sanayi",      km: 25.00}
+  - {id: BATIKENT,    name: "Batıkent",    km: 28.20}
 
 tracks:
   - id: UP
@@ -311,8 +315,8 @@ tracks:
     y: 1.6
     max_speed_kmh: 80
     block_length_m: 900
-    runs_from_km: 20.0
-    runs_to_km: 33.0
+    runs_from_km: 24.00
+    runs_to_km: 29.20
     serves: [SANAYI, BATIKENT]
     # Short throughout. This railway is the traffic over the diamond, not the
     # thing being measured, and its own signalling should not be what limits
@@ -325,8 +329,8 @@ tracks:
     y: 2.0
     max_speed_kmh: 80
     block_length_m: 900
-    runs_from_km: 33.0
-    runs_to_km: 20.0
+    runs_from_km: 29.20
+    runs_to_km: 24.00
     serves: [BATIKENT, SANAYI]
     block_lengths:
       - {from: BATIKENT, to: SANAYI, block_length_m: 500}

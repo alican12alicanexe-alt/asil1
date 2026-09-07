@@ -45,10 +45,10 @@ Each system at its own all-green headway - so each is carrying all the traffic
 it can hold, and a denser railway puts proportionally more over the diamond:
 
                           headway   restrained   mean delay    worst
-    fixed block 3-aspect    139 s      + 887 s     +29.4 s     +128 s
-    ETCS hybrid L3 (VSS)     49 s      +3006 s     +92.1 s     +580 s
-    ETCS moving block        39 s      +2895 s     +64.4 s     +475 s
-    virtual coupling         32 s      +1473 s     +47.9 s     +401 s
+    fixed block 3-aspect    139 s      + 781 s     +25.1 s     +103 s
+    ETCS hybrid L3 (VSS)     49 s      +2376 s     +74.6 s     +516 s
+    ETCS moving block        39 s      +1636 s     +50.6 s     +411 s
+    virtual coupling         32 s      +1136 s     +36.7 s     +337 s
 
 That is not a comparison, because the interval is different in every row: a
 system that holds a tighter headway sends more trains over the crossing and is
@@ -56,12 +56,12 @@ charged for the extra traffic. Hold the interval still and the comparison
 appears (``--at 39``, moving block's own boundary, so both are inside it):
 
                           restrained   mean delay    worst
-    ETCS moving block        2895 s      64.4 s      475 s
-    virtual coupling         2076 s      63.7 s      475 s
+    ETCS moving block        1636 s      49.6 s      410 s
+    virtual coupling         1519 s      49.0 s      410 s
 
-VIRTUAL COUPLING IS CHECKED 28 % LESS AND ARRIVES EXACTLY AS LATE. Not
-approximately: 475 s against 475 s, to the second, and 63.7 s of mean delay
-against 64.4 s. What relative braking buys is the queue standing closer to the
+VIRTUAL COUPLING IS CHECKED 7 % LESS AND ARRIVES EXACTLY AS LATE. Not
+approximately: 410 s against 410 s, to the second, and 49.0 s of mean delay
+against 49.6 s. What relative braking buys is the queue standing closer to the
 crossing, which is a following distance and is the one thing it shortens. What
 it cannot buy is a turn over the diamond, because a diamond is held for as long
 as a train is on it and that is length plus block over speed - three quantities
@@ -73,7 +73,7 @@ shorten occupancies, and a railway with platforms and junctions in it is
 limited by occupancies.
 
 It also separates two things the rest of this repository reports together.
-Restraint is the direct cost of the signalling and it fell by 819 s; delay is
+Restraint is the direct cost of the signalling and it fell by 117 s; delay is
 what a passenger notices and it did not move at all. A system can be checked
 much less and still be exactly as late.
 """

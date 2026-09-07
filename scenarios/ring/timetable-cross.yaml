@@ -135,7 +135,7 @@ services:
     ready_lead_s: 30
     calls:
       - {station: SANAYI, platform: SANAYI_UP_1, departure: "07:01:01", dwell_s: 30}
-      - {station: BATIKENT, platform: BATIKENT_UP_1, arrival: "07:09:39", dwell_s: 30}
+      - {station: BATIKENT, platform: BATIKENT_UP_1, arrival: "07:03:48", dwell_s: 30}
 
   - id: XU02
     name: 07:05 Sanayi - Batikent
@@ -144,7 +144,7 @@ services:
     ready_lead_s: 30
     calls:
       - {station: SANAYI, platform: SANAYI_UP_1, departure: "07:05:01", dwell_s: 30}
-      - {station: BATIKENT, platform: BATIKENT_UP_1, arrival: "07:13:39", dwell_s: 30}
+      - {station: BATIKENT, platform: BATIKENT_UP_1, arrival: "07:07:48", dwell_s: 30}
 
   - id: XU03
     name: 07:09 Sanayi - Batikent
@@ -153,7 +153,7 @@ services:
     ready_lead_s: 30
     calls:
       - {station: SANAYI, platform: SANAYI_UP_1, departure: "07:09:01", dwell_s: 30}
-      - {station: BATIKENT, platform: BATIKENT_UP_1, arrival: "07:17:39", dwell_s: 30}
+      - {station: BATIKENT, platform: BATIKENT_UP_1, arrival: "07:11:48", dwell_s: 30}
 
   - id: XU04
     name: 07:13 Sanayi - Batikent
@@ -162,7 +162,7 @@ services:
     ready_lead_s: 30
     calls:
       - {station: SANAYI, platform: SANAYI_UP_1, departure: "07:13:01", dwell_s: 30}
-      - {station: BATIKENT, platform: BATIKENT_UP_1, arrival: "07:21:39", dwell_s: 30}
+      - {station: BATIKENT, platform: BATIKENT_UP_1, arrival: "07:15:48", dwell_s: 30}
 
   - id: XU05
     name: 07:17 Sanayi - Batikent
@@ -171,7 +171,7 @@ services:
     ready_lead_s: 30
     calls:
       - {station: SANAYI, platform: SANAYI_UP_1, departure: "07:17:01", dwell_s: 30}
-      - {station: BATIKENT, platform: BATIKENT_UP_1, arrival: "07:25:39", dwell_s: 30}
+      - {station: BATIKENT, platform: BATIKENT_UP_1, arrival: "07:19:48", dwell_s: 30}
 
   - id: XU06
     name: 07:21 Sanayi - Batikent
@@ -180,7 +180,7 @@ services:
     ready_lead_s: 30
     calls:
       - {station: SANAYI, platform: SANAYI_UP_1, departure: "07:21:01", dwell_s: 30}
-      - {station: BATIKENT, platform: BATIKENT_UP_1, arrival: "07:29:39", dwell_s: 30}
+      - {station: BATIKENT, platform: BATIKENT_UP_1, arrival: "07:23:48", dwell_s: 30}
 
   - id: XU07
     name: 07:25 Sanayi - Batikent
@@ -189,7 +189,7 @@ services:
     ready_lead_s: 30
     calls:
       - {station: SANAYI, platform: SANAYI_UP_1, departure: "07:25:01", dwell_s: 30}
-      - {station: BATIKENT, platform: BATIKENT_UP_1, arrival: "07:33:39", dwell_s: 30}
+      - {station: BATIKENT, platform: BATIKENT_UP_1, arrival: "07:27:48", dwell_s: 30}
 
   - id: XU08
     name: 07:29 Sanayi - Batikent
@@ -198,7 +198,7 @@ services:
     ready_lead_s: 30
     calls:
       - {station: SANAYI, platform: SANAYI_UP_1, departure: "07:29:01", dwell_s: 30}
-      - {station: BATIKENT, platform: BATIKENT_UP_1, arrival: "07:37:39", dwell_s: 30}
+      - {station: BATIKENT, platform: BATIKENT_UP_1, arrival: "07:31:48", dwell_s: 30}
 
   - id: XD01
     name: 07:01 Batikent - Sanayi
@@ -207,7 +207,7 @@ services:
     ready_lead_s: 30
     calls:
       - {station: BATIKENT, platform: BATIKENT_DN_1, departure: "07:01:01", dwell_s: 30}
-      - {station: SANAYI, platform: SANAYI_DN_1, arrival: "07:09:39", dwell_s: 30}
+      - {station: SANAYI, platform: SANAYI_DN_1, arrival: "07:03:48", dwell_s: 30}
 
   - id: XD02
     name: 07:05 Batikent - Sanayi
@@ -216,7 +216,7 @@ services:
     ready_lead_s: 30
     calls:
       - {station: BATIKENT, platform: BATIKENT_DN_1, departure: "07:05:01", dwell_s: 30}
-      - {station: SANAYI, platform: SANAYI_DN_1, arrival: "07:13:39", dwell_s: 30}
+      - {station: SANAYI, platform: SANAYI_DN_1, arrival: "07:07:48", dwell_s: 30}
 
   - id: XD03
     name: 07:09 Batikent - Sanayi
@@ -225,7 +225,7 @@ services:
     ready_lead_s: 30
     calls:
       - {station: BATIKENT, platform: BATIKENT_DN_1, departure: "07:09:01", dwell_s: 30}
-      - {station: SANAYI, platform: SANAYI_DN_1, arrival: "07:17:39", dwell_s: 30}
+      - {station: SANAYI, platform: SANAYI_DN_1, arrival: "07:11:48", dwell_s: 30}
 
   - id: XD04
     name: 07:13 Batikent - Sanayi
@@ -234,7 +234,7 @@ services:
     ready_lead_s: 30
     calls:
       - {station: BATIKENT, platform: BATIKENT_DN_1, departure: "07:13:01", dwell_s: 30}
-      - {station: SANAYI, platform: SANAYI_DN_1, arrival: "07:21:39", dwell_s: 30}
+      - {station: SANAYI, platform: SANAYI_DN_1, arrival: "07:15:48", dwell_s: 30}
 
   - id: XD05
     name: 07:17 Batikent - Sanayi
@@ -243,7 +243,7 @@ services:
     ready_lead_s: 30
     calls:
       - {station: BATIKENT, platform: BATIKENT_DN_1, departure: "07:17:01", dwell_s: 30}
-      - {station: SANAYI, platform: SANAYI_DN_1, arrival: "07:25:39", dwell_s: 30}
+      - {station: SANAYI, platform: SANAYI_DN_1, arrival: "07:19:48", dwell_s: 30}
 
   - id: XD06
     name: 07:21 Batikent - Sanayi
@@ -252,7 +252,7 @@ services:
     ready_lead_s: 30
     calls:
       - {station: BATIKENT, platform: BATIKENT_DN_1, departure: "07:21:01", dwell_s: 30}
-      - {station: SANAYI, platform: SANAYI_DN_1, arrival: "07:29:39", dwell_s: 30}
+      - {station: SANAYI, platform: SANAYI_DN_1, arrival: "07:23:48", dwell_s: 30}
 
   - id: XD07
     name: 07:25 Batikent - Sanayi
@@ -261,7 +261,7 @@ services:
     ready_lead_s: 30
     calls:
       - {station: BATIKENT, platform: BATIKENT_DN_1, departure: "07:25:01", dwell_s: 30}
-      - {station: SANAYI, platform: SANAYI_DN_1, arrival: "07:33:39", dwell_s: 30}
+      - {station: SANAYI, platform: SANAYI_DN_1, arrival: "07:27:48", dwell_s: 30}
 
   - id: XD08
     name: 07:29 Batikent - Sanayi
@@ -270,4 +270,4 @@ services:
     ready_lead_s: 30
     calls:
       - {station: BATIKENT, platform: BATIKENT_DN_1, departure: "07:29:01", dwell_s: 30}
-      - {station: SANAYI, platform: SANAYI_DN_1, arrival: "07:37:39", dwell_s: 30}
+      - {station: SANAYI, platform: SANAYI_DN_1, arrival: "07:31:48", dwell_s: 30}

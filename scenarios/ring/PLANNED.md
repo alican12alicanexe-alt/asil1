@@ -39,6 +39,6 @@ and the gap trace above turned into a script beside `_sweep_timestep.py`.
 ## 2. The junction - BUILT, see `scenario-cross.yaml`
 
 Done. `infrastructure-cross.yaml`, `_generate_cross.py`, `_sweep_cross.py`
-and `tests/test_cross.py`. Virtual coupling is checked 28 % less at a flat
-crossing and arrives exactly as late - 475 s against 475 s. The numbers and
+and `tests/test_cross.py`. Virtual coupling is checked 7 % less at a flat
+crossing and arrives exactly as late - 410 s against 410 s. The numbers and
 the reasoning are in `scenario-cross.yaml`'s header.
