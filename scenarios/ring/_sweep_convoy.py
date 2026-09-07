@@ -46,6 +46,38 @@ Three runs, same flight, same interval, same trains:
                   credited with the cap's effect or charged for it.
   incentive       the rule above.
 
+WHAT CAME BACK - THE STOPPING FLIGHT, WHERE THE BASELINE IS 71 s
+
+``--headway --stopping``. The circuit's own twenty-two-call lap. Rung-granular,
+from the interval scan this file used before the search became a bisection - so
+"71 s" means 71 held and 65 did not, and _sweep_timestep.py refines the same
+criterion to 69 s, which sits inside that bracket.
+
+  interval            150   120   100    90    80    75    71    65    60    55
+  ----------------------------------------------------------------------------
+  line speed            0     0     0     0     0     0     0    20    72   126
+  capped 70             0     0     0     0     0     0     0    15    69   123
+  incentive + 800       0     0     0     0     0     0     0     0    26    81
+
+  tightest interval held      <= 1 s   <= 3 s   <= 30 s
+  ----------------------------------------------------
+  line speed                    71 s     71 s      65 s
+  capped 70                     71 s     71 s      65 s
+  incentive + 800               65 s     65 s      60 s
+
+THE CAP IS FREE HERE, and that is what makes the row worth having. Capped 70
+holds the same 71 s as line speed: with twenty-two stops a lap and most of this
+circuit posted below 70 anyway, holding the fleet to 70 costs nothing. So the
+whole of the gain belongs to the rule rather than to slowing everybody down,
+which is not true on the non-stop flight, where the cap costs 5 % of every
+journey.
+
+AND THE GAIN IS SMALL: 71 s to 65 s, against 28 s to 17 s with the platforms
+taken out of the way. Which is the finding this study keeps arriving at from
+every direction. What a train is waiting for at 71 s on this circuit is a
+platform road, packing trains closer does not shorten a platform occupancy, and
+an incentive to pack them cannot either.
+
 WHAT CAME BACK - THE INTERVAL EACH CAN BE BOOKED AT
 
 ``--headway``. Worst arrival in seconds, negative being early; each row booked
@@ -211,15 +243,22 @@ def probe(cap_kmh=None):
 def run(headway_s, max_speed_kmh=None, times=None, **options):
     """One run of the flight, with its convoy behaviour traced tick by tick."""
     ring.OPTIONS[SYSTEM] = options
+    if times is None:
+        times = probe()
     unit = sweep.stock_for(SYSTEM)
     if max_speed_kmh is not None:
         unit["max_speed_kmh"] = max_speed_kmh
     timetable = build_timetable(
-        ring.flight_spec(times if times is not None else probe(),
-                         headway_s, ring.COUNT, stock=unit),
+        ring.flight_spec(times, headway_s, ring.COUNT, stock=unit),
         ring.INFRA)
+    # Long enough for the last train away to finish, and no longer. The sweeps
+    # here carry a flat 7200 s tail, which is over an hour of empty railway on
+    # a flight whose lap is under an hour - and every second of it is stepped.
+    # The probe already knows the lap, so the tail can be the lap plus slack
+    # for the queue, which takes about a third off every run in this file.
+    tail_s = (times[0][-1][0] - times[0][0][1]) * 1.25 + 600
     sim = ring.simulation(timetable,
-                          duration_s=headway_s * ring.COUNT + sweep.TAIL_S,
+                          duration_s=headway_s * ring.COUNT + tail_s,
                           system=SYSTEM)
 
     trace = {"ticks": 0, "released": 0, "all_gaps": [], "close_gaps": [],
@@ -305,99 +344,99 @@ def main(headway_s=HEADWAY_S, uncoupled_kmh=UNCOUPLED_KMH):
     print("  when released  the same, over the ticks the incentive paid for")
 
 
-#: Intervals the boundary scan tries, loosest first. One pass over these gives
-#: the boundary at every threshold at once, which a bisection does not: a
-#: bisection has to be told the criterion before it starts, and the criterion is
-#: exactly what is in question here.
-INTERVALS = ((150, 120, 100, 90, 80, 75, 71, 65, 60, 55) if STOPPING
-             else (60, 50, 42, 36, 32, 28, 24, 20, 17, 14))
-
 #: How late the worst arrival may be and the flight still counts as workable.
-#: 30 s is where the simulator itself stops printing "on time" and is what
-#: _sweep_headway.keeps_time uses. The tighter two are here because 30 s of
-#: lateness on a 60 s interval is half a headway, which is not a railway
-#: keeping time - it is one about to stop doing so.
+#: 1 s rather than the 30 s _sweep_headway.keeps_time allows: 30 s of lateness
+#: on a 20 s interval is more than a headway, which is not a railway keeping
+#: time but one about to stop doing so, and it was worth four to eight seconds
+#: of capacity that is not there when both were measured.
 #:
 #: NO ZERO-DELAY THRESHOLD, deliberately. Nothing here is entitled to assume a
 #: flight arrives dead on its booked time, and this railway could not
 #: demonstrate it if it were: probe() in _generate_timetable.py reads the clock
-#: after Simulation.step() has already advanced it, so every booked time is one
-#: tick later than the moment the train reached it and an undisturbed service
-#: reports -1 s. A 0 s threshold would therefore be measuring that artefact
-#: rather than the railway. 1 s is the tightest figure this model can honestly
-#: carry - and it answered the same as 0 s in every cell below anyway.
-THRESHOLDS = (1.0, 3.0, 30.0)
+#: after Simulation.step() has already advanced it, so on some flights an
+#: undisturbed service reports -1 s. A 0 s threshold would be measuring that
+#: artefact. 1 s is the tightest figure this model can honestly carry, and it
+#: answered the same as 0 s in every cell where both were tried.
+TOLERANCE_S = 1.0
+
+#: Where the search starts looking. Only a starting guess - it brackets itself
+#: from here - so being wrong costs one or two runs, not an answer.
+SEED_S = 100
+
+#: Bounds on the bracket, so a configuration that holds everything or nothing
+#: stops rather than doubling forever.
+FLOOR_S, CEILING_S = 8, 600
 
 
-def scan(label, cap_kmh, **run_kwargs):
-    """Worst arrival at each interval, and the boundary at every threshold.
+def boundary(label, cap_kmh, seed=SEED_S, **run_kwargs):
+    """The tightest interval this configuration still keeps time at.
 
-    Delay rather than all-green, and that is forced. All-green asks whether any
-    train was held down by the signalling, and a speed ceiling IS the
-    signalling holding a train down - so a capped run reports itself restrained
-    for its whole journey whether or not another train is within a kilometre,
-    and the criterion stops separating congestion from the cap. Lateness is
-    untouched by the ceiling, PROVIDED each configuration is booked against its
-    own unimpeded probe, which is what ``cap_kmh`` is for.
+    Brackets itself and then bisects, rather than scanning a list somebody had
+    to guess right in advance. From a seed it halves while the interval still
+    holds and doubles while it does not, which finds a bracket in one or two
+    runs, and then bisects to the second. About nine runs against a ten-rung
+    scan's ten - and the answer is exact rather than the nearest rung.
+
+    Lateness rather than all-green, and that is forced. All-green asks whether
+    any train was held down by the signalling, and a speed ceiling IS the
+    signalling holding a train down: a capped run reports itself restrained for
+    its whole journey whether or not another train is within a kilometre.
+    Lateness stays clean, PROVIDED each configuration is booked against its own
+    unimpeded probe, which is what ``cap_kmh`` is for.
     """
     times = probe(cap_kmh)
-    worst_at = {}
-    for headway_s in INTERVALS:
-        metrics = run(headway_s, times=times, **run_kwargs)[0]
-        worst = max(metrics.delays.values()) if metrics.delays else 0.0
-        if metrics.completed != metrics.services:
-            worst = float("inf")
-        worst_at[headway_s] = worst
-    print("  %-16s" % label
-          + " ".join("%6s" % ("DNF" if worst == float("inf") else "%.0f" % worst)
-                     for worst in (worst_at[h] for h in INTERVALS)))
-    return worst_at
+    seen = {}
 
+    def holds(headway_s):
+        if headway_s not in seen:
+            metrics = run(headway_s, times=times, **run_kwargs)[0]
+            worst = max(metrics.delays.values()) if metrics.delays else 0.0
+            seen[headway_s] = (metrics.completed == metrics.services
+                               and worst <= TOLERANCE_S)
+        return seen[headway_s]
 
-def boundaries(rows):
-    """The tightest interval each configuration holds, per threshold.
+    if holds(seed):
+        hi, lo = seed, max(FLOOR_S, seed // 2)
+        while lo > FLOOR_S and holds(lo):
+            hi, lo = lo, max(FLOOR_S, lo // 2)
+        if lo == FLOOR_S and holds(lo):
+            print("  %-16s holds %d s, the floor of the search" % (label, lo))
+            return lo
+    else:
+        lo, hi = seed, min(CEILING_S, seed * 2)
+        while hi < CEILING_S and not holds(hi):
+            lo, hi = hi, min(CEILING_S, hi * 2)
+        if not holds(hi):
+            print("  %-16s does not keep time even at %d s" % (label, hi))
+            return None
 
-    Read off the scan rather than bisected: the tightest interval whose worst
-    arrival is inside the threshold AND with nothing looser than it failing, so
-    one lucky row below a wall cannot be quoted as a boundary.
-    """
-    print("\n  tightest interval held, by how late the worst arrival may be:")
-    print("  %-16s%s" % ("", "".join("%9s" % ("<= %gs" % t) for t in THRESHOLDS)))
-    print("  " + "-" * 52)
-    for label, worst_at in rows:
-        cells = []
-        for threshold in THRESHOLDS:
-            held = None
-            for headway_s in INTERVALS:          # loosest first
-                if worst_at[headway_s] > threshold:
-                    break
-                held = headway_s
-            cells.append("%9s" % ("-" if held is None else "%d s" % held))
-        print("  %-16s%s" % (label, "".join(cells)))
+    while hi - lo > 1:
+        mid = (lo + hi) // 2
+        if holds(mid):
+            hi = mid
+        else:
+            lo = mid
+    print("  %-16s %4d s   (%5.1f trains an hour)   %2d runs"
+          % (label, hi, 3600.0 / hi, len(seen)))
+    return hi
 
 
 def headways(uncoupled_kmh=UNCOUPLED_KMH):
-    """What each configuration can be booked at, not what it does at 60 s."""
-    print("worst arrival, %d %s, all under %s"
-          % (ring.COUNT, FLIGHT, SYSTEM))
-    print("each booked at times its own fleet achieves with the railway to "
-          "itself.\n")
-    print("  %-16s%s" % ("interval", "".join("%7d" % h for h in INTERVALS)))
-    print("  " + "-" * (16 + 7 * len(INTERVALS)))
-    rows = [("line speed", scan("line speed", None)),
-            ("capped %d" % uncoupled_kmh,
-             scan("capped %d" % uncoupled_kmh, uncoupled_kmh,
-                  max_speed_kmh=uncoupled_kmh))]
+    """What each configuration can be booked at, not what it does at one
+    interval. Each answer seeds the next, because the configurations are
+    neighbours and a good seed is one or two runs saved."""
+    print("tightest interval held with nobody more than %.0f s late" % TOLERANCE_S)
+    print("%d %s, all under %s, each booked at times its own fleet achieves "
+          "alone.\n" % (ring.COUNT, FLIGHT, SYSTEM))
+    seed = boundary("line speed", None) or SEED_S
+    seed = boundary("capped %d" % uncoupled_kmh, uncoupled_kmh, seed=seed,
+                    max_speed_kmh=uncoupled_kmh) or seed
     # 800 m only. On the non-stop flight 1000 m answered identically in every
-    # cell, so a second radius is another ten runs for a repeated row.
-    for margin in (800.0,):
-        global COUPLING_MARGIN_M
-        COUPLING_MARGIN_M = margin
-        label = "incentive + %.0f" % margin
-        rows.append((label, scan(label, uncoupled_kmh,
-                                 uncoupled_speed_kmh=uncoupled_kmh,
-                                 coupling_margin_m=margin)))
-    boundaries(rows)
+    # cell, so a second radius is another search for a repeated row.
+    global COUPLING_MARGIN_M
+    COUPLING_MARGIN_M = 800.0
+    boundary("incentive + 800", uncoupled_kmh, seed=seed,
+             uncoupled_speed_kmh=uncoupled_kmh, coupling_margin_m=800.0)
 
 
 if __name__ == "__main__":
