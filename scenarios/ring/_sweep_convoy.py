@@ -255,45 +255,87 @@ def main(headway_s=HEADWAY_S, uncoupled_kmh=UNCOUPLED_KMH):
     print("  when released  the same, over the ticks the incentive paid for")
 
 
-def boundary(label, cap_kmh, lo=10, hi=150, **run_kwargs):
-    """The tightest interval this configuration still keeps time at.
+#: Intervals the boundary scan tries, loosest first. One pass over these gives
+#: the boundary at every threshold at once, which a bisection does not: a
+#: bisection has to be told the criterion before it starts, and the criterion is
+#: exactly what is in question here.
+INTERVALS = (60, 50, 42, 36, 32, 28, 24, 20, 17, 14)
 
-    Keeps-time rather than all-green, and that is forced. All-green asks
-    whether any train was held down by the signalling, and a speed ceiling IS
-    the signalling holding a train down - so a capped run reports itself
-    restrained for its whole journey whether or not another train is anywhere
-    near it, and the criterion stops separating congestion from the cap.
-    Keeps-time asks whether the trains made their booked arrivals, which is
-    the question an operator asks and which the cap cannot answer for them.
+#: How late the worst arrival may be and the flight still counts as workable.
+#: 30 s is where the simulator itself stops printing "on time" and is what
+#: _sweep_headway.keeps_time uses. The tighter two are here because 30 s of
+#: lateness on a 60 s interval is half a headway, which is not a railway
+#: keeping time - it is one about to stop doing so.
+THRESHOLDS = (0.0, 1.0, 3.0, 30.0)
+
+
+def scan(label, cap_kmh, **run_kwargs):
+    """Worst arrival at each interval, and the boundary at every threshold.
+
+    Delay rather than all-green, and that is forced. All-green asks whether any
+    train was held down by the signalling, and a speed ceiling IS the
+    signalling holding a train down - so a capped run reports itself restrained
+    for its whole journey whether or not another train is within a kilometre,
+    and the criterion stops separating congestion from the cap. Lateness is
+    untouched by the ceiling, PROVIDED each configuration is booked against its
+    own unimpeded probe, which is what ``cap_kmh`` is for.
     """
     times = probe(cap_kmh)
-    if not sweep.keeps_time(run(hi, times=times, **run_kwargs)[0]):
-        print("  %-16s does not keep time even at %d s" % (label, hi))
-        return None
-    while hi - lo > 1:
-        mid = (lo + hi) // 2
-        if sweep.keeps_time(run(mid, times=times, **run_kwargs)[0]):
-            hi = mid
-        else:
-            lo = mid
-    print("  %-16s %3d s   (%.1f trains an hour)" % (label, hi, 3600.0 / hi))
-    return hi
+    worst_at = {}
+    for headway_s in INTERVALS:
+        metrics = run(headway_s, times=times, **run_kwargs)[0]
+        worst = max(metrics.delays.values()) if metrics.delays else 0.0
+        if metrics.completed != metrics.services:
+            worst = float("inf")
+        worst_at[headway_s] = worst
+    print("  %-16s" % label
+          + " ".join("%6s" % ("DNF" if worst == float("inf") else "%.0f" % worst)
+                     for worst in (worst_at[h] for h in INTERVALS)))
+    return worst_at
+
+
+def boundaries(rows):
+    """The tightest interval each configuration holds, per threshold.
+
+    Read off the scan rather than bisected: the tightest interval whose worst
+    arrival is inside the threshold AND with nothing looser than it failing, so
+    one lucky row below a wall cannot be quoted as a boundary.
+    """
+    print("\n  tightest interval held, by how late the worst arrival may be:")
+    print("  %-16s%s" % ("", "".join("%9s" % ("<= %gs" % t) for t in THRESHOLDS)))
+    print("  " + "-" * 52)
+    for label, worst_at in rows:
+        cells = []
+        for threshold in THRESHOLDS:
+            held = None
+            for headway_s in INTERVALS:          # loosest first
+                if worst_at[headway_s] > threshold:
+                    break
+                held = headway_s
+            cells.append("%9s" % ("-" if held is None else "%d s" % held))
+        print("  %-16s%s" % (label, "".join(cells)))
 
 
 def headways(uncoupled_kmh=UNCOUPLED_KMH):
     """What each configuration can be booked at, not what it does at 60 s."""
-    print("keeps-time headway, %d non-stop laps, all under %s"
+    print("worst arrival, %d non-stop laps, all under %s"
           % (ring.COUNT, SYSTEM))
     print("each booked at times its own fleet achieves with the railway to "
           "itself.\n")
-    boundary("line speed", None)
-    boundary("capped %d" % uncoupled_kmh, uncoupled_kmh,
-             max_speed_kmh=uncoupled_kmh)
+    print("  %-16s%s" % ("interval", "".join("%7d" % h for h in INTERVALS)))
+    print("  " + "-" * (16 + 7 * len(INTERVALS)))
+    rows = [("line speed", scan("line speed", None)),
+            ("capped %d" % uncoupled_kmh,
+             scan("capped %d" % uncoupled_kmh, uncoupled_kmh,
+                  max_speed_kmh=uncoupled_kmh))]
     for margin in (800.0, 1000.0):
         global COUPLING_MARGIN_M
         COUPLING_MARGIN_M = margin
-        boundary("incentive + %.0f" % margin, uncoupled_kmh,
-                 uncoupled_speed_kmh=uncoupled_kmh, coupling_margin_m=margin)
+        label = "incentive + %.0f" % margin
+        rows.append((label, scan(label, uncoupled_kmh,
+                                 uncoupled_speed_kmh=uncoupled_kmh,
+                                 coupling_margin_m=margin)))
+    boundaries(rows)
 
 
 if __name__ == "__main__":
