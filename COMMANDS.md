@@ -8,8 +8,8 @@ python run.py <scenario> [options]
 ```
 
 `<scenario>` is either a **directory** (which uses its `scenario.yaml`) or a
-specific **scenario file**, so `scenarios/metro` and
-`scenarios/metro/scenario-60.yaml` are both valid.
+specific **scenario file**, so `tests/railways/metro` and
+`tests/railways/metro/scenario-60.yaml` are both valid.
 
 ---
 
@@ -364,7 +364,7 @@ each system to that fleet. Quote the sweeps for capacity.
 ## Tests
 
 ```
-python run_tests.py                 all 182, stdlib unittest, no pytest needed
+python run_tests.py                 all 283, stdlib unittest, no pytest needed, ~15 s
 cd tests && python -m unittest test_junction -v      one file, verbose
 ```
 
@@ -372,14 +372,14 @@ cd tests && python -m unittest test_junction -v      one file, verbose
 
 ## The scenarios
 
-### `scenarios/corridor3` — a main line
+### `tests/railways/corridor3` — a main line
 
 30 km, three stations, a loop at Beta, mixed fast and stopping traffic.
 
 ```
-python run.py scenarios/corridor3                             watch the overtake
-python run.py scenarios/corridor3/scenario-intensive.yaml --compare
-python run.py scenarios/corridor3/scenario-disrupted.yaml --propagation
+python run.py tests/railways/corridor3                             watch the overtake
+python run.py tests/railways/corridor3/scenario-intensive.yaml --compare
+python run.py tests/railways/corridor3/scenario-disrupted.yaml --propagation
 ```
 
 - `scenario.yaml` — nine services, below capacity. All ETCS levels converge here.
@@ -387,14 +387,14 @@ python run.py scenarios/corridor3/scenario-disrupted.yaml --propagation
   separates the levels: moving block saves 23%.
 - `scenario-disrupted.yaml` — the 07:00 stopper stands four minutes over at Beta.
 
-### `scenarios/metro` — an urban line
+### `tests/railways/metro` — an urban line
 
 12 km, six stations, no loops, nothing to overtake.
 
 ```
-python run.py scenarios/metro --compare              Level 2 saves one second
-python run.py scenarios/metro --system fixed_block_3aspect      watch it bunch
-python run.py scenarios/metro/scenario-disrupted.yaml --propagation
+python run.py tests/railways/metro --compare              Level 2 saves one second
+python run.py tests/railways/metro --system fixed_block_3aspect      watch it bunch
+python run.py tests/railways/metro/scenario-disrupted.yaml --propagation
 ```
 
 - `scenario.yaml` — 75 s headway. Moving block delivers it exactly; fixed block
@@ -403,28 +403,28 @@ python run.py scenarios/metro/scenario-disrupted.yaml --propagation
 - `scenario-mixed.yaml` — two units without integrity monitoring.
 - `scenario-disrupted.yaml` — one door held 90 s at Central.
 
-### `scenarios/junction` — converging traffic
+### `tests/railways/junction` — converging traffic
 
 A branch meeting a double-track main line at Beta.
 
 ```
-python run.py scenarios/junction --check                       the route table
-python run.py scenarios/junction --headless --events | grep route_refused
-python run.py scenarios/junction/scenario-flat.yaml --check    the diamonds
+python run.py tests/railways/junction --check                       the route table
+python run.py tests/railways/junction --headless --events | grep route_refused
+python run.py tests/railways/junction/scenario-flat.yaml --check    the diamonds
 ```
 
 - `scenario.yaml` — the branch beside the up main, nothing crosses anything.
 - `scenario-flat.yaml` — the branch beyond the down main, so it crosses it.
 - `scenario-flyover.yaml` — the same layout grade separated. The control run.
 
-### `scenarios/fourtrack` — trains changing lines
+### `tests/railways/fourtrack` — trains changing lines
 
 Up fast, up slow, down slow, down fast, with a crossover between each pair.
 
 ```
-python run.py scenarios/fourtrack                        watch the semi-fast cross
-python run.py scenarios/fourtrack --check                the crossovers and points
-python run.py scenarios/fourtrack --headless --events | grep XO_UP
+python run.py tests/railways/fourtrack                        watch the semi-fast cross
+python run.py tests/railways/fourtrack --check                the crossovers and points
+python run.py tests/railways/fourtrack --headless --events | grep XO_UP
 ```
 
 Beta has platforms on the slow lines only, so a semi-fast has to call there on
@@ -527,9 +527,9 @@ currently set. The table underneath says what is governing each train:
 These are not part of the simulator; they regenerate or study one scenario.
 
 ```
-python scenarios/metro/_generate_timetables.py     rebuild the metro timetables
-python scenarios/junction/_generate_timetable.py   rebuild the junction timetable
-python scenarios/junction/_sweep_phase.py          what the diamond costs, swept
+python tests/railways/metro/_generate_timetables.py     rebuild the metro timetables
+python tests/railways/junction/_generate_timetable.py   rebuild the junction timetable
+python tests/railways/junction/_sweep_phase.py          what the diamond costs, swept
                                                    across every branch phasing
 ```
 

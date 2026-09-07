@@ -111,10 +111,31 @@ class TestOneCrossover(unittest.TestCase):
 
 class TestWhatIsRefused(unittest.TestCase):
 
-    def test_connecting_lines_that_run_opposite_ways_is_refused(self):
-        """It would be wrong-line running, which needs bidirectional signalling."""
+    def test_connecting_lines_that_run_opposite_ways_is_bidirectional_working(self):
+        """It used to be refused. It is now built, as a road back along each line.
+
+        A connection between an up line and a down line is the way a train gets
+        onto the opposite road and off it again, which is exactly where a real
+        railway signals bidirectionally - so rather than refuse it, the builder
+        lays a second set of blocks over the same rails between the connections
+        and the interlocking gives the stretch to one direction at a time.
+
+        The refusal that used to stand here still stands for a connection
+        between two platform ROADS, which is a different mistake: see
+        :meth:`test_connecting_roads_that_run_opposite_ways_is_refused`.
+        """
+        infra = build([{"id": "BAD", "from": "UF", "to": "DN", "km": 6.0}])
+        self.assertIn("BAD_UF_DN_R", infra.network.segments)
+        self.assertIn("BAD_DN_UF_R", infra.network.segments)
+        ways = {way for _, way in infra.direction_sections.values()}
+        self.assertEqual(ways, {"normal", "reverse"},
+                         "the stretch between the connections should be "
+                         "workable either way")
+
+    def test_connecting_roads_that_run_opposite_ways_is_refused(self):
+        """Between two platform roads it is wrong-line running, and is refused."""
         with self.assertRaises(InfrastructureError) as caught:
-            build([{"id": "BAD", "from": "UF", "to": "DN", "km": 6.0}])
+            build([{"id": "BAD", "from": "A_UF", "to": "A_DN", "km": 6.0}])
         message = str(caught.exception)
         self.assertIn("opposite directions", message)
         self.assertIn("bidirectional", message)

@@ -10,15 +10,18 @@ bare Python install with nothing to `pip install`, so it works on a locked-down
 machine.
 
 ```
-python run.py scenarios/corridor3              # live schematic
-python run.py scenarios/corridor3 --headless   # no window, prints a summary
-python run.py scenarios/corridor3 --check      # validate and report on the layout
-python run.py scenarios/corridor3 --compare    # every ETCS level, side by side
-python run.py scenarios/corridor3 --system etcs_moving_block   # watch one
-python run.py scenarios/metro --compare        # the other line, opposite answer
-python run.py scenarios/metro/scenario-disrupted.yaml --propagation
-python run.py scenarios/junction --check       # a real junction's route table
-python run_tests.py                            # 217 tests, stdlib unittest
+python run.py scenarios/ring                   # live schematic
+python run.py scenarios/ring --headless        # no window, prints a summary
+python run.py scenarios/ring --check           # validate and report on the layout
+python run.py scenarios/ring --compare         # every level of the ladder, side by side
+python run.py scenarios/ring --system virtual_coupling   # watch one
+python scenarios/ring/_sweep_headway.py etcs_moving_block   # the capacity sweep
+python run_tests.py                            # 283 tests, stdlib unittest, ~15 s
+
+# Railways that exist only to be tested against live under tests/railways.
+# They are fixtures, not results - nothing in the study is quoted from them.
+python run.py tests/railways/corridor3 --compare
+python run.py tests/railways/junction --check  # a real junction's route table
 ```
 
 Requires Python 3.7+. `requirements-optional.txt` lists things that make it
@@ -638,7 +641,7 @@ etcs_hybrid_l3             13:32     -4:00        76s       90s     3122  12/12
 etcs_moving_block          13:32     -4:00        54s       90s     3283  12/12
 ```
 
-*(`scenarios/corridor3/scenario-intensive.yaml` - twelve services at a 90-second
+*(`tests/railways/corridor3/scenario-intensive.yaml` - twelve services at a 90-second
 interval, deliberately closer than fixed block can deliver.)*
 
 Moving block saves **4 minutes on a 30 km run, 23%**. Nothing in the code was
@@ -891,7 +894,7 @@ the follower, by construction, cannot.
 
 corridor3 is a main line, and on a main line most of what ETCS buys is the
 removal of the driver's *sighting and reaction* penalty — which is why Level 2
-captures nearly all of the benefit there. `scenarios/metro` is the other kind of
+captures nearly all of the benefit there. `tests/railways/metro` is the other kind of
 railway, and it gives the opposite answer.
 
 Twelve km, six stations 2.2–2.6 km apart, 90 km/h, 120 m units, every train
@@ -1109,7 +1112,7 @@ so underneath.
 corridor3 and metro are both *linear*. Every train is behind or in front of every
 other on its road, the interlocking only ever asks whether the road ahead is
 clear, and better signalling means trains can run closer together.
-`scenarios/junction` is not linear, and it is where capacity is actually lost on
+`tests/railways/junction` is not linear, and it is where capacity is actually lost on
 a network.
 
 ```
@@ -1268,7 +1271,7 @@ one to suffer.
 #### One run is not a result
 
 Move the branch service ninety seconds and the conflict misses entirely.
-`python scenarios/junction/_sweep_phase.py` runs both layouts across a whole
+`python tests/railways/junction/_sweep_phase.py` runs both layouts across a whole
 six-minute service interval:
 
 ```
@@ -1298,7 +1301,7 @@ asserts the free case too.
 
 Every layout so far kept each train on the road it started on. It could take a
 loop, a branch or a platform, but never leave its own line for another one.
-`scenarios/fourtrack` can:
+`tests/railways/fourtrack` can:
 
 ```
          ___________________________________________ UP FAST
@@ -1679,7 +1682,7 @@ restrained running from ~300 s to ~99 s and its journey by 34 seconds, on the
 same timetable — the capacity trade-off, measured.
 
 **Generated timetables.** The metro timetables are derived data, not written by
-hand: `scenarios/metro/_generate_timetables.py` runs a single unimpeded train to
+hand: `tests/railways/metro/_generate_timetables.py` runs a single unimpeded train to
 measure the section times, then books every service on those times offset by one
 headway. That is what makes the plan conflict-free by construction, so a delay in
 the comparison is always the signalling and never the plan. Re-run it after
@@ -1693,7 +1696,7 @@ PyYAML on every shipped file. `.json` scenario files work too.
 
 ## Verification
 
-`python run_tests.py` — 217 tests covering:
+`python run_tests.py` — 283 tests covering:
 
 - **braking** — a train stops within the computed service braking distance and
   berths on its stopping point to within a metre, on the level and on a bank

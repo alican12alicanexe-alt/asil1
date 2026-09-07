@@ -56,8 +56,7 @@ class TestMiniYaml(unittest.TestCase):
 
     @unittest.skipIf(pyyaml is None, "PyYAML is not installed on this machine")
     def test_agrees_with_pyyaml_on_every_shipped_scenario(self):
-        pattern = os.path.join(support.SCENARIOS, "*", "*.yaml")
-        files = sorted(glob.glob(pattern))
+        files = support.every_railway()
         self.assertTrue(files, "no scenario files found to compare")
         for path in files:
             with open(path, "r", encoding="utf-8") as handle:

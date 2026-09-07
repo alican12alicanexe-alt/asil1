@@ -31,6 +31,18 @@ class InterlockingTestCase(unittest.TestCase):
         while self.sim.time_s < target and not self.sim.finished:
             self.sim.step()
 
+    def run_until(self, ready, what: str):
+        """Step until ``ready()``, rather than to a clock somebody wrote down.
+
+        A wall-clock assertion is a bet that the run times never change, and the
+        force balance and the speed limits have both moved since these were
+        written - which showed up as approach locking appearing to be broken
+        when the train was simply sixteen seconds later than it used to be.
+        """
+        while not ready() and not self.sim.finished:
+            self.sim.step()
+        self.assertTrue(ready(), "%s never happened" % what)
+
 
 class TestTopology(InterlockingTestCase):
 
@@ -192,10 +204,12 @@ class TestSectionalRelease(InterlockingTestCase):
 class TestApproachLocking(InterlockingTestCase):
 
     def test_a_route_cannot_be_taken_from_an_approaching_train(self):
-        self.run_to("07:04:30")
-        self.assertTrue(self.interlocking.is_locked("R_BETA_3"))
+        self.run_until(lambda: self.interlocking.is_locked("R_BETA_3"),
+                       "the loop route being set for S1")
         s1 = self.sim.trains["S1"]
         self.assertEqual(s1.state, "running")
+        self.assertFalse(self.interlocking.locks["R_BETA_3"].entered,
+                         "S1 should still be approaching, not already on it")
 
         decision = self.interlocking.cancel("R_BETA_3", self.sim)
         self.assertFalse(decision.granted)

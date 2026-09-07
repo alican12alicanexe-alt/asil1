@@ -131,8 +131,7 @@ class TestEveryShippedFileStillLoads(unittest.TestCase):
     """The guard that keeps the key lists and the code from drifting apart."""
 
     def test_every_scenario_loads(self):
-        pattern = os.path.join(support.SCENARIOS, "*", "scenario*.yaml")
-        paths = sorted(glob.glob(pattern))
+        paths = support.every_railway("scenario*.yaml")
         self.assertGreaterEqual(len(paths), 10)
         for path in paths:
             try:
@@ -203,8 +202,7 @@ class TestTheTimetableIsCheckedToo(unittest.TestCase):
         wrong rather than the timetable. This is what stops the check from
         becoming a source of false alarms nobody reads.
         """
-        pattern = os.path.join(support.SCENARIOS, "*", "scenario*.yaml")
-        for path in sorted(glob.glob(pattern)):
+        for path in support.every_railway("scenario*.yaml"):
             scenario = load_scenario(path)
             found = [i for i in checks.check_timetable(scenario.infrastructure,
                                                        scenario.timetable)

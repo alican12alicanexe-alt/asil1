@@ -19,24 +19,48 @@ from trainsim.core.signalling import ThreeAspectFixedBlock  # noqa: E402
 from trainsim.scenario.builder import build_infrastructure  # noqa: E402
 from trainsim.scenario.loader import build_timetable  # noqa: E402
 
-SCENARIOS = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scenarios"
-)
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+#: Railways the project ships: the ones a result is quoted from.
+SCENARIOS = os.path.join(ROOT, "scenarios")
+
+#: Railways that exist only to be tested against, under ``tests/`` because that
+#: is what they are for.
+#:
+#: They used to live beside the shipped ones, which made them look like results
+#: nobody was quoting and put them on the list to be deleted - and deleting them
+#: takes with it the only coverage of the interlocking, of a flat junction and of
+#: a four-track layout, none of which is code the shipped railways stop using.
+#: A layout a test needs is a fixture, so it is kept where fixtures are kept.
+RAILWAYS = os.path.join(ROOT, "tests", "railways")
+
+#: Both roots, for the checks that hold over every railway in the repository.
+RAILWAY_ROOTS = (SCENARIOS, RAILWAYS)
+
 CAPACITY = os.path.join(SCENARIOS, "capacity")
 EXPRESS = os.path.join(SCENARIOS, "express")
-CORRIDOR3 = os.path.join(SCENARIOS, "corridor3")
-INTENSIVE = os.path.join(SCENARIOS, "corridor3", "scenario-intensive.yaml")
-METRO = os.path.join(SCENARIOS, "metro")
-METRO_60 = os.path.join(SCENARIOS, "metro", "scenario-60.yaml")
-METRO_MIXED = os.path.join(SCENARIOS, "metro", "scenario-mixed.yaml")
-METRO_DISRUPTED = os.path.join(SCENARIOS, "metro", "scenario-disrupted.yaml")
-CORRIDOR3_DISRUPTED = os.path.join(SCENARIOS, "corridor3",
+CORRIDOR3 = os.path.join(RAILWAYS, "corridor3")
+INTENSIVE = os.path.join(RAILWAYS, "corridor3", "scenario-intensive.yaml")
+METRO = os.path.join(RAILWAYS, "metro")
+METRO_60 = os.path.join(RAILWAYS, "metro", "scenario-60.yaml")
+METRO_MIXED = os.path.join(RAILWAYS, "metro", "scenario-mixed.yaml")
+METRO_DISRUPTED = os.path.join(RAILWAYS, "metro", "scenario-disrupted.yaml")
+CORRIDOR3_DISRUPTED = os.path.join(RAILWAYS, "corridor3",
                                    "scenario-disrupted.yaml")
-JUNCTION = os.path.join(SCENARIOS, "junction")
-FOURTRACK = os.path.join(SCENARIOS, "fourtrack")
-JUNCTION_FLAT = os.path.join(SCENARIOS, "junction", "scenario-flat.yaml")
-JUNCTION_FLYOVER = os.path.join(SCENARIOS, "junction",
+JUNCTION = os.path.join(RAILWAYS, "junction")
+FOURTRACK = os.path.join(RAILWAYS, "fourtrack")
+JUNCTION_FLAT = os.path.join(RAILWAYS, "junction", "scenario-flat.yaml")
+JUNCTION_FLYOVER = os.path.join(RAILWAYS, "junction",
                                 "scenario-flyover.yaml")
+
+
+def every_railway(pattern="*.yaml"):
+    """Every YAML file under both roots, so a repo-wide check misses none."""
+    import glob
+    found = []
+    for root in RAILWAY_ROOTS:
+        found.extend(glob.glob(os.path.join(root, "*", pattern)))
+    return sorted(found)
 
 
 #: Two stations 10 km apart on one track. With a 400 m platform zone at each end

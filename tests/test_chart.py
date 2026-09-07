@@ -1,9 +1,22 @@
 """The chart renderer, and the run graphs built on it."""
 
+import contextlib
+import io
 import unittest
 import xml.etree.ElementTree as ET
 
 import support  # noqa: F401  - puts the package on the path
+
+
+@contextlib.contextmanager
+def quiet():
+    """Swallow argparse's usage message, so a passing run says nothing.
+
+    A test that expects a parse to be refused is not interested in the wording,
+    and a suite that prints a usage block on the way past looks like it broke.
+    """
+    with contextlib.redirect_stderr(io.StringIO()):
+        yield
 
 import graph
 from trainsim.analysis import trace
@@ -123,7 +136,7 @@ class TestRunGraph(unittest.TestCase):
         self.assertEqual(args.trains, ["U03"])
 
     def test_giving_it_both_ways_is_refused_rather_than_guessed(self):
-        with self.assertRaises(SystemExit):
+        with quiet(), self.assertRaises(SystemExit):
             graph.parse_arguments([support.CAPACITY, "--scenario",
                                    support.CAPACITY, "U03"])
 
@@ -134,7 +147,7 @@ class TestRunGraph(unittest.TestCase):
 
     def test_a_mistyped_option_is_still_refused(self):
         """Gathering the leftovers must not swallow a typo silently."""
-        with self.assertRaises(SystemExit):
+        with quiet(), self.assertRaises(SystemExit):
             graph.parse_arguments(["--systemm", "virtual_coupling", "U03"])
 
     def test_stats_report_a_journey_rather_than_a_sample(self):
