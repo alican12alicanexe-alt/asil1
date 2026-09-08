@@ -201,3 +201,11 @@ if __name__ == "__main__":
             "flag": " --stopping" if STOPPING else ""}, stock=unit))
     print("wrote %s - %d %s services at %d s"
           % (path, COUNT, LAP_WORDS, headway))
+    # Name the scenario, not just the file. --stopping writes a DIFFERENT
+    # timetable and scenario-convoy.yaml does not read it, so generating the
+    # stopping flight and then running the non-stop scenario leaves the trains
+    # not stopping anywhere - which is exactly what it looks like when it goes
+    # wrong, and nothing in the output said so.
+    print("run it with: python run.py scenarios/ring/%s"
+          % ("scenario-convoy-stopping.yaml" if STOPPING
+             else "scenario-convoy.yaml"))
