@@ -18,10 +18,13 @@
 # following distances. What it is limited by is a platform road, and that is
 # only in the run that calls at platforms.
 #
-# So the two flights measure the two halves. Non-stop, the incentive takes the
-# interval from 28 s to 17 s. Calling everywhere, from 71 s to 65 s. Same rule,
-# same trains, same drawing - and the difference between an eleven second gain
-# and a six second one is the platforms, not the signalling.
+# So the two flights measure the two halves. Calling everywhere, the incentive
+# takes the interval from 69 s to 63 s - and one of those six seconds is the cap
+# on its own, five the release. Non-stop it reads 28 s to 17 s, but that flight
+# has almost no congestion to relieve (twelve trains at 30 s intervals do not
+# obstruct each other at all) and its journey-time control says plain virtual
+# coupling beats the rule at every interval. Same drawing, same trains, and the
+# honest half is the one with the platforms in it.
 #
 # A STOPPING LAP FEEDS THE INCENTIVE FOR FREE, which is the reason to expect
 # more of it than it gives. The rule needs a speed difference to work with, and

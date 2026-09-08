@@ -46,37 +46,57 @@ Three runs, same flight, same interval, same trains:
                   credited with the cap's effect or charged for it.
   incentive       the rule above.
 
-WHAT CAME BACK - THE STOPPING FLIGHT, WHERE THE BASELINE IS 71 s
+WHAT CAME BACK - THE STOPPING FLIGHT
 
-``--headway --stopping``. The circuit's own twenty-two-call lap. Rung-granular,
-from the interval scan this file used before the search became a bisection - so
-"71 s" means 71 held and 65 did not, and _sweep_timestep.py refines the same
-criterion to 69 s, which sits inside that bracket.
+``--headway --stopping``. The circuit's own twenty-two-call lap, bisected.
 
-  interval            150   120   100    90    80    75    71    65    60    55
-  ----------------------------------------------------------------------------
-  line speed            0     0     0     0     0     0     0    20    72   126
-  capped 70             0     0     0     0     0     0     0    15    69   123
-  incentive + 800       0     0     0     0     0     0     0     0    26    81
+  tightest interval held, nobody more than 1 s late
+  -------------------------------------------------
+  line speed                69 s     52.2 trains an hour
+  capped 70                 68 s     52.9
+  incentive + 800           63 s     57.1
 
-  tightest interval held      <= 1 s   <= 3 s   <= 30 s
-  ----------------------------------------------------
-  line speed                    71 s     71 s      65 s
-  capped 70                     71 s     71 s      65 s
-  incentive + 800               65 s     65 s      60 s
+  6 s, of which 1 s is the cap and 5 s is the release.   +9.4 % on the hour.
 
-THE CAP IS FREE HERE, and that is what makes the row worth having. Capped 70
-holds the same 71 s as line speed: with twenty-two stops a lap and most of this
-circuit posted below 70 anyway, holding the fleet to 70 costs nothing. So the
-whole of the gain belongs to the rule rather than to slowing everybody down,
-which is not true on the non-stop flight, where the cap costs 5 % of every
-journey.
+READ THE MIDDLE ROW BEFORE THE BOTTOM ONE. It is the control that says whether
+the gain is the rule or just a slower railway, and it very nearly reports the
+former: holding the fleet to 70 km/h buys one second by itself. That is small
+because most of this circuit is posted below 70 anyway and there are twenty-two
+stops a lap, so the cap barely bites - which is NOT true on the non-stop flight,
+where it costs 5 % of every journey and buys four seconds.
 
-AND THE GAIN IS SMALL: 71 s to 65 s, against 28 s to 17 s with the platforms
-taken out of the way. Which is the finding this study keeps arriving at from
-every direction. What a train is waiting for at 71 s on this circuit is a
-platform road, packing trains closer does not shorten a platform occupancy, and
-an incentive to pack them cannot either.
+An earlier version of this file scanned a fixed ladder - 150 120 100 90 80 75 71
+65 60 55 - and reported 71 / 71 / 65, which is the same answer at one rung's
+resolution: 71 meant "71 held, 65 did not", a bracket of (65, 71]. All three
+bisected figures sit inside their brackets, and 69 s for line speed is what
+_sweep_timestep.py independently refines the same criterion to. Two searches,
+one number.
+
+AND THE GAIN IS STILL SMALL: 69 s to 63 s. What a train is waiting for at 69 s
+on this circuit is a platform road; packing trains closer does not shorten a
+platform occupancy, and an incentive to pack them cannot either.
+
+WHAT THIS DOES NOT ESTABLISH, AND IT IS THE WHOLE OF IT
+
+The incentive row is booked at 70 km/h and may run at 90, so it carries 20 km/h
+of recovery slack that neither control has. Some unknown share of those 5 s is
+the slack rather than the rule, and this measurement cannot separate them.
+
+On the NON-STOP flight the equivalent control has been run, on journey time,
+which no booking can flatter:
+
+  interval     line speed     capped 70   + the release
+      70 s        3457 s        3670 s        3653 s
+      50 s        3457 s        3670 s        3520 s
+      30 s        3457 s        3670 s        3593 s
+      20 s        3474 s        3680 s        3648 s
+
+Plain virtual coupling wins at every interval. The release recovers 150 s of the
+213 s the cap costs, and never catches up. Note also that line speed is FLAT
+from 70 s down to 30 s: twelve trains half a minute apart, none of them
+obstructing another, so there was no congestion there for the rule to relieve.
+The same journey-time control has not been run on the stopping flight, and until
+it has, the 5 s above is an upper bound rather than a result.
 
 WHAT CAME BACK - THE INTERVAL EACH CAN BE BOOKED AT
 
@@ -164,7 +184,7 @@ sys.path.insert(0, HERE)
 #: rebinding below has to happen. The default is the NON-STOP flight, where the
 #: binding constraint is the distance between two trains and an incentive to
 #: close that distance has something to work on. ``--stopping`` runs the
-#: circuit's own twenty-two-call lap instead, where virtual coupling holds 71 s
+#: circuit's own twenty-two-call lap instead, where virtual coupling holds 69 s
 #: and what it is queueing for is a platform road.
 STOPPING = "--stopping" in sys.argv
 

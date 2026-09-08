@@ -43,6 +43,14 @@ release it to line speed once it is close enough to the one in front. Built as
 `VirtualCoupling(uncoupled_speed_kmh=..., coupling_margin_m=...)`, measured by
 `_sweep_convoy.py`, recorded in that script's docstring.
 
+Bisected on the stopping flight: line speed 69 s, capped 70 68 s, the incentive
+63 s - six seconds, one of which is the cap alone and five the release, +9.4 %
+on the hour. (An earlier fixed-ladder scan read 71/71/65; same answer at one
+rung's resolution, and _sweep_timestep.py independently puts line speed at 69.)
+The 5 s is an upper bound, not a result: that row is booked at 70 and may run at
+90, and on the non-stop flight the journey-time control that removes the booking
+has plain virtual coupling beating the rule at every interval.
+
 It works, in a band, and the trade is bad - convoys at 192 m against plain
 virtual coupling's 1053 m, for 5 % of every journey on the railway. Below a
 600 m radius it never fires; above 1500 m it is "no cap" with extra steps. The
