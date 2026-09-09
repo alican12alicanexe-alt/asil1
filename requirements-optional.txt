@@ -17,3 +17,5 @@ matplotlib>=3.5  # draws every chart: graph.py and _plot_curves.py need it, and
                  # nothing else does - a run, a --check and a --log spreadsheet
                  # all still work with none of these installed
 pygame>=2.1      # an alternative rendering backend, if smoother zoom/pan is wanted
+streamlit>=1.30  # the browser front end, app.py - a form for building a line and a
+                 # place to read the comparison off. Nothing else imports it

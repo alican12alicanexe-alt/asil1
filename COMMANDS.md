@@ -38,6 +38,44 @@ specific **scenario file**, so `tests/railways/metro` and
 | `--speed N` | Simulated seconds per real second in the view. `--speed 1` is real time; the scenarios default to 20–30. |
 | `--strict` | Raise on a block-exclusivity violation instead of logging it. Use it when changing the kernel: it turns a silent wrong answer into a stack trace. |
 
+## The browser front end
+
+Optional, and the one thing here that needs a package.
+
+```
+pip install --user streamlit
+streamlit run app.py
+```
+
+Two tabs, because there are only two questions.
+
+**Hazır hat** — pick any `scenario*.yaml` under `scenarios/`, pick the
+signalling systems to put it under, and read the comparison off: the same KPI
+table `--compare` prints, a train graph per system, and the per-service
+arrivals. It is `--compare` with pictures.
+
+**Yeni hat kur** — a table of station names and kilometres, and about a dozen
+sliders. The line speed, the block length, the platforms, the rolling stock and
+the whole timetable are written from those, the railway is run once empty to
+book it, and then the same comparison comes back for a railway that did not
+exist a minute ago. The generated YAML is shown at the bottom of the page, so
+the form is a way into the file format rather than a replacement for it.
+
+There is deliberately **no track editor**. The layout is one-dimensional, so a
+table of names and kilometres says everything a drawing would, and drawing rails
+with a mouse is the largest part of every commercial simulator without answering
+any question this repository asks.
+
+`trainsim/scenario/generate.py` is the piece that writes a scenario directory
+from a `LineSpec`; it is stdlib-only and runs without streamlit:
+
+```
+python -m trainsim.scenario.generate      # builds a four-station line and books it
+```
+
+Nothing under `trainsim/core` or `trainsim/scenario` imports `app.py`, so a run,
+a `--check` and a `--log` still work on a bare Python install with pip blocked.
+
 ## The run trace
 
 The summary says how a run came out; `--log` says how it got there. One row per

@@ -38,6 +38,8 @@ python scenarios/ring/_sweep_convoy.py                      # can a rule build o
 python scenarios/ring/_generate_convoy.py 60                # rebuild that flight
 python run.py scenarios/ring/scenario-convoy-stopping.yaml --headless
 python run_tests.py                             # 289 tests, ~15 s
+
+streamlit run app.py                            # browser front end (optional)
 ```
 
 **[COMMANDS.md](COMMANDS.md)** is the full command reference. Every scenario
