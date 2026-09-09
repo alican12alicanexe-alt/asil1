@@ -148,7 +148,8 @@ class Driver:
         """Service braking rate allowing for the gradient over the braking distance."""
         stock = train.stock
         flat = braking_distance(speed, stock.service_brake)
-        worst = train.path.steepest_fall_ahead(train.chainage_m, flat)
+        worst = min(train.path.grade_over(train.rear_m, train.chainage_m),
+                    train.path.steepest_fall_ahead(train.chainage_m, flat))
         return dynamics.braking_rate_on_grade(stock, worst)
 
     def _constraints(self, train, authority, speed: float, limits,

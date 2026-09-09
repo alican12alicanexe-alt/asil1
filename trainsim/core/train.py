@@ -362,6 +362,40 @@ class Path:
         """Rise per thousand where the train's front is, in its own direction."""
         return self.entry_at(chainage_m).segment.grade_permille
 
+    def grade_over(self, rear_m: float, front_m: float) -> float:
+        """The gradient a train spanning ``[rear, front]`` actually feels.
+
+        Gravity pulls on the whole train, not on its nose. A 120 m unit with its
+        front 40 m onto a rising bank has two thirds of itself still on the
+        level, and reading the gradient at the front alone says the whole 216 t
+        is on the bank - the same mistake ``speed_limit_over`` exists to stop a
+        train making with a speed restriction, and for the same reason.
+
+        The answer is the mean gradient weighted by how much of the train is on
+        each stretch, which is exact rather than sampled: every segment under the
+        train contributes the metres it covers. Where the train hangs off the
+        start of its path - a service not yet fully away - only the rail that
+        exists is weighted, so a train half onto the railway feels the gradient
+        of the half that is on it.
+        """
+        low = max(0.0, min(rear_m, front_m))
+        high = max(rear_m, front_m)
+        if high - low <= 0.0:
+            return self.grade_at(high)
+        total = 0.0
+        covered = 0.0
+        for entry in self.entries:
+            if entry.end_m <= low:
+                continue
+            if entry.start_m >= high:
+                break
+            span = min(entry.end_m, high) - max(entry.start_m, low)
+            total += entry.segment.grade_permille * span
+            covered += span
+        if covered <= 0.0:
+            return self.grade_at(high)
+        return total / covered
+
     def steepest_fall_ahead(self, chainage_m: float, distance_m: float) -> float:
         """The most adverse gradient between here and ``distance_m`` ahead.
 
@@ -370,6 +404,13 @@ class Path:
         braking distance will not stop where the level-track curve promised. A
         braking curve is computed against the worst gradient it will meet, which
         is what this returns, and never against the one under the train now.
+
+        What is under the train now is a separate question and a separate
+        answer: see ``grade_over``, which the callers take the worse of with
+        this. A scan that started at the rear instead would have the whole train
+        on the worst metre of itself for the whole braking run, which is
+        pessimistic by four seconds a stop on a 25 per thousand fall - a cost
+        big enough to distort the measurement this simulator exists to make.
         """
         worst = self.grade_at(chainage_m)
         limit = chainage_m + max(0.0, distance_m)
@@ -552,7 +593,8 @@ class Train:
         rate = dynamics.braking_rate_on_grade(
             self.stock, self.path.grade_at(self.chainage_m))
         first_pass = braking_distance(self.speed_ms, rate)
-        worst = self.path.steepest_fall_ahead(self.chainage_m, first_pass)
+        worst = min(self.path.grade_over(self.rear_m, self.chainage_m),
+                    self.path.steepest_fall_ahead(self.chainage_m, first_pass))
         rate = dynamics.braking_rate_on_grade(self.stock, worst)
         return (braking_distance(self.speed_ms, rate)
                 + dynamics.brake_buildup_distance_m(self.stock, self.speed_ms)
@@ -603,7 +645,8 @@ class Train:
         rather than reversing.
         """
         v0 = self.speed_ms
-        self.grade_permille = self.path.grade_at(self.chainage_m)
+        self.grade_permille = self.path.grade_over(self.rear_m,
+                                                  self.chainage_m)
 
         # The tick that ends at a stand is the one where the brake is already
         # applied and being modulated onto the mark, so the build-up limit does

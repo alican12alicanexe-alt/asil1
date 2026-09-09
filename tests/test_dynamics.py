@@ -276,20 +276,38 @@ class TestRunningTrains(unittest.TestCase):
         self.assertGreater(ran, 1400.0)
         self.assertLess(ran, 2500.0)
 
-    def test_a_climb_costs_time_but_a_fall_does_not_buy_any(self):
-        """Gradients are not symmetrical, and the reason is the speed limit.
+    def test_neither_a_climb_nor_a_fall_buys_time(self):
+        """Gradients are not symmetrical, and neither of them is free.
 
         Working up a bank, the train has less acceleration left over and takes
         longer to reach line speed - real time lost. Running down one it reaches
         line speed sooner, but line speed is line speed: the surplus has nowhere
-        to go, and what it does buy is spent again braking into the platform,
-        which now takes longer. Downhill is a wash; uphill is a cost.
+        to go, and what it does buy is spent again braking into the platform.
+
+        The fall used to come out a near-wash, four seconds against the level
+        railway's run. It is now eight, and the four seconds are not a
+        regression - they were bought by reading the gradient at the front of
+        the train. A platform zone is levelled and the open line between two of
+        them is not, so a train braking into B still has its own length behind
+        it on the bank, pushing: 216 t at 25 per thousand is 53 kN that the old
+        model could not see once the cab had reached the level. Path.grade_over
+        weights the gradient by how much of the train is on each stretch, and
+        the driver plans its curve against the worse of that and the worst
+        gradient ahead - so the brake now goes on for a push that is really
+        there.
+
+        Measured at dt 1.0: level 330 s, climbing 338 s, falling 338 s. On the
+        circuit, where the gradients are 15 rather than 25 and a train is
+        already slowing on gentle ones, this costs nothing at all - a lap alone
+        is 79:12 either way.
         """
         level = self._run()
         climbing = self._run(support.sloped_infra(25))
         falling = self._run(support.sloped_infra(-25))
         self.assertGreater(climbing["run_s"], level["run_s"] + 5.0)
-        self.assertLess(abs(falling["run_s"] - level["run_s"]), 5.0)
+        # The thing that must never happen: a fall handing back real time.
+        self.assertGreaterEqual(falling["run_s"], level["run_s"])
+        self.assertLess(falling["run_s"] - level["run_s"], 12.0)
 
     def test_a_train_berths_on_the_mark_whatever_the_gradient(self):
         """The driver's curve allows for the gradient, so the stop is unaffected."""
@@ -314,6 +332,67 @@ class TestRunningTrains(unittest.TestCase):
                     starts[grade] = train.chainage_m
                     break
         self.assertLess(starts[-20], starts[0])
+
+
+class TestGradientUnderTheTrain(unittest.TestCase):
+    """Gravity pulls on the whole train, not on the point at its front."""
+
+    def _path_and_joint(self, grade):
+        """A train's path on the sloped line, and where its gradient changes.
+
+        A platform zone is levelled and the open line between two of them is
+        not, so the first change is at the far end of the origin platform.
+        """
+        sim, _, _ = support.build_test_sim(
+            infra_spec=support.sloped_infra(grade))
+        while not sim.finished:
+            sim.step()
+            train = sim.trains.get("T1")
+            if train is not None and train.state == "running":
+                break
+        else:
+            self.fail("the train never ran")
+        previous = None
+        for entry in train.path.entries:
+            here = entry.segment.grade_permille
+            if previous is not None and here != previous:
+                return train.path, entry.start_m, previous, here, train
+            previous = here
+        self.fail("the sloped line has no gradient change on it")
+
+    def test_the_gradient_ramps_over_the_length_of_the_train(self):
+        path, joint, before, after, train = self._path_and_joint(-25)
+        length = train.stock.length_m
+        self.assertAlmostEqual(path.grade_over(joint - length, joint), before)
+        self.assertAlmostEqual(
+            path.grade_over(joint, joint + length), after)
+        # Halfway across the joint, half the train is on each.
+        self.assertAlmostEqual(
+            path.grade_over(joint - length / 2.0, joint + length / 2.0),
+            (before + after) / 2.0)
+
+    def test_the_nose_alone_is_wrong_by_the_whole_step(self):
+        """The error this replaces: a point at the front reads the far side."""
+        path, joint, before, after, train = self._path_and_joint(-25)
+        just_past = joint + 1.0
+        self.assertAlmostEqual(path.grade_at(just_past), after)
+        # Essentially all of the train is still on the near side.
+        self.assertLess(
+            abs(path.grade_over(just_past - train.stock.length_m, just_past)
+                - before),
+            abs(after - before) * 0.05)
+
+    def test_a_uniform_stretch_is_unchanged(self):
+        """Where nothing changes under the train, nothing changes in the answer.
+
+        This is why the level railways here - scenarios/ring included - measure
+        exactly what they measured before.
+        """
+        path, joint, _, after, train = self._path_and_joint(-25)
+        well_past = joint + 5.0 * train.stock.length_m
+        self.assertAlmostEqual(
+            path.grade_over(well_past - train.stock.length_m, well_past),
+            path.grade_at(well_past))
 
 
 if __name__ == "__main__":
