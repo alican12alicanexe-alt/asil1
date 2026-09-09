@@ -17,7 +17,35 @@ was computed from rather than taken on trust.
 
 Nothing here is retyped. Every value is read off the built scenario or computed
 by calling the same functions the simulator calls, so this report and a run
-agree by construction: if a derivation changes, this changes with it.
+agree by construction: if a derivation changes, this changes with it. The
+declared/derived split is read from the timetable file rather than guessed,
+because a built RollingStock cannot tell you which of the two a figure was.
+
+What it covers, and it is meant to be everything a train's motion obeys:
+
+    the unit          declared and derived, with the formula beside each -
+                      mass, effective mass, starting effort, base speed, power,
+                      three Davis coefficients, adhesion, build-up, jerk
+    model constants   g, tonnes per metre, the base-speed fraction, the creep
+                      speed below which P/v is meaningless, the Davis rates.
+                      None of these is in any scenario file and all of them
+                      move a result
+    traction          effort, resistance, net force and acceleration speed by
+                      speed, the time from rest, and the balancing speed said
+                      honestly rather than clamped at the train's own limit
+    resistance        Davis in kN and in N per tonne, what a coasting train
+                      does, and how far it drifts before stopping
+    braking           service and emergency, on the level and on the steepest
+                      gradients this railway actually has, plus build-up
+    gradient          what ten per thousand is worth in m/s2 and in kN, against
+                      the drag it is being compared with
+    the authority     braking + build-up + reaction + margin, which is the
+                      chain that sizes a block and the number a signalling
+                      system is really arguing about
+    the railway       per track length, speed and gradient weighted by length,
+                      the profiles as kilometres at each value, blocks, and on
+                      a circuit whether the gradients close
+    the plan          services, interval, calls, dwell, booked journey
 
 Stdlib only, like the simulator. ``--check`` reports the layout and whether the
 plan is workable; this reports the physics underneath both.
@@ -28,10 +56,12 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from trainsim.core import dynamics                        # noqa: E402
+from trainsim.core import dynamics, signalling             # noqa: E402
+from trainsim.core.driver import DriverConfig, stopping_distance  # noqa: E402
 from trainsim.core.units import (braking_distance, format_clock,  # noqa: E402
                                  kmh_to_ms, ms_to_kmh)
-from trainsim.scenario.loader import ScenarioError, load_scenario  # noqa: E402
+from trainsim.scenario.loader import (ScenarioError,       # noqa: E402
+                                      load_scenario, read_data_file)
 
 WIDTH = 78
 
@@ -51,8 +81,8 @@ def row(label, value, how=""):
 
 def scenario_section(scenario):
     cfg = scenario.sim_config
-    driver = scenario.driver_config
-    return [
+    spec = scenario.signalling_spec or {}
+    lines = [
         rule("SCENARIO"),
         row("name", scenario.name),
         row("directory", os.path.basename(os.path.abspath(scenario.directory))),
@@ -60,86 +90,178 @@ def scenario_section(scenario):
         row("window", "%s + %.0f min" % (format_clock(cfg.start_time_s),
                                          cfg.duration_s / 60.0)),
         row("timestep", "%.2f s" % cfg.dt),
-        row("signalling", scenario.signalling_spec.get("system", "-")),
-        row("reaction time", "%.1f s" % driver.reaction_time_s,
-            "driver; ATO systems override this to 0"),
-        row("safety margin", "%.0f m" % driver.safety_margin_m,
-            "stood off every danger point"),
-        row("stop tolerance", "%.1f m" % driver.stop_tolerance_m),
+        row("signalling", spec.get("system", "-")),
     ]
+    for key in sorted(k for k in spec if k != "system"):
+        lines.append(row(key.replace("_", " "), "%s" % spec[key]))
+    described = describe_signalling(spec)
+    if described:
+        lines += ["", "  " + described]
+    return lines
+
+
+def describe_signalling(spec):
+    """What the system says about itself, margins and latencies included."""
+    settings = {k: v for k, v in spec.items() if k != "system"}
+    try:
+        system = signalling.create(spec.get("system", "fixed_block_3aspect"),
+                                   **settings)
+    except (KeyError, TypeError, ValueError):
+        return ""
+    return system.describe()
 
 
 # ------------------------------------------------------------------------ stock
 
-def stock_section(stock, grades=(0.0,)):
-    """Declared, derived, and the two curves that follow from them."""
+def raw_specs(scenario):
+    """The scenario and timetable files as written, not as built.
+
+    Wanted for one thing: knowing which stock figures a scenario DECLARED and
+    which the simulator filled in. A built RollingStock cannot say - by the time
+    it exists, a derived mass and a declared one look identical - and getting
+    that split wrong would make the rest of this report a guess.
+    """
+    source = scenario.source or os.path.join(scenario.directory, "scenario.yaml")
+    spec = read_data_file(source)
+    timetable = read_data_file(os.path.join(
+        scenario.directory, spec.get("timetable", "timetable.yaml")))
+    infra = read_data_file(os.path.join(
+        scenario.directory, spec.get("infrastructure", "infrastructure.yaml")))
+    return spec, timetable, infra
+
+
+def declared_keys(timetable_spec, stock_id):
+    """Which keys this unit actually carries in the timetable file."""
+    for unit in (timetable_spec.get("stock") or []):
+        if isinstance(unit, dict) and str(unit.get("id")) == str(stock_id):
+            return set(unit)
+    return set()
+
+
+def stock_figures(stock):
+    """``(key, label, value, derivation)`` for every figure a train obeys.
+
+    ``key`` is the timetable key that would declare it, or None where nothing
+    can - an adhesion ceiling is a consequence, not a setting.
+    """
     m_eff = dynamics.effective_mass_kg(stock)
-    v_max = stock.max_speed_ms
-    base = dynamics.base_speed_ms(stock)
-    lines = [
+    factor = 1.0 + stock.rotating_mass_pct / 100.0
+    return [
+        ("length_m", "length", "%.0f m" % stock.length_m, ""),
+        ("max_speed_kmh", "max speed", "%.0f km/h" % ms_to_kmh(stock.max_speed_ms),
+         "a gearing limit, not a power one - see the traction curve"),
+        ("max_accel", "max accel", "%.2f m/s2" % stock.max_accel,
+         "what the driver may ask for at a stand"),
+        ("service_brake", "service brake", "%.2f m/s2" % stock.service_brake, ""),
+        ("emergency_brake", "emergency brake", "%.2f m/s2" % stock.emergency_brake,
+         "degraded cases, and what a follower credits its leader with"),
+        ("mass_t", "mass", "%.1f t" % stock.mass_t,
+         "%.1f t/m x %.0f m" % (dynamics.MASS_T_PER_M, stock.length_m)),
+        ("rotating_mass_pct", "rotating mass", "%.0f %%" % stock.rotating_mass_pct,
+         "wheels, gears and armatures have to be spun up too"),
+        (None, "effective mass", "%.1f t" % (m_eff / 1000.0),
+         "%.1f t x %.2f - the mass in every f = ma here" % (stock.mass_t, factor)),
+        (None, "starting effort", "%.1f kN" % (stock.starting_effort_n / 1000.0),
+         "max_accel x effective mass"),
+        (None, "base speed", "%.1f km/h" % ms_to_kmh(dynamics.base_speed_ms(stock)),
+         "power / starting effort - where constant effort ends"),
+        ("power_kw", "power", "%.1f kW" % stock.power_kw,
+         "starting effort x %.0f %% of max speed"
+         % (100.0 * dynamics.BASE_SPEED_FRACTION)),
+        (None, "", "%.1f kW/t" % (stock.power_kw / stock.mass_t),
+         "10-20 is the normal band for a unit of this kind"),
+        ("davis_a_n", "davis A", "%.1f N" % stock.davis_a_n,
+         "%.1f N/t x %.1f t - journal and rolling, barely varies"
+         % (dynamics.DAVIS_A_N_PER_T, stock.mass_t)),
+        ("davis_b_n_per_ms", "davis B", "%.2f N/(m/s)" % stock.davis_b_n_per_ms,
+         "%.2f x %.1f t - flange and track, linear in speed"
+         % (dynamics.DAVIS_B_N_PER_MS_PER_T, stock.mass_t)),
+        ("davis_c_n_per_ms2", "davis C", "%.3f N/(m/s)2" % stock.davis_c_n_per_ms2,
+         "%.1f + %.3f/m x %.0f m - drag, scales with length not mass"
+         % (dynamics.DAVIS_C_N_PER_MS2_BASE,
+            dynamics.DAVIS_C_N_PER_MS2_PER_M, stock.length_m)),
+        ("adhesion", "adhesion mu", "%.2f" % stock.adhesion,
+         "dry rail; the ceiling on any brake rate"),
+        (None, "adhesion ceiling", "%.2f m/s2" % dynamics.adhesion_limit(stock),
+         "mu x g - service brake uses %.0f %% of it"
+         % (100.0 * stock.service_brake / dynamics.adhesion_limit(stock))),
+        ("brake_buildup_s", "brake build-up", "%.1f s" % stock.brake_buildup_s,
+         "a demand is not an application: air has to move"),
+        (None, "jerk limit", "%.2f m/s3" % dynamics.jerk_limit_ms3(stock),
+         "service brake / build-up time, applied to traction too"),
+        ("etcs_level", "ETCS level", stock.etcs_level,
+         "what the onboard can read"),
+        ("tims", "integrity report", "yes" if stock.tims else "no",
+         "can the train confirm its rear is still there"),
+        ("v2v", "radio link", "yes" if stock.v2v else "no",
+         "train to train - virtual coupling needs all three"),
+    ]
+
+
+def stock_section(stock, grades=(0.0,), declared=frozenset()):
+    lines = ["", rule("ROLLING STOCK  %s  (%s)" % (stock.id, stock.name)), ""]
+
+    figures = stock_figures(stock)
+    given = [f for f in figures if f[0] in declared]
+    derived = [f for f in figures if f[0] not in declared]
+
+    lines.append("  DECLARED - what the timetable file actually says")
+    for _, label, value, note in given:
+        lines.append(row(label, value, note))
+    lines.append("")
+    lines.append("  DERIVED - filled in by RollingStock.__post_init__ and dynamics")
+    for _, label, value, how in derived:
+        lines.append(row(label, value, how))
+
+    lines += constants_block(stock)
+    lines += traction_table(stock)
+    lines += resistance_table(stock)
+    lines += braking_table(stock, grades)
+    lines += gradient_block(stock, grades)
+    return lines
+
+
+def constants_block(stock):
+    """The numbers that are not the train's and not the railway's.
+
+    Every one of them is a modelling choice with a defence in dynamics.py, and
+    every one of them moves a result, so they belong in a report that claims to
+    say where a figure came from.
+    """
+    return [
         "",
-        rule("ROLLING STOCK  %s  (%s)" % (stock.id, stock.name)),
-        "",
-        "  DECLARED - these are the only stock figures in the timetable file",
-        row("length", "%.0f m" % stock.length_m),
-        row("max speed", "%.0f km/h" % ms_to_kmh(v_max)),
-        row("max accel", "%.2f m/s2" % stock.max_accel, "at a stand"),
-        row("service brake", "%.2f m/s2" % stock.service_brake),
-        row("emergency brake", "%.2f m/s2" % stock.emergency_brake),
-        row("fitment", "ETCS %s" % stock.etcs_level,
-            "integrity %s, radio link %s"
-            % ("yes" if stock.tims else "no", "yes" if stock.v2v else "no")),
-        "",
-        "  DERIVED - nothing below was declared; this is where each came from",
-        row("mass", "%.1f t" % stock.mass_t,
-            "%.1f t/m x %.0f m" % (dynamics.MASS_T_PER_M, stock.length_m)),
-        row("effective mass", "%.1f t" % (m_eff / 1000.0),
-            "%.1f t x %.2f  (rotating parts %.0f %%)"
-            % (stock.mass_t, 1.0 + stock.rotating_mass_pct / 100.0,
-               stock.rotating_mass_pct)),
-        row("starting effort", "%.1f kN" % (stock.starting_effort_n / 1000.0),
-            "max_accel x effective mass"),
-        row("base speed", "%.1f km/h" % ms_to_kmh(base),
-            "%.0f %% of max speed - where constant effort ends"
-            % (100.0 * dynamics.BASE_SPEED_FRACTION)),
-        row("power", "%.1f kW" % stock.power_kw,
-            "starting effort x base speed"),
-        row("", "%.1f kW/t" % (stock.power_kw / stock.mass_t),
-            "10-20 is the normal band for this kind of unit"),
-        row("davis A", "%.1f N" % stock.davis_a_n,
-            "%.1f N/t x %.1f t" % (dynamics.DAVIS_A_N_PER_T, stock.mass_t)),
-        row("davis B", "%.2f N/(m/s)" % stock.davis_b_n_per_ms,
-            "%.2f x %.1f t" % (dynamics.DAVIS_B_N_PER_MS_PER_T, stock.mass_t)),
-        row("davis C", "%.3f N/(m/s)2" % stock.davis_c_n_per_ms2,
-            "%.1f + %.3f/m x %.0f m"
-            % (dynamics.DAVIS_C_N_PER_MS2_BASE,
-               dynamics.DAVIS_C_N_PER_MS2_PER_M, stock.length_m)),
-        row("adhesion ceiling", "%.2f m/s2" % dynamics.adhesion_limit(stock),
-            "mu %.2f x g - no brake may exceed this" % stock.adhesion),
-        row("brake build-up", "%.1f s" % stock.brake_buildup_s,
-            "a demand is not an application"),
-        row("jerk limit", "%.2f m/s3" % dynamics.jerk_limit_ms3(stock)),
+        "  MODEL CONSTANTS - trainsim/core/dynamics.py, not declared anywhere",
+        row("gravity", "%.5f m/s2" % dynamics.G),
+        row("mass per metre", "%.1f t/m" % dynamics.MASS_T_PER_M,
+            "a 23 m vehicle of 40-50 t is the usual shape"),
+        row("base speed", "%.0f %% of v_max" % (100 * dynamics.BASE_SPEED_FRACTION),
+            "where a unit given no power rating breaks from effort to power"),
+        row("creep speed", "%.1f m/s" % dynamics._CREEP_MS,
+            "below it P/v is meaningless, so starting effort applies"),
+        row("davis A", "%.1f N/t" % dynamics.DAVIS_A_N_PER_T),
+        row("davis B", "%.2f N/(m/s)/t" % dynamics.DAVIS_B_N_PER_MS_PER_T),
+        row("davis C", "%.1f + %.3f per m"
+            % (dynamics.DAVIS_C_N_PER_MS2_BASE, dynamics.DAVIS_C_N_PER_MS2_PER_M)),
         "",
         "  R(v) = %.1f + %.2f v + %.3f v^2   newtons, v in m/s"
         % (stock.davis_a_n, stock.davis_b_n_per_ms, stock.davis_c_n_per_ms2),
+        "  m_eff a = F(v) - R(v) - m g sin(theta)   is the whole force balance",
     ]
-    lines += traction_table(stock)
-    lines += braking_table(stock, grades)
-    return lines
 
 
 def speeds_for(stock):
     """A ladder of speeds worth tabulating, base speed and line speed included."""
     top = ms_to_kmh(stock.max_speed_ms)
-    wanted = {0.0, 20.0, ms_to_kmh(dynamics.base_speed_ms(stock)), 40.0,
-              60.0, 80.0, 100.0, 120.0, top}
+    wanted = {0.0, ms_to_kmh(dynamics._CREEP_MS), 20.0,
+              ms_to_kmh(dynamics.base_speed_ms(stock)), 40.0,
+              60.0, 80.0, 100.0, 120.0, 140.0, top}
     return sorted(v for v in wanted if v <= top + 1e-9)
 
 
 def traction_table(stock):
     lines = [
         "",
-        "  THE TRACTION CURVE - flat to base speed, then power-limited at P/v",
+        "  TRACTION - flat to base speed, then power-limited at P/v",
         "",
         "    %8s %10s %11s %10s %10s %11s"
         % ("km/h", "effort kN", "resist kN", "net kN", "accel", "0-v in s"),
@@ -149,13 +271,13 @@ def traction_table(stock):
         v = kmh_to_ms(kmh)
         effort = dynamics.tractive_effort_n(stock, v)
         resist = dynamics.resistance_n(stock, v)
-        net = effort - resist
-        accel = dynamics.traction_accel(stock, v) - dynamics.resistance_accel(
-            stock, v)
-        took, ran = run_up_to(stock, v)
-        lines.append("    %8.0f %10.1f %11.2f %10.1f %10.3f %11s"
-                     % (kmh, effort / 1000.0, resist / 1000.0, net / 1000.0,
-                        accel, "-" if took is None else "%.1f" % took))
+        accel = (dynamics.traction_accel(stock, v)
+                 - dynamics.resistance_accel(stock, v))
+        took, _ = run_up_to(stock, v)
+        lines.append("    %8.1f %10.1f %11.2f %10.1f %10.3f %11s"
+                     % (kmh, effort / 1000.0, resist / 1000.0,
+                        (effort - resist) / 1000.0, accel,
+                        "-" if took is None else "%.1f" % took))
     took, ran = run_up_to(stock, stock.max_speed_ms)
     if took is not None:
         lines.append("")
@@ -174,6 +296,58 @@ def traction_table(stock):
             lines.append("                        (%.0f km/h if the gearing "
                          "allowed it - a model artefact, not a claim)"
                          % ms_to_kmh(unclamped))
+    return lines
+
+
+def resistance_table(stock):
+    """Davis in the units it is usually quoted in, plus what coasting does."""
+    lines = [
+        "",
+        "  RESISTANCE - and what the train does with no traction and no brake",
+        "",
+        "    %8s %11s %10s %14s %16s"
+        % ("km/h", "resist kN", "N per t", "coasting m/s2", "coasting to stop"),
+        "    " + "-" * 62,
+    ]
+    for kmh in speeds_for(stock):
+        if kmh <= 0.0:
+            continue
+        v = kmh_to_ms(kmh)
+        resist = dynamics.resistance_n(stock, v)
+        coast = dynamics.coasting_accel(stock, v)
+        lines.append("    %8.1f %11.2f %10.1f %14.4f %14.0f m"
+                     % (kmh, resist / 1000.0, resist / stock.mass_t, coast,
+                        coast_to_stop(stock, v)))
+    return lines
+
+
+def coast_to_stop(stock, speed_ms, dt=0.5):
+    """How far a train drifts before Davis alone brings it to rest, on the level."""
+    v, x = speed_ms, 0.0
+    while v > 0.05 and x < 1e6:
+        v += dynamics.coasting_accel(stock, v) * dt
+        x += max(v, 0.0) * dt
+    return x
+
+
+def gradient_block(stock, grades):
+    """What a gradient is worth, in the units the force balance works in."""
+    per = dynamics.grade_accel(stock, 10.0)
+    worst = min(grades)
+    lines = [
+        "",
+        "  GRADIENT",
+        row("per 10 permille", "%.4f m/s2" % per,
+            "g x 0.010 x mass / effective mass"),
+        row("", "%.1f kN" % (per * dynamics.effective_mass_kg(stock) / 1000.0),
+            "against %.1f kN of drag at line speed"
+            % (dynamics.resistance_n(stock, stock.max_speed_ms) / 1000.0)),
+    ]
+    if worst < 0.0:
+        rate = dynamics.braking_rate_on_grade(stock, worst)
+        lines.append(row("steepest fall here", "%+g permille" % worst,
+                         "service brake worth %.3f m/s2 instead of %.2f"
+                         % (rate, stock.service_brake)))
     return lines
 
 
@@ -221,32 +395,114 @@ def balancing_unclamped(stock, grade_permille=0.0, ceiling_ms=None):
 
 
 def braking_table(stock, grades=(0.0,)):
+    def header(grade):
+        return "%+g permille" % grade if grade else "level"
+
     lines = [
         "",
         "  BRAKING - the driver's curve, which ignores Davis on purpose",
         "",
         "    %8s" % "km/h"
-        + "".join("%14s" % ("%+g permille" % g if g else "level") for g in grades)
-        + "%12s" % "build-up m",
-        "    " + "-" * (8 + 14 * len(grades) + 12),
+        + "".join("%14s" % header(g) for g in grades)
+        + "%13s%12s" % ("emergency", "build-up m"),
+        "    " + "-" * (8 + 14 * len(grades) + 25),
     ]
     for kmh in speeds_for(stock):
-        if kmh <= 0:
+        if kmh <= 1.0:
             continue
         v = kmh_to_ms(kmh)
-        cells = ""
-        for grade in grades:
-            rate = dynamics.braking_rate_on_grade(stock, grade)
-            cells += "%14.1f" % braking_distance(v, rate)
-        lines.append("    %8.0f%s%12.1f"
-                     % (kmh, cells,
+        cells = "".join(
+            "%14.1f" % braking_distance(
+                v, dynamics.braking_rate_on_grade(stock, g)) for g in grades)
+        emergency = braking_distance(
+            v, dynamics.braking_rate_on_grade(stock, 0.0, emergency=True))
+        lines.append("    %8.1f%s%13.1f%12.1f"
+                     % (kmh, cells, emergency,
                         dynamics.brake_buildup_distance_m(stock, v)))
+    lines.append("")
+    lines.append("    the emergency column is level track: it is what a follower "
+                 "credits")
+    lines.append("    the train in front with under relative-braking separation.")
+    return lines
+
+
+# ---------------------------------------------------------------- the authority
+
+def driven_by_ato(system):
+    """Whether this system drives the train rather than showing a driver a signal.
+
+    Asked of the system rather than of the scenario's own reaction time: a
+    scenario may declare 0.0 for its own reasons, and that would not make
+    lineside signalling automatic.
+    """
+    reference = DriverConfig(reaction_time_s=2.0)
+    return signalling.fit_driver(reference, system).reaction_time_s == 0.0
+
+
+def authority_section(scenario, stock, grades):
+    """The four terms that turn a speed into the room a train needs.
+
+    This is the chain Driver.decide applies and the one scenario.checks sizes
+    blocks against, so it is the number a signalling system is really arguing
+    about. Two of the four belong to the driver rather than to the train, and
+    one of those two - reaction time - is nil under ATO, which is where a good
+    deal of what the cab systems are worth actually comes from.
+    """
+    config = scenario.driver_config
+    system = scenario.signalling_spec.get("system", "fixed_block_3aspect")
+    ato = signalling.fit_driver(config, system)
+    worst = min(grades)
+    columns = [("level m", 0.0, config)]
+    if worst:
+        columns.append(("on %+g m" % worst, worst, config))
+    if ato.reaction_time_s != config.reaction_time_s:
+        columns.append(("as driven m", worst, ato))
+    lines = [
+        "",
+        "  MOVEMENT AUTHORITY NEEDED - braking + build-up + reaction + margin",
+        "",
+        "    %8s" % "km/h" + "".join("%14s" % head for head, _, _ in columns),
+        "    " + "-" * (8 + 14 * len(columns)),
+    ]
+    for kmh in speeds_for(stock):
+        if kmh <= 1.0:
+            continue
+        v = kmh_to_ms(kmh)
+        lines.append("    %8.1f%s"
+                     % (kmh, "".join("%14.1f" % stopping_distance(
+                         stock, cfg, v, grade) for _, grade, cfg in columns)))
+    lines += [
+        "",
+        row("driver reaction", "%.1f s" % config.reaction_time_s,
+            "as the scenario declares it"),
+        row("as driven", "%.1f s" % ato.reaction_time_s,
+            "%s puts the authority on the desk - no signal to read"
+            % system if driven_by_ato(system)
+            else "%s is read from the lineside" % system),
+        row("safety margin", "%.0f m" % config.safety_margin_m,
+            "stood off every danger point"),
+        row("stop tolerance", "%.1f m" % config.stop_tolerance_m,
+            "how near the mark counts as berthed"),
+        row("speed deadband", "%.2f m/s" % config.speed_deadband_ms,
+            "avoids hunting around the target"),
+    ]
+    interlocking = scenario.interlocking_spec or {}
+    if interlocking:
+        lines.append("")
+        lines.append("  INTERLOCKING")
+        for key in sorted(interlocking):
+            label = key
+            for suffix in ("_m", "_s"):          # a unit, not part of the name
+                if label.endswith(suffix):
+                    label = label[:-len(suffix)]
+            lines.append(row(label.replace("_", " ")[:18],
+                             "%s" % interlocking[key]))
     return lines
 
 
 # --------------------------------------------------------------- infrastructure
 
-def infrastructure_section(scenario):
+def infrastructure_section(scenario, infra_spec=None):
     infra = scenario.infrastructure
     network = infra.network
     segments = list(network.segments.values())
@@ -262,6 +518,18 @@ def infrastructure_section(scenario):
         row("signals", "%d" % len(infra.signals)),
         row("points", "%d" % len(infra.points)),
         row("routes", "%d" % len(infra.routes)),
+    ]
+    defaults = (infra_spec or {}).get("defaults") or {}
+    if defaults:
+        lines.append("")
+        lines.append("  DEFAULTS - what the drawing applies where a track says nothing")
+        for key in sorted(defaults):
+            label = key
+            for suffix in ("_m", "_kmh", "_permille"):
+                if label.endswith(suffix):
+                    label = label[:-len(suffix)]
+            lines.append(row(label.replace("_", " "), "%s" % defaults[key]))
+    lines += [
         "",
         "  PER TRACK - speed and gradient weighted by length, not by count",
         "",
@@ -402,19 +670,27 @@ def notable_grades(scenario):
     """
     grades = [segment.grade_permille
               for segment in scenario.infrastructure.network.segments.values()]
-    worst, best = min(grades), max(grades)
-    return tuple(g for g in (0.0, worst, best) if g == 0.0 or g)
+    wanted = []
+    for grade in (0.0, min(grades), max(grades)):
+        if grade not in wanted:          # a level railway wants one column
+            wanted.append(grade)
+    return tuple(wanted)
 
 
 def report(scenario):
+    _, timetable_spec, infra_spec = raw_specs(scenario)
     lines = scenario_section(scenario)
     grades = notable_grades(scenario)
     seen = []
     for service in scenario.timetable.services:
-        if service.stock.id not in seen:
-            seen.append(service.stock.id)
-            lines += stock_section(service.stock, grades)
-    lines += infrastructure_section(scenario)
+        stock = service.stock
+        if stock.id in seen:
+            continue
+        seen.append(stock.id)
+        lines += stock_section(stock, grades,
+                               declared_keys(timetable_spec, stock.id))
+        lines += authority_section(scenario, stock, grades)
+    lines += infrastructure_section(scenario, infra_spec)
     lines += timetable_section(scenario)
     return "\n".join(line.rstrip() for line in lines)
 

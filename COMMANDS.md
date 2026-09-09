@@ -63,12 +63,22 @@ quietly. `stats.py` prints them with the formula beside each one:
                           10.8 kW/t   10-20 is the normal band for this kind of unit
 ```
 
-Then the traction curve speed by speed, the braking distances on the level and
-on the railway's own steepest gradients, the speed and gradient profiles as
-kilometres of railway at each value, block lengths, and what the timetable
-books. On a circuit with gradients it also checks the thing a circuit has to
-satisfy — that the two running lines rise by equal and opposite amounts, so a
-lap comes back to the height it started at.
+The declared/derived split is read from the timetable file rather than guessed:
+a built `RollingStock` cannot tell you which of the two a figure was, and a
+scenario that *does* declare its mass or power is reported as declaring it.
+
+After that, everything else a train's motion obeys:
+
+| section | what is in it |
+|---|---|
+| model constants | `g`, tonnes per metre, the base-speed fraction, the creep speed below which `P/v` is meaningless, the Davis rates — none of them in any scenario file, all of them moving a result |
+| traction | effort, resistance, net force, acceleration and time from rest, speed by speed; and the balancing speed said honestly rather than clamped at the train's own limit |
+| resistance | Davis in kN and in N per tonne, what a coasting train does, how far it drifts before stopping |
+| braking | service and emergency, on the level and on the steepest gradients this railway actually has, plus build-up |
+| gradient | what ten per thousand is worth in m/s² and in kN, against the drag it is being compared with |
+| movement authority | braking + build-up + reaction + margin — the chain that sizes a block, and the number a signalling system is really arguing about |
+| the railway | per track length, speed and gradient weighted by length; the profiles as kilometres of railway at each value; blocks; and on a circuit, whether the gradients close so a lap comes back to the height it started at |
+| the plan | services, booked interval, calls, dwell, booked journey |
 
 Nothing is retyped: every figure is read off the built scenario or computed by
 calling the functions the simulator calls, so this report and a run cannot
