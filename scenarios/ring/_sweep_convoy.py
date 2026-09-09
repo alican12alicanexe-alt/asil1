@@ -187,6 +187,13 @@ sys.path.insert(0, HERE)
 #: circuit's own twenty-two-call lap instead, where virtual coupling holds 69 s
 #: and what it is queueing for is a platform road.
 STOPPING = "--stopping" in sys.argv
+if STOPPING:
+    # Taken out of argv, not just read from it. Everything below positions its
+    # arguments - headway first, cap second - and a flag left in the list is
+    # read as a headway: ``--stopping`` on its own used to die on
+    # int('--stopping') rather than run the stopping flight. Same removal
+    # _generate_convoy.py does, for the same reason.
+    sys.argv.remove("--stopping")
 
 #: What the flight is, for the line every table prints above itself. A sweep
 #: that says it is measuring a non-stop lap when it is measuring twenty-two
@@ -461,7 +468,8 @@ def headways(uncoupled_kmh=UNCOUPLED_KMH):
 
 if __name__ == "__main__":
     if "--headway" in sys.argv:
-        headways()
+        sys.argv.remove("--headway")
+        headways(int(sys.argv[1]) if len(sys.argv) > 1 else UNCOUPLED_KMH)
     else:
         main(int(sys.argv[1]) if len(sys.argv) > 1 else HEADWAY_S,
              int(sys.argv[2]) if len(sys.argv) > 2 else UNCOUPLED_KMH)
