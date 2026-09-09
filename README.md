@@ -37,6 +37,7 @@ python scenarios/ring/_sweep_express.py etcs_moving_block   # without the platfo
 python scenarios/ring/_sweep_convoy.py                      # can a rule build one
 python scenarios/ring/_generate_convoy.py 60                # rebuild that flight
 python run.py scenarios/ring/scenario-convoy-stopping.yaml --headless
+python run.py scenarios/ring/scenario-grade.yaml --compare      # the same circuit, graded
 python run_tests.py                             # 289 tests, ~15 s
 
 streamlit run app.py                            # browser front end (optional)
@@ -114,6 +115,20 @@ to 64 second intervals, against seventeen second pairs on the non-stop flight
 at the same booking. What the follower closes up to is a platform the train in
 front has not left, so closing up means standing at a signal rather than
 coupling.
+
+**Gradients cost the lap almost nothing and the braking distance a good deal.**
+`scenario-grade.yaml` is the circuit with a realistic profile on it — ruling
+gradient 15 per thousand, mean 8, summing to zero round the lap because the down
+line carries the up line's entries and the builder negates a pair it is asked for
+in reverse. A lap with the railway to itself takes 79:12 against the level
+railway's 79:09: three seconds in seventy kilometres, because every metre climbed
+is given back. What does not cancel is the braking distance. On the steepest fall
+the service brake is worth 0.873 m/s² instead of 1.0, stopping from 80 km/h takes
+283 m instead of 247, and `--check` reports the signal spacing requirement rising
+from 339 m to 378 m — the tightest block margin on the circuit falls from +61 m to
++22 m. At a 300 s booking none of the three systems can be made to care; whether
+the graded circuit holds a tighter interval than the level one is a sweep that has
+not been run.
 
 **At a junction it buys little.** `tests/railways/junction` runs the same flat
 junction under every system and against a flyover control. Moving block gains far

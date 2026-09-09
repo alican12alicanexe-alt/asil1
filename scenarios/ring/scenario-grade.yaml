@@ -1,0 +1,72 @@
+# ring-grade - the circuit with the ground put back under it.
+#
+#   python run.py scenarios/ring/scenario-grade.yaml --check
+#   python run.py scenarios/ring/scenario-grade.yaml --headless
+#   python run.py scenarios/ring/scenario-grade.yaml --compare
+#   python scenarios/ring/_generate_grade.py        (rebuild the timetable)
+#
+# WHAT THIS IS
+#
+# scenarios/ring is dead level. This is the same railway - same stations, same
+# kilometres, same blocks, same crossovers, same horseshoes, same speed profile,
+# same unit, same flight - with a gradient profile laid on it: ruling gradient
+# 15 per thousand, mean 8, two shelves at 1 and 2, and the two steepest
+# stretches placed where the line was already slow. infrastructure-grade.yaml
+# carries the profile and the argument for it.
+#
+# One variable. Run it against scenarios/ring and the difference is the ground.
+#
+# WHAT THE GRADIENTS COST
+#
+# Almost nothing round a lap, and that is not a disappointment - it is the
+# arithmetic. The profile sums to zero over the circuit by construction, so
+# every metre climbed is given back, and a lap with the railway to itself takes
+# 79 min 12 s against the level railway's 79 min 09 s. Three seconds in seventy
+# kilometres: what does not cancel is the time lost accelerating away from a
+# platform on a bank, because that is where the train is slowest and the
+# gradient bites hardest, and here it is nearly balanced by the descents.
+#
+# The interesting quantity is not the lap. It is the braking distance, which
+# does not cancel: on the 14 down into Akyurt 3 the service brake is worth
+# 0.873 m/s2 instead of 1.0, and stopping from 80 km/h takes 283 m instead of
+# 247. Both cab systems can see that and shorten the following distance to
+# match; fixed block cannot, and has to hold whole blocks either way. Whether
+# 36 m of braking distance is worth anything at a 300 s interval is what
+# --compare answers.
+#
+# WHY THE TIMETABLE IS ITS OWN FILE
+#
+# Because the times are different. timetable.yaml books what a lap achieves on
+# the level railway; timetable-grade.yaml books what it achieves on this one.
+# Running the level plan over the graded railway would show a delay that is an
+# artefact of the wrong plan rather than anything a signalling system did.
+
+name: ring-grade
+description: "The 70 km circuit with a realistic gradient profile - ruling 15 per thousand, summing to zero round the lap."
+
+infrastructure: infrastructure-grade.yaml
+timetable: timetable-grade.yaml
+
+simulation:
+  dt: 1.0
+  start_time: "06:57:00"
+  duration_s: 12000
+  strict: false
+
+signalling:
+  system: fixed_block_3aspect
+  sighting_distance_m: 250
+
+interlocking:
+  route_request_distance_m: 2000
+  route_request_lead_s: 60
+  automatic_signals: false
+  route_lookahead: 2
+
+driver:
+  reaction_time_s: 2.0
+  safety_margin_m: 25.0
+
+view:
+  title: "ring-grade - a lap over the ridge"
+  speed: 20
