@@ -203,7 +203,8 @@ def stock_figures(stock):
     ]
 
 
-def stock_section(stock, grades=(0.0,), declared=frozenset()):
+def stock_section(stock, grades=(0.0,), declared=frozenset(),
+                  line_kmh=None):
     lines = ["", rule("ROLLING STOCK  %s  (%s)" % (stock.id, stock.name)), ""]
 
     figures = stock_figures(stock)
@@ -219,10 +220,19 @@ def stock_section(stock, grades=(0.0,), declared=frozenset()):
         lines.append(row(label, value, how))
 
     lines += constants_block(stock)
-    lines += traction_table(stock)
-    lines += resistance_table(stock)
-    lines += braking_table(stock, grades)
-    lines += gradient_block(stock, grades)
+    lines += traction_table(stock, line_kmh)
+    lines += resistance_table(stock, line_kmh)
+    lines += braking_table(stock, grades, line_kmh)
+    lines += gradient_block(stock, grades, line_kmh)
+    if line_kmh is not None and ms_to_kmh(stock.max_speed_ms) > line_kmh + 1e-9:
+        lines += [
+            "",
+            "  * above the %.0f km/h this railway permits anywhere. The unit is"
+            % line_kmh,
+            "    a %.0f km/h unit and never gets to use it here, so nothing on"
+            % ms_to_kmh(stock.max_speed_ms),
+            "    this railway should be quoted off that row.",
+        ]
     return lines
 
 
@@ -254,16 +264,39 @@ def constants_block(stock):
     ]
 
 
-def speeds_for(stock):
-    """A ladder of speeds worth tabulating, base speed and line speed included."""
+def speeds_for(stock, line_kmh=None):
+    """A ladder of speeds worth tabulating, up to what the RAILWAY allows.
+
+    Not up to what the train could do. The ring unit is a 90 km/h unit on an
+    80 km/h railway, so a table that runs to 90 is quoting a speed no train on
+    it ever reaches - and 90 is the figure that then gets repeated as though it
+    were line speed. Where the train's own limit is higher it appears as one
+    marked row at the end, so the difference is visible rather than silently
+    dropped or silently used.
+    """
     top = ms_to_kmh(stock.max_speed_ms)
+    limit = top if line_kmh is None else min(top, line_kmh)
     wanted = {0.0, ms_to_kmh(dynamics._CREEP_MS), 20.0,
               ms_to_kmh(dynamics.base_speed_ms(stock)), 40.0,
-              60.0, 80.0, 100.0, 120.0, 140.0, top}
-    return sorted(v for v in wanted if v <= top + 1e-9)
+              60.0, 80.0, 100.0, 120.0, 140.0, limit}
+    ladder = sorted(v for v in wanted if v <= limit + 1e-9)
+    if top > limit + 1e-9:
+        ladder.append(top)
+    return ladder
 
 
-def traction_table(stock):
+def above_the_line(kmh, line_kmh):
+    """Mark a row the railway does not permit anywhere."""
+    return line_kmh is not None and kmh > line_kmh + 1e-9
+
+
+def line_speed_kmh(scenario):
+    """The highest speed this railway permits anywhere on it."""
+    segments = scenario.infrastructure.network.segments.values()
+    return ms_to_kmh(max(s.max_speed_ms for s in segments))
+
+
+def traction_table(stock, line_kmh=None):
     lines = [
         "",
         "  TRACTION - flat to base speed, then power-limited at P/v",
@@ -272,22 +305,26 @@ def traction_table(stock):
         % ("km/h", "effort kN", "resist kN", "net kN", "accel", "0-v in s"),
         "    " + "-" * 64,
     ]
-    for kmh in speeds_for(stock):
+    for kmh in speeds_for(stock, line_kmh):
         v = kmh_to_ms(kmh)
         effort = dynamics.tractive_effort_n(stock, v)
         resist = dynamics.resistance_n(stock, v)
         accel = (dynamics.traction_accel(stock, v)
                  - dynamics.resistance_accel(stock, v))
         took, _ = run_up_to(stock, v)
-        lines.append("    %8.1f %10.1f %11.2f %10.1f %10.3f %11s"
-                     % (kmh, effort / 1000.0, resist / 1000.0,
+        lines.append("    %7.1f%s %10.1f %11.2f %10.1f %10.3f %11s"
+                     % (kmh, "*" if above_the_line(kmh, line_kmh) else " ",
+                        effort / 1000.0, resist / 1000.0,
                         (effort - resist) / 1000.0, accel,
                         "-" if took is None else "%.1f" % took))
-    took, ran = run_up_to(stock, stock.max_speed_ms)
+    reachable = (stock.max_speed_ms if line_kmh is None
+                 else min(stock.max_speed_ms, kmh_to_ms(line_kmh)))
+    took, ran = run_up_to(stock, reachable)
     if took is not None:
         lines.append("")
-        lines.append("    rest to line speed: %.1f s and %.0f m, on the level"
-                     % (took, ran))
+        lines.append("    rest to %.0f km/h, the fastest this railway is posted"
+                     " at: %.1f s and %.0f m, level"
+                     % (ms_to_kmh(reachable), took, ran))
     balance = balancing_unclamped(stock)
     lines.append("    balancing speed   : %s"
                  % ("beyond %.0f km/h - the speed limit is the gearing, not the "
@@ -304,7 +341,7 @@ def traction_table(stock):
     return lines
 
 
-def resistance_table(stock):
+def resistance_table(stock, line_kmh=None):
     """Davis in the units it is usually quoted in, plus what coasting does."""
     lines = [
         "",
@@ -314,14 +351,15 @@ def resistance_table(stock):
         % ("km/h", "resist kN", "N per t", "coasting m/s2", "coasting to stop"),
         "    " + "-" * 62,
     ]
-    for kmh in speeds_for(stock):
+    for kmh in speeds_for(stock, line_kmh):
         if kmh <= 0.0:
             continue
         v = kmh_to_ms(kmh)
         resist = dynamics.resistance_n(stock, v)
         coast = dynamics.coasting_accel(stock, v)
-        lines.append("    %8.1f %11.2f %10.1f %14.4f %14.0f m"
-                     % (kmh, resist / 1000.0, resist / stock.mass_t, coast,
+        lines.append("    %7.1f%s %11.2f %10.1f %14.4f %14.0f m"
+                     % (kmh, "*" if above_the_line(kmh, line_kmh) else " ",
+                        resist / 1000.0, resist / stock.mass_t, coast,
                         coast_to_stop(stock, v)))
     return lines
 
@@ -335,18 +373,21 @@ def coast_to_stop(stock, speed_ms, dt=0.5):
     return x
 
 
-def gradient_block(stock, grades):
+def gradient_block(stock, grades, line_kmh=None):
     """What a gradient is worth, in the units the force balance works in."""
     per = dynamics.grade_accel(stock, 10.0)
     worst = min(grades)
+    fastest = (stock.max_speed_ms if line_kmh is None
+               else min(stock.max_speed_ms, kmh_to_ms(line_kmh)))
     lines = [
         "",
         "  GRADIENT",
         row("per 10 permille", "%.4f m/s2" % per,
             "g x 0.010 x mass / effective mass"),
         row("", "%.1f kN" % (per * dynamics.effective_mass_kg(stock) / 1000.0),
-            "against %.1f kN of drag at line speed"
-            % (dynamics.resistance_n(stock, stock.max_speed_ms) / 1000.0)),
+            "against %.1f kN of drag at %.0f km/h"
+            % (dynamics.resistance_n(stock, fastest) / 1000.0,
+               ms_to_kmh(fastest))),
     ]
     if worst < 0.0:
         rate = dynamics.braking_rate_on_grade(stock, worst)
@@ -399,7 +440,7 @@ def balancing_unclamped(stock, grade_permille=0.0, ceiling_ms=None):
     return 0.5 * (low + high)
 
 
-def braking_table(stock, grades=(0.0,)):
+def braking_table(stock, grades=(0.0,), line_kmh=None):
     def header(grade):
         return "%+g permille" % grade if grade else "level"
 
@@ -412,7 +453,7 @@ def braking_table(stock, grades=(0.0,)):
         + "%13s%12s" % ("emergency", "build-up m"),
         "    " + "-" * (8 + 14 * len(grades) + 25),
     ]
-    for kmh in speeds_for(stock):
+    for kmh in speeds_for(stock, line_kmh):
         if kmh <= 1.0:
             continue
         v = kmh_to_ms(kmh)
@@ -421,8 +462,9 @@ def braking_table(stock, grades=(0.0,)):
                 v, dynamics.braking_rate_on_grade(stock, g)) for g in grades)
         emergency = braking_distance(
             v, dynamics.braking_rate_on_grade(stock, 0.0, emergency=True))
-        lines.append("    %8.1f%s%13.1f%12.1f"
-                     % (kmh, cells, emergency,
+        lines.append("    %7.1f%s%s%13.1f%12.1f"
+                     % (kmh, "*" if above_the_line(kmh, line_kmh) else " ",
+                        cells, emergency,
                         dynamics.brake_buildup_distance_m(stock, v)))
     lines.append("")
     lines.append("    the emergency column is level track: it is what a follower "
@@ -433,7 +475,7 @@ def braking_table(stock, grades=(0.0,)):
 
 # ---------------------------------------------------------------- the authority
 
-def standoff_block(scenario, stock, config):
+def standoff_block(scenario, stock, config, line_kmh=None):
     """The two standoffs, and their sum.
 
     There are two, they mean different things, and they stack - which is not
@@ -443,6 +485,8 @@ def standoff_block(scenario, stock, config):
     """
     system = describe_system(scenario.signalling_spec or {})
     at_the_system = getattr(system, "danger_point_margin_m", 0.0)
+    fastest = (stock.max_speed_ms if line_kmh is None
+               else min(stock.max_speed_ms, kmh_to_ms(line_kmh)))
     lines = [
         "",
         "  STANDOFF - the two margins, which are different things and add up",
@@ -453,14 +497,14 @@ def standoff_block(scenario, stock, config):
         row("driver", "%.0f m" % config.safety_margin_m,
             "stops this far short of whatever danger point it was given"),
         row("total at rest", "%.0f m" % (at_the_system + config.safety_margin_m),
-            "plus %.0f m of reaction distance at line speed"
-            % (stock.max_speed_ms * config.reaction_time_s)),
+            "plus %.0f m of reaction distance at %.0f km/h"
+            % (fastest * config.reaction_time_s, ms_to_kmh(fastest))),
     ]
     latency = getattr(system, "v2v_latency_s", None)
     if latency:
         lines.append(row("radio latency", "%.2f s" % latency,
-                         "%.0f m at line speed, added to the signalling margin"
-                         % (stock.max_speed_ms * latency)))
+                         "%.0f m at %.0f km/h, added to the signalling margin"
+                         % (fastest * latency, ms_to_kmh(fastest))))
     fallback = getattr(system, "fallback_margin_m", None)
     if fallback is not None:
         lines.append(row("if the link fails", "%.0f m" % fallback,
@@ -479,7 +523,7 @@ def driven_by_ato(system):
     return signalling.fit_driver(reference, system).reaction_time_s == 0.0
 
 
-def authority_section(scenario, stock, grades):
+def authority_section(scenario, stock, grades, line_kmh=None):
     """The four terms that turn a speed into the room a train needs.
 
     This is the chain Driver.decide applies and the one scenario.checks sizes
@@ -504,14 +548,15 @@ def authority_section(scenario, stock, grades):
         "    %8s" % "km/h" + "".join("%14s" % head for head, _, _ in columns),
         "    " + "-" * (8 + 14 * len(columns)),
     ]
-    for kmh in speeds_for(stock):
+    for kmh in speeds_for(stock, line_kmh):
         if kmh <= 1.0:
             continue
         v = kmh_to_ms(kmh)
-        lines.append("    %8.1f%s"
-                     % (kmh, "".join("%14.1f" % stopping_distance(
-                         stock, cfg, v, grade) for _, grade, cfg in columns)))
-    lines += standoff_block(scenario, stock, config)
+        lines.append("    %7.1f%s%s"
+                     % (kmh, "*" if above_the_line(kmh, line_kmh) else " ",
+                        "".join("%14.1f" % stopping_distance(
+                            stock, cfg, v, grade) for _, grade, cfg in columns)))
+    lines += standoff_block(scenario, stock, config, line_kmh)
     lines += [
         "",
         row("driver reaction", "%.1f s" % config.reaction_time_s,
@@ -722,6 +767,7 @@ def report(scenario):
     _, timetable_spec, infra_spec = raw_specs(scenario)
     lines = scenario_section(scenario)
     grades = notable_grades(scenario)
+    line_kmh = line_speed_kmh(scenario)
     seen = []
     for service in scenario.timetable.services:
         stock = service.stock
@@ -729,8 +775,9 @@ def report(scenario):
             continue
         seen.append(stock.id)
         lines += stock_section(stock, grades,
-                               declared_keys(timetable_spec, stock.id))
-        lines += authority_section(scenario, stock, grades)
+                               declared_keys(timetable_spec, stock.id),
+                               line_kmh)
+        lines += authority_section(scenario, stock, grades, line_kmh)
     lines += infrastructure_section(scenario, infra_spec)
     lines += timetable_section(scenario)
     return "\n".join(line.rstrip() for line in lines)
@@ -766,6 +813,21 @@ def selfcheck():
     text = report(graded)
     assert "DOES NOT CLOSE" not in text, "the graded circuit should close"
     assert "GRADIENT PROFILE" in text
+
+    # A 90 km/h unit on an 80 km/h railway: every table stops at what the
+    # RAILWAY allows, and the train's own limit is one marked row with a
+    # footnote rather than a figure quoted as though it were line speed.
+    assert line_speed_kmh(scenario) == 80.0
+    assert speeds_for(stock, 80.0)[-1] == 90.0
+    assert speeds_for(stock, 80.0)[-2] == 80.0
+    assert above_the_line(90.0, 80.0) and not above_the_line(80.0, 80.0)
+    ring_text = report(scenario)
+    assert "rest to 80 km/h" in ring_text, "the run-up must stop at line speed"
+    assert "above the 80 km/h this railway permits" in ring_text
+
+    # Where the two agree there is nothing to mark and nothing to explain.
+    express = load_scenario(os.path.join("scenarios", "express"))
+    assert "*" not in report(express)
     print("stats: ok - %d lines, derivations agree with the stock object"
           % text.count("\n"))
 
