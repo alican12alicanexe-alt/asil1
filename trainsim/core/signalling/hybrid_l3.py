@@ -30,10 +30,13 @@ class HybridLevel3(SignallingSystem):
     # one block legitimately; the kernel checks separation, not exclusivity.
     separates_by = SEPARATION_BY_DISTANCE
 
-    def __init__(self, vss_per_block: int = 4, safety_margin_m: float = 50.0):
+    def __init__(self, vss_per_block: int = 4,
+                 danger_point_margin_m: float = 50.0):
         super().__init__()
         self.vss_per_block = int(vss_per_block)
-        self.safety_margin_m = float(safety_margin_m)
+        #: How far short of the blocked sub-section the danger point is put.
+        #: Not the driver's standing margin, which is applied on top of it.
+        self.danger_point_margin_m = float(danger_point_margin_m)
         self._state = None
         self._updated_at = None
 
@@ -63,7 +66,8 @@ class HybridLevel3(SignallingSystem):
         # The margin separates this train from what is in front of it.
         # Applying it to the end of the line as well would stop trains short
         # of their own platforms, which is not a separation problem at all.
-        danger = vss_point - self.safety_margin_m if blocked else vss_point
+        danger = (vss_point - self.danger_point_margin_m
+                  if blocked else vss_point)
         reason = vss_reason
 
         # No fixed-block cap on top. The trackside sections are still the safety
@@ -88,4 +92,5 @@ class HybridLevel3(SignallingSystem):
 
     def describe(self) -> str:
         return ("Hybrid ETCS Level 3 (%d virtual sub-sections per block, "
-                "margin %.0f m)" % (self.vss_per_block, self.safety_margin_m))
+                "danger point %.0f m short)"
+                % (self.vss_per_block, self.danger_point_margin_m))

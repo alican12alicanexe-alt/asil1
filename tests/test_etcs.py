@@ -329,7 +329,7 @@ class TestMixedFitmentDegrades(unittest.TestCase):
     def test_moving_block_follows_a_fitted_train_closely(self):
         gap = self._closest_approach(
             support.stock("FITTED", etcs_level="l3", tims=True),
-            MovingBlock(safety_margin_m=100.0),
+            MovingBlock(danger_point_margin_m=100.0),
         )
         self.assertIsNotNone(gap)
         self.assertLess(gap, 400.0, "moving block should close right up")
@@ -338,7 +338,7 @@ class TestMixedFitmentDegrades(unittest.TestCase):
         """Its rear is not trustworthy, so it cannot be followed by distance."""
         gap = self._closest_approach(
             support.stock("NOTIMS", etcs_level="l2", tims=False),
-            MovingBlock(safety_margin_m=100.0),
+            MovingBlock(danger_point_margin_m=100.0),
         )
         self.assertIsNotNone(gap)
         self.assertGreater(gap, 400.0,

@@ -77,7 +77,7 @@ class TestMargins(unittest.TestCase):
 
     def test_the_margin_grows_with_speed_by_the_radio_delay(self):
         """What the follower covers while the news is in flight."""
-        system = VirtualCoupling(safety_margin_m=50.0, v2v_latency_s=0.5)
+        system = VirtualCoupling(danger_point_margin_m=50.0, v2v_latency_s=0.5)
 
         class Follower:
             speed_ms = 0.0
@@ -90,7 +90,8 @@ class TestMargins(unittest.TestCase):
     def test_the_degraded_margin_is_not_the_coupled_one(self):
         """The tight margin is justified by the link; without it, moving block's."""
         system = VirtualCoupling()
-        self.assertGreater(system.fallback_margin_m, system.safety_margin_m)
+        self.assertGreater(system.fallback_margin_m,
+                           system.danger_point_margin_m)
 
 
 class Follower:

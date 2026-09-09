@@ -100,15 +100,20 @@ def scenario_section(scenario):
     return lines
 
 
-def describe_signalling(spec):
-    """What the system says about itself, margins and latencies included."""
+def describe_system(spec):
+    """The signalling system this scenario configures, or None."""
     settings = {k: v for k, v in spec.items() if k != "system"}
     try:
-        system = signalling.create(spec.get("system", "fixed_block_3aspect"),
-                                   **settings)
+        return signalling.create(spec.get("system", "fixed_block_3aspect"),
+                                 **settings)
     except (KeyError, TypeError, ValueError):
-        return ""
-    return system.describe()
+        return None
+
+
+def describe_signalling(spec):
+    """What the system says about itself, margins and latencies included."""
+    system = describe_system(spec)
+    return system.describe() if system is not None else ""
 
 
 # ------------------------------------------------------------------------ stock
@@ -428,6 +433,41 @@ def braking_table(stock, grades=(0.0,)):
 
 # ---------------------------------------------------------------- the authority
 
+def standoff_block(scenario, stock, config):
+    """The two standoffs, and their sum.
+
+    There are two, they mean different things, and they stack - which is not
+    obvious from a scenario file where one is under ``signalling:`` and the
+    other under ``driver:``. The system decides where the danger point is; the
+    driver decides how far short of it to stop.
+    """
+    system = describe_system(scenario.signalling_spec or {})
+    at_the_system = getattr(system, "danger_point_margin_m", 0.0)
+    lines = [
+        "",
+        "  STANDOFF - the two margins, which are different things and add up",
+        row("signalling", "%.0f m" % at_the_system,
+            "danger point put this far short of what it protects"
+            if at_the_system else
+            "fixed block protects a boundary the train is already clear of"),
+        row("driver", "%.0f m" % config.safety_margin_m,
+            "stops this far short of whatever danger point it was given"),
+        row("total at rest", "%.0f m" % (at_the_system + config.safety_margin_m),
+            "plus %.0f m of reaction distance at line speed"
+            % (stock.max_speed_ms * config.reaction_time_s)),
+    ]
+    latency = getattr(system, "v2v_latency_s", None)
+    if latency:
+        lines.append(row("radio latency", "%.2f s" % latency,
+                         "%.0f m at line speed, added to the signalling margin"
+                         % (stock.max_speed_ms * latency)))
+    fallback = getattr(system, "fallback_margin_m", None)
+    if fallback is not None:
+        lines.append(row("if the link fails", "%.0f m" % fallback,
+                         "the tight margin is justified BY the link"))
+    return lines
+
+
 def driven_by_ato(system):
     """Whether this system drives the train rather than showing a driver a signal.
 
@@ -471,6 +511,7 @@ def authority_section(scenario, stock, grades):
         lines.append("    %8.1f%s"
                      % (kmh, "".join("%14.1f" % stopping_distance(
                          stock, cfg, v, grade) for _, grade, cfg in columns)))
+    lines += standoff_block(scenario, stock, config)
     lines += [
         "",
         row("driver reaction", "%.1f s" % config.reaction_time_s,

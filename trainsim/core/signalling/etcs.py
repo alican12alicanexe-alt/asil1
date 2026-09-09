@@ -161,9 +161,14 @@ class MovingBlock(SignallingSystem):
     # two trains sharing a block is correct behaviour rather than a fault.
     separates_by = SEPARATION_BY_DISTANCE
 
-    def __init__(self, safety_margin_m: float = 100.0):
+    def __init__(self, danger_point_margin_m: float = 100.0):
         super().__init__()
-        self.safety_margin_m = float(safety_margin_m)
+        #: How far short of the obstruction the danger point is put. Named for
+        #: what it does rather than "safety margin", which is what the DRIVER's
+        #: standing distance is called - the two stack, and a scenario that
+        #: declared both under one name could not say which it meant. See
+        #: DriverConfig.safety_margin_m.
+        self.danger_point_margin_m = float(danger_point_margin_m)
 
     def movement_authority(self, train, sim) -> MovementAuthority:
         ahead = train_ahead(train, sim)
@@ -185,7 +190,7 @@ class MovingBlock(SignallingSystem):
                 danger, block_reason = block_danger_point(train, sim)
                 reason = "%s has no integrity report (%s)" % (other_id, block_reason)
             else:
-                danger = rear_m - self.safety_margin_m
+                danger = rear_m - self.danger_point_margin_m
                 reason = "rear of %s" % other_id
 
         danger, reason = limit_by_route(danger, reason, train, sim)
@@ -196,8 +201,8 @@ class MovingBlock(SignallingSystem):
         )
 
     def describe(self) -> str:
-        return ("full moving block / ETCS Level 3 (margin %.0f m)"
-                % (self.safety_margin_m,))
+        return ("full moving block / ETCS Level 3 (danger point %.0f m "
+                "short of the rear ahead)" % (self.danger_point_margin_m,))
 
 
 def minimum_theoretical_headway(stock, speed_ms: float, block_length_m: float,

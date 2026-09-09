@@ -68,12 +68,15 @@ def system_offset(system, stock, speed_ms):
         decel = (stock.service_brake if system.leader_brake == "service"
                  else max(stock.service_brake, stock.emergency_brake))
         run_on = braking_distance(speed_ms, decel)
-        margin = system.safety_margin_m + speed_ms * system.v2v_latency_s
+        margin = (system.danger_point_margin_m
+                  + speed_ms * system.v2v_latency_s)
         return run_on - margin, "leader run-on %.0f m less %.0f m" % (run_on, margin)
     if system.name == "etcs_moving_block":
-        return -system.safety_margin_m, "%.0f m short of the rear" % system.safety_margin_m
+        return (-system.danger_point_margin_m,
+                "%.0f m short of the rear" % system.danger_point_margin_m)
     if system.name == "etcs_hybrid_l3":
-        return -system.safety_margin_m, "%.0f m short of the VSS" % system.safety_margin_m
+        return (-system.danger_point_margin_m,
+                "%.0f m short of the VSS" % system.danger_point_margin_m)
     return None, "block entry, not a rear"
 
 

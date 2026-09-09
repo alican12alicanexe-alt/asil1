@@ -58,7 +58,7 @@ class VirtualCoupling(SignallingSystem):
     #: defensible is the open question in the concept.
     LEADER_BRAKE = ("emergency", "service")
 
-    def __init__(self, safety_margin_m: float = 50.0,
+    def __init__(self, danger_point_margin_m: float = 50.0,
                  fallback_margin_m: float = 100.0,
                  v2v_latency_s: float = 0.5,
                  assume_leader_brakes: bool = True,
@@ -72,17 +72,22 @@ class VirtualCoupling(SignallingSystem):
                 % (", ".join(self.LEADER_BRAKE), leader_brake))
         #: See :meth:`_run_on_m`. ``"emergency"`` is the conservative default.
         self.leader_brake = leader_brake
-        #: Standing separation held even at rest. Smaller than moving block's,
-        #: because it is no longer doing the work a braking distance did.
-        self.safety_margin_m = float(safety_margin_m)
+        #: How far short of the leader's stopping point the danger point is
+        #: put - standing separation held even at rest. Smaller than moving
+        #: block's, because it is no longer doing the work a braking distance
+        #: did. Named for what it does rather than "safety margin", which is
+        #: the DRIVER's standing distance: the two stack, and a scenario that
+        #: declared both under one name could not say which it meant. See
+        #: DriverConfig.safety_margin_m.
+        self.danger_point_margin_m = float(danger_point_margin_m)
         #: Time for news of the leader's braking to reach the follower. Turns
         #: into distance at the follower's speed, so it costs more the faster
         #: the convoy runs - which is why the concept waits on FRMCS rather
         #: than GSM-R.
         self.v2v_latency_s = float(v2v_latency_s)
         #: Margin used once the link is gone and separation is back to absolute
-        #: braking distance. Deliberately larger than ``safety_margin_m``, and
-        #: defaulting to moving block's own figure.
+        #: braking distance. Deliberately larger than ``danger_point_margin_m``,
+        #: and defaulting to moving block's own figure.
         #:
         #: The tight coupled margin is only justified *by* the V2V link: it is
         #: small because the follower is being told, continuously, what the
@@ -179,7 +184,8 @@ class VirtualCoupling(SignallingSystem):
 
     def _margin_m(self, follower) -> float:
         """Standing margin plus what the follower covers awaiting the news."""
-        return self.safety_margin_m + follower.speed_ms * self.v2v_latency_s
+        return (self.danger_point_margin_m
+                + follower.speed_ms * self.v2v_latency_s)
 
     def _is_coupled(self, follower, rear_m: float) -> bool:
         """Whether ``follower`` is close enough behind to count as coupled.
@@ -292,9 +298,9 @@ class VirtualCoupling(SignallingSystem):
         if not self.assume_leader_brakes:
             return ("virtual coupling with relative braking disabled "
                     "(equivalent to moving block, margin %.0f m)"
-                    % (self.safety_margin_m,))
+                    % (self.danger_point_margin_m,))
         return ("virtual coupling / relative braking distance "
                 "(margin %.0f m, %.0f m degraded, V2V latency %.1f s, "
                 "leader credited with its %s brake)"
-                % (self.safety_margin_m, self.fallback_margin_m,
+                % (self.danger_point_margin_m, self.fallback_margin_m,
                    self.v2v_latency_s, self.leader_brake))

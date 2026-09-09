@@ -47,7 +47,7 @@ disruptions:
 
 signalling:
   system: etcs_moving_block
-  safety_margin_m: 100
+  danger_point_margin_m: 100
 
 driver:
   reaction_time_s: 1.5

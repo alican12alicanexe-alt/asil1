@@ -33,7 +33,25 @@ class DriverConfig:
     """Driver behaviour parameters, from the scenario file."""
 
     reaction_time_s: float = 2.0
-    #: Standing distance kept short of a danger point.
+    #: Standing distance kept short of a danger point - the DRIVER's margin,
+    #: and the only thing in this project called ``safety_margin_m``.
+    #:
+    #: There are two standoffs on this railway and they stack. The signalling
+    #: system decides WHERE the danger point is, and puts it short of the thing
+    #: it is protecting: ``danger_point_margin_m``, 100 m short of the rear
+    #: ahead under moving block, 50 m under virtual coupling and Hybrid Level 3,
+    #: and nothing at all under fixed block, where the danger point is a block
+    #: boundary that is already clear of the train. The driver then stops this
+    #: much short of whatever it was given. So a follower under moving block is
+    #: held 100 + 25 = 125 m off the rear in front, and under fixed block 25 m
+    #: off a signal.
+    #:
+    #: They are deliberately two numbers rather than one. The system's is a
+    #: safety case - odometry error, the age of a position report, balise
+    #: accuracy - and differs between systems, which is half of what this
+    #: project measures. The driver's is how a train is driven and is the same
+    #: whatever is signalling it. Merging them would delete the comparison.
+    #: ``stats.py`` prints both and their sum for any scenario.
     safety_margin_m: float = 25.0
     #: Within this distance a stop is treated as reached.
     stop_tolerance_m: float = 1.0

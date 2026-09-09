@@ -58,7 +58,7 @@ signalling:
   # the one number moving block adds, and it is the honest place for the safety
   # case to live: odometry error, the age of the position report, and the
   # location accuracy the balises give. CBTC installations run tighter.
-  safety_margin_m: 100
+  danger_point_margin_m: 100
 
 driver:
   # Shorter than the main-line 2.0 s: urban stock, short sections, and a driver

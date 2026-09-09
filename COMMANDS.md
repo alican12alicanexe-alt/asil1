@@ -85,6 +85,47 @@ calling the functions the simulator calls, so this report and a run cannot
 disagree. `--check` says whether the railway can be signalled and the plan run;
 this says what the physics underneath both is.
 
+## The two standoffs
+
+There are two distances between a train and the thing it must not hit, they
+mean different things, and they **add up**. Until recently both were called
+`safety_margin_m`, and `tests/railways/metro/scenario.yaml` declared one of each
+in the same file — 100 under `signalling:` and 20 under `driver:` — with nothing
+to say they were not the same setting used twice.
+
+| | key | declared under | what it decides |
+|---|---|---|---|
+| the system's | `danger_point_margin_m` | `signalling:` | **where the danger point is** — how far short of the thing it protects |
+| the driver's | `safety_margin_m` | `driver:` | **how far short of that danger point the train stops** |
+
+Defaults: moving block 100 m, virtual coupling 50 m (plus the radio latency
+turned into distance), Hybrid Level 3 50 m, and fixed block none at all — its
+danger point is a block boundary the train in front is already clear of. The
+driver's is 25 m on every main-line scenario here.
+
+So a follower under moving block is held **100 + 25 = 125 m** off the rear in
+front, and one under fixed block **25 m** off a signal.
+
+They are two numbers rather than one on purpose. The system's is a safety case —
+odometry error, the age of a position report, balise accuracy — and it differs
+between systems, which is half of what this project measures. The driver's is
+how a train is driven, and is the same whatever is signalling it. Merging them
+would delete the comparison. `DriverConfig.safety_margin_m` in
+`trainsim/core/driver.py` carries the same note, and `stats.py` prints both and
+their sum for any scenario:
+
+```
+  STANDOFF - the two margins, which are different things and add up
+  signalling                  100 m   danger point put this far short of what it protects
+  driver                       20 m   stops this far short of whatever danger point it was given
+  total at rest               120 m   plus 38 m of reaction distance at line speed
+```
+
+Two other things carry "margin" in the name and are neither of these:
+`stop_margin_m` in an infrastructure `defaults:` block is where the stopping
+mark sits inside a platform zone, and `coupling_margin_m` under virtual coupling
+is how close counts as coupled — an incentive threshold, not a separation.
+
 ## The browser front end
 
 Optional, and the one thing here that needs a package.
