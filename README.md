@@ -38,7 +38,8 @@ python scenarios/ring/_sweep_convoy.py                      # can a rule build o
 python scenarios/ring/_generate_convoy.py 60                # rebuild that flight
 python run.py scenarios/ring/scenario-convoy-stopping.yaml --headless
 python run.py scenarios/ring/scenario-grade.yaml --compare      # the same circuit, graded
-python run_tests.py                             # 289 tests, ~15 s
+python stats.py scenarios/ring                  # every derived number, with its formula
+python run_tests.py                             # 292 tests, ~15 s
 
 streamlit run app.py                            # browser front end (optional)
 ```

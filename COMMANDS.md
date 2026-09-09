@@ -38,6 +38,43 @@ specific **scenario file**, so `tests/railways/metro` and
 | `--speed N` | Simulated seconds per real second in the view. `--speed 1` is real time; the scenarios default to 20–30. |
 | `--strict` | Raise on a block-exclusivity violation instead of logging it. Use it when changing the kernel: it turns a silent wrong answer into a stack trace. |
 
+## Every number, and where it came from
+
+```
+python stats.py                                   the ring
+python stats.py scenarios/ring/scenario-grade.yaml
+python stats.py --selfcheck
+```
+
+A scenario file declares very little. A unit is a length and four performance
+figures; a railway is a list of stations and a speed profile. What the train
+weighs, how much power it has, its Davis coefficients, where its traction curve
+breaks, how far it needs to stop on the steepest fall the railway actually has,
+what the mean line speed is once weighted by length — all derived, and derived
+quietly. `stats.py` prints them with the formula beside each one:
+
+```
+  DERIVED - nothing below was declared; this is where each came from
+  mass                      216.0 t   1.8 t/m x 120 m
+  effective mass            233.3 t   216.0 t x 1.08  (rotating parts 8 %)
+  starting effort          233.3 kN   max_accel x effective mass
+  base speed              36.0 km/h   40 % of max speed - where constant effort ends
+  power                   2332.8 kW   starting effort x base speed
+                          10.8 kW/t   10-20 is the normal band for this kind of unit
+```
+
+Then the traction curve speed by speed, the braking distances on the level and
+on the railway's own steepest gradients, the speed and gradient profiles as
+kilometres of railway at each value, block lengths, and what the timetable
+books. On a circuit with gradients it also checks the thing a circuit has to
+satisfy — that the two running lines rise by equal and opposite amounts, so a
+lap comes back to the height it started at.
+
+Nothing is retyped: every figure is read off the built scenario or computed by
+calling the functions the simulator calls, so this report and a run cannot
+disagree. `--check` says whether the railway can be signalled and the plan run;
+this says what the physics underneath both is.
+
 ## The browser front end
 
 Optional, and the one thing here that needs a package.
