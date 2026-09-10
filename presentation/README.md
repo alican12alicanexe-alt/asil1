@@ -48,7 +48,7 @@ Adımlar tek tek de koşulur: `stats`, `headway`, `express`, `convoy`,
 | 8 | Hareket Denklemleri | — | sayı yok, formülasyon |
 | 9 | Kullanılan Parametreler | — | `python stats.py scenarios/ring` |
 | 10 | Fren Mesafesi | `res-braking.png` | `python presentation/charts/physics.py` — her terim `dynamics`/`driver` fonksiyonlarından |
-| 11 | Hızlanma | `res-traction.png` | aynı betik — `traction_accel`, `resistance_accel`, `achievable_accel` |
+| 11 | Hızlanma | `res-traction.png` | aynı betik — `achievable_accel` ile tik tik integrasyon |
 | 12 | Duraksız İşletme | `res-express.png` | `python presentation/ring/_sweep_express.py <sistem>` |
 | 13 | Duraklamalı İşletme | `res-stopping.png` | `python presentation/ring/_sweep_headway.py <sistem>` |
 | 14 | Bozucu Etki | `res-disruption-a.png` + `res-disruption-b.png` | `python run.py presentation/ring/scenario-{78,71}-{dwell,tsr,both}.yaml --propagation/--headless --system <sistem>` |

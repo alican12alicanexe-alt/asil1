@@ -129,36 +129,13 @@ fig.subplots_adjust(left=0.055, right=0.99, top=0.87, bottom=0.235, wspace=0.22)
 save(fig, "res-braking")
 
 # ======================================================== 2) hizlanma
-fig = Figure(figsize=(13.2, 4.0))
-left, right = fig.subplots(1, 2)
+# Ceki/direnc paneli kaldirildi: net kuvvetin hiza gore nasil dustugunu
+# hiz-zaman egrisinin egimi zaten gosteriyor, iki panel ayni seyi iki kez
+# anlatiyordu. Sayilar (F0, P, taban hiz) parametreler slaytinda duruyor.
+fig = Figure(figsize=(9.6, 4.0))
+ax = fig.subplots()
 
-speeds = [kmh_to_ms(k) for k in range(0, 96)]
-tract = [dynamics.traction_accel(stock, v) * m_eff / 1000.0 for v in speeds]
-resis = [dynamics.resistance_accel(stock, v) * m_eff / 1000.0 for v in speeds]
-kmh = [ms_to_kmh(v) for v in speeds]
 base = ms_to_kmh(dynamics.base_speed_ms(stock))
-left.fill_between(kmh, resis, tract, color=NAVY, alpha=0.10, zorder=2)
-left.plot(kmh, tract, linewidth=2.4, color=NAVY, label=u"çeki  F(v)", zorder=3)
-left.plot(kmh, resis, linewidth=2.4, color=ORANGE, label=u"direnç  R(v)",
-          zorder=3)
-left.axvline(base, color=GRID, linewidth=1.2, zorder=1)
-left.text(base + 2.0, 243, u"taban hız %.0f km/h" % base, fontsize=10.5,
-          color=MUTED, va="top")
-left.text(base - 2, 120, u"sabit kuvvet", fontsize=10.5, color=MUTED,
-          ha="right")
-left.text(base + 3, 120, u"sabit güç  P / v", fontsize=10.5, color=MUTED)
-left.text(58, 62, u"net kuvvet = ivmelendiren", fontsize=10.5, color=NAVY,
-          ha="center")
-left.text(58, 40, u"80 km/h'te direnç 3.9 kN —\nçekinin %4'ü kadar",
-          fontsize=10, color=ORANGE, ha="center", va="top")
-left.set_xlabel(u"hız, km/h")
-left.set_ylabel(u"kuvvet, kN")
-left.set_title(u"Çeki ve direnç", loc="left", pad=12)
-left.set_xlim(0, 92)
-left.set_ylim(0, 255)
-left.legend(loc="upper right", fontsize=11)
-quiet(left)
-
 DT = 0.05
 v = t = x = a = 0.0
 top = kmh_to_ms(LINE_KMH)
@@ -175,20 +152,29 @@ while v < top - 1e-9 and t < 400:
     for k in (36, 60, 80):
         if k not in marks and vs[-1] >= k - 1e-6:
             marks[k] = (t, x)
-right.plot(ts, vs, linewidth=2.6, color=INK, zorder=3)
-right.axhline(base, color=GRID, linewidth=1.2, zorder=1)
+
+ax.plot(ts, vs, linewidth=2.8, color=INK, zorder=3)
+ax.axhline(base, color=GRID, linewidth=1.2, zorder=1)
+ax.text(ts[-1] * 0.99, base + 2.5, u"taban hız %.0f km/h" % base,
+        fontsize=10.5, color=MUTED, va="bottom", ha="right")
+# Etiketler egrinin bos taraflarina: kalkis egrisi disbukey oldugu icin
+# sol-ust ve sag-alt bolgeler bostur.
+ax.text(1.5, LINE_KMH * 0.80, u"taban hıza kadar\nsabit kuvvet  233 kN",
+        fontsize=11, color=MUTED, ha="left", va="center")
+ax.text(ts[-1] * 0.99, LINE_KMH * 0.22, u"üstünde sabit güç\n2333 kW / v",
+        fontsize=11, color=MUTED, ha="right", va="center")
 for k, (tk, xk) in sorted(marks.items()):
-    right.plot([tk], [k], "o", color=ORANGE, markersize=8, zorder=4)
-    right.annotate(u"%d km/h\n%.0f s · %.0f m" % (k, tk, xk), (tk, k),
-                   textcoords="offset points", xytext=(10, -6), fontsize=11,
-                   color=INK, fontweight="bold", va="top")
-right.set_xlabel(u"duruştan itibaren geçen süre, s")
-right.set_ylabel(u"hız, km/h")
-right.set_title(u"Duran trenden hat hızına", loc="left", pad=12)
-right.set_xlim(0, ts[-1] * 1.10)
-right.set_ylim(0, LINE_KMH * 1.12)
-quiet(right)
-fig.subplots_adjust(left=0.055, right=0.99, top=0.87, bottom=0.145, wspace=0.21)
+    ax.plot([tk], [k], "o", color=ORANGE, markersize=9, zorder=4)
+    ax.annotate(u"%d km/h\n%.0f s · %.0f m" % (k, tk, xk), (tk, k),
+                textcoords="offset points", xytext=(12, -8), fontsize=11.5,
+                color=INK, fontweight="bold", va="top")
+ax.set_xlabel(u"duruştan itibaren geçen süre, s")
+ax.set_ylabel(u"hız, km/h")
+ax.set_title(u"Duran trenden hat hızına", loc="left", pad=12)
+ax.set_xlim(0, ts[-1] * 1.08)
+ax.set_ylim(0, LINE_KMH * 1.14)
+quiet(ax)
+fig.subplots_adjust(left=0.075, right=0.985, top=0.87, bottom=0.145)
 save(fig, "res-traction")
 
 print(u"hizlanma: " + u"   ".join(u"%d km/h %.0f s / %.0f m" % (k, v[0], v[1])
