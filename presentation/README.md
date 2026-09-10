@@ -49,7 +49,7 @@ Adımlar tek tek de koşulur: `stats`, `headway`, `express`, `convoy`,
 | 9 | Kabuller | — | emniyet payları ve dt → `stats.py` + `ring/scenario-*.yaml` |
 | 10 | Duraksız İşletme | `res-express.png` | `python presentation/ring/_sweep_express.py <sistem>` |
 | 11 | Duraklamalı İşletme | `res-stopping.png` | `python presentation/ring/_sweep_headway.py <sistem>` |
-| 12 | Bozucu Etki | `disruption2.png` | `python run.py presentation/ring/scenario-{78,71}-{dwell,both}.yaml --propagation --system <sistem>` |
+| 12 | Bozucu Etki | `res-disruption-a.png` + `res-disruption-b.png` | `python run.py presentation/ring/scenario-{78,71}-{dwell,both}.yaml --propagation --system <sistem>` |
 | 13 | Konvoy Davranışı | `res-convoy.png` | aralıklar → `_sweep_convoy.py --headway [--stopping]`; kuplaj metrikleri → `run.py ... --log` + `convoy_stats.py` |
 | 14 | Karşılaştırmalı Sonuçlar | `res-summary.png` | slayt 10 ve 11 ile aynı koşular |
 | 15 | Ana Bulgular | — | slayt 10, 11, 12, 13 |
@@ -178,7 +178,7 @@ python presentation/charts/network.py      # network.png
 python presentation/charts/deckgfx.py      # flow.png papers.png systems.png
 python presentation/charts/results.py      # res-express/stopping/summary.png
 python presentation/charts/convoy2.py      # res-convoy.png
-python presentation/charts/disruption2.py  # disruption2.png
+python presentation/charts/disruption2.py  # res-disruption-a/-b.png
 python _plot_motion.py presentation/figures/motion.png
 ```
 Palet ve ortak biçim `charts/style.py`'de: sabit blok `#355FA8`, hareketli

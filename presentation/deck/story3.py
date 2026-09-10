@@ -274,7 +274,11 @@ kit.body(12, [
     u"sürdürülebilir aralığında.",
     u"Kazanç sistemin kendisinden değil, elinde kalan paydan geliyor.",
 ], name="Text Placeholder")
-kit.swap_pic(12, CH + "/disruption2.png", (FULL[0], 2380000, FULL[1], 3300000))
+# Iki ayri grafik yan yana: solda ayni tarife, sagda kendi siniri.
+kit.swap_pic(12, CH + "/res-disruption-a.png",
+             (FULL[0], 2330000, 5560000, 3350000))
+kit.add_pic(12, CH + "/res-disruption-b.png",
+            (6190480, 2330000, 5560000, 3350000), "Bozucu-b")
 kit.note(12, u"METODOLOJI: bir sistemi digerinin tarifesinde kosturmak haksiz "
              u"karsilastirmadir - pay sahibi olan kazanir. O yuzden iki okuma var.\n"
              u"SOL: ikisi de 78 saniyede. Bu isletmecinin bugun hareketli blokla "

@@ -3,22 +3,26 @@
 | dosya | ne |
 |---|---|
 | `ASELSAN-Sunum-v3.pptx` | teslim edilen sunum, 18 slayt |
+| `ASELSAN-Sunum-v2.pptx` | `story3.py`'nin girdisi — ara sürüm |
 | `kit.py` | `.pptx` düzenleme takımı — başlık/gövde yazma, resim ekleme ve değiştirme, konuşmacı notu, slayt kopyalama ve yeniden sıralama |
 | `story3.py` | v3'ün içeriğini kuran betik: slayt sırası, her slaydın maddeleri, grafikleri ve notu |
 | `dump.py` | bir `.pptx`'in bütün slayt metnini ve notlarını terminale döker — kontrol için |
 
-## Bu klasör tek komutla sunumu yeniden kurmaz
+## Sunumu yeniden kurmak
 
-`story3.py`, elle hazırlanmış ASELSAN şablonundan türeyen bir **ara sürümü**
-(`ASELSAN-Sunum-v2.pptx`) girdi alır. O ara sürüm depoda tutulmuyor — iki
-adet 5 MB'lık ikili dosya, üstelik yalnızca bu zincirin ortasında bir kez
-kullanılıyor. Yani `story3.py` burada **sunumun nasıl düzenlendiğinin kaydı**
-olarak duruyor, çalıştırılabilir bir yapı betiği olarak değil.
+```sh
+python presentation/deck/story3.py
+```
 
-Sunumun içeriğini sıfırdan üretmek istersen doğru yol `SUNUM-PROMPT.md`:
+`story3.py`, elle hazırlanmış ASELSAN şablonundan türeyen ara sürümü
+(`ASELSAN-Sunum-v2.pptx`) girdi alır, `presentation/figures/` altındaki
+grafikleri yerleştirir ve `ASELSAN-Sunum-v3.pptx`'i yazar. Slayt sırası,
+her slaydın maddeleri ve konuşmacı notları betiğin içinde.
+
+Sunumun içeriğini **sıfırdan** üretmek istersen doğru yol `SUNUM-PROMPT.md`:
 bütün veriyi ve slayt slayt spesifikasyonu taşır, şablonla birlikte verilir.
 
-Grafikler ise tamamen yeniden üretilebilir:
+Grafikler ise ayrıca yeniden üretilebilir:
 
 ```sh
 sh presentation/run_all.sh figures
