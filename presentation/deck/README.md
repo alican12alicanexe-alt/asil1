@@ -2,7 +2,8 @@
 
 | dosya | ne |
 |---|---|
-| `ASELSAN-Sunum-v3.pptx` | teslim edilen sunum, 18 slayt |
+| `ASELSAN-Sunum-v4.pptx` | teslim edilen sunum, 17 slayt — v3'ün elle düzenlenmiş hâli; sayfa numarası artık alan (`slidenum`), içerik listesi slayt başlıklarıyla aynı |
+| `ASELSAN-Sunum-v3.pptx` | `story3.py`'nin çıktısı, 21 slayt — v4'ün girdisi |
 | `ASELSAN-Sunum-v2.pptx` | `story3.py`'nin girdisi — ara sürüm |
 | `kit.py` | `.pptx` düzenleme takımı — başlık/gövde yazma, resim ekleme ve değiştirme, konuşmacı notu, slayt kopyalama ve yeniden sıralama |
 | `story3.py` | v3'ün içeriğini kuran betik: slayt sırası, her slaydın maddeleri, grafikleri ve notu |
