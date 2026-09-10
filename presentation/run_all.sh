@@ -78,7 +78,7 @@ fi
 # ----------------------------------------------------------- 7. grafikler
 if want "$STEP" figures; then
   echo "== grafikler"
-  for c in network deckgfx results convoy2 disruption2; do
+  for c in network deckgfx results convoy2 disruption2 physics; do
     python "presentation/charts/$c.py"
   done
   python _plot_motion.py presentation/figures/motion.png

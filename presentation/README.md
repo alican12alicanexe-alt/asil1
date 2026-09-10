@@ -42,19 +42,22 @@ Adımlar tek tek de koşulur: `stats`, `headway`, `express`, `convoy`,
 | 2 | İçerik | — | — |
 | 3 | Çalışma | `flow.png` | veri yok, kavramsal şema |
 | 4 | Test Ağı | `network.png` | istasyon adları ve km'leri `ring/infrastructure.yaml`'dan **okunuyor**; tur süresi 79:09 → `python stats.py scenarios/ring` |
-| 5 | Literatür | `papers.png` | "Bu çalışma" sütunu → slayt 10, 11 ve 13'ün sayıları; diğer iki sütun makalelerden |
-| 6 | Sinyalizasyon | `systems.png` | 148 / 78 / 71 → `_sweep_headway.py` (bkz. slayt 11) |
-| 7 | Tren Modeli | — | `python stats.py scenarios/ring` |
-| 8 | Hareket Eğrileri | `motion.png` | `python _plot_motion.py` — her nokta `dynamics.achievable_accel`'den integre ediliyor, sabit yok |
-| 9 | Kabuller | — | emniyet payları ve dt → `stats.py` + `ring/scenario-*.yaml` |
-| 10 | Duraksız İşletme | `res-express.png` | `python presentation/ring/_sweep_express.py <sistem>` |
-| 11 | Duraklamalı İşletme | `res-stopping.png` | `python presentation/ring/_sweep_headway.py <sistem>` |
-| 12 | Bozucu Etki | `res-disruption-a.png` + `res-disruption-b.png` | `python run.py presentation/ring/scenario-{78,71}-{dwell,both}.yaml --propagation --system <sistem>` |
-| 13 | Konvoy Davranışı | `res-convoy.png` | aralıklar → `_sweep_convoy.py --headway [--stopping]`; kuplaj metrikleri → `run.py ... --log` + `convoy_stats.py` |
-| 14 | Karşılaştırmalı Sonuçlar | `res-summary.png` | slayt 10 ve 11 ile aynı koşular |
-| 15 | Ana Bulgular | — | slayt 10, 11, 12, 13 |
-| 16 | Yedi Saniye | — | slayt 11 (7 s / %9) ve slayt 12 (%16 / %0.6) |
-| 17 | Kaynaklar | — | — |
+| 5 | Literatür | `papers.png` | "Bu çalışma" sütunu → slayt 12, 13 ve 15'in sayıları |
+| 6 | Sinyalizasyon | `systems.png` | 148 / 78 / 71 → `_sweep_headway.py` |
+| 7 | Tren Modeli | — | sayı yok, model tanıtımı |
+| 8 | Hareket Denklemleri | — | sayı yok, formülasyon |
+| 9 | Kullanılan Parametreler | — | `python stats.py scenarios/ring` |
+| 10 | Fren Mesafesi | `res-braking.png` | `python presentation/charts/physics.py` — her terim `dynamics`/`driver` fonksiyonlarından |
+| 11 | Hızlanma | `res-traction.png` | aynı betik — `traction_accel`, `resistance_accel`, `achievable_accel` |
+| 12 | Duraksız İşletme | `res-express.png` | `python presentation/ring/_sweep_express.py <sistem>` |
+| 13 | Duraklamalı İşletme | `res-stopping.png` | `python presentation/ring/_sweep_headway.py <sistem>` |
+| 14 | Bozucu Etki | `res-disruption-a.png` + `res-disruption-b.png` | `python run.py presentation/ring/scenario-{78,71}-{dwell,tsr,both}.yaml --propagation/--headless --system <sistem>` |
+| 15 | Konvoy Davranışı | `res-convoy.png` | aralıklar → `_sweep_convoy.py --headway [--stopping]`; kuplaj metrikleri → `run.py ... --log` + `convoy_stats.py` |
+| 16 | Karşılaştırmalı Sonuçlar | `res-summary.png` | slayt 12 ve 13 ile aynı koşular |
+| 17 | Ana Bulgular | — | slayt 12, 13, 14, 15 |
+| 18 | Yedi Saniye | — | slayt 13 (7 s / %9) ve slayt 14 (%13 / %0.5) |
+| 19 | Kaynaklar | — | — |
+| 20 | Teşekkürler | — | — |
 
 `<sistem>` = `fixed_block_3aspect` | `etcs_moving_block` | `virtual_coupling`
 
@@ -81,6 +84,11 @@ Hangi sayı nerede:
 | `charts/disruption2.py` | `VC78` | `(829, 1020)` |
 | `charts/disruption2.py` | `VC71` | `(976, 1156)` |
 | `charts/deckgfx.py` | `ROWS` son satırı | `148 s / 78 s / 71 s` |
+
+`charts/physics.py` bu tablonun dışında: fren mesafesinin dört terimini ve
+hızlanma eğrisini `dynamics` fonksiyonlarını çağırarak **hesaplıyor**, hiçbir
+değeri sabit tutmuyor. Düz hattaki toplamı `driver.stopping_distance()` ile
+karşılaştıran bir `assert` var — tutmazsa grafik üretilmiyor.
 
 ---
 

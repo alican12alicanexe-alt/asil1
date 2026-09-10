@@ -11,7 +11,7 @@ tik tik integre edilerek uretiliyor:
                                 (ceki egrisi, aderans, Davis direnci, egim
                                  ve JERK SINIRI hepsi bunun icinde)
     driver.stopping_distance    surucunun planladigi toplam yetki
-                                (fren + kabarma + tepki + emniyet payi)
+                                (fren + build-up + tepki + emniyet payi)
 
 Bu yuzden grafikte sert kose yok: hem kalkista hem frende ivme jerk
 siniriyla yumusuyor. Jerk siniri stock.brake_buildup_s'ten turetiliyor
@@ -50,7 +50,7 @@ CASES = [
 # Bu ikisini None birakirsan senaryodan okunur. Elle deneyecegin degerler:
 REACTION_S      = None   # surucu tepki suresi, s.  ATO icin 0.0 yaz
 SAFETY_MARGIN_M = None   # tehlike noktasindan once durulan pay, m
-BRAKE_BUILDUP_S = None   # fren kabarma suresi, s. Jerk sinirini bu belirler:
+BRAKE_BUILDUP_S = None   # brake build-up suresi, s. Jerk sinirini bu belirler:
                          # jerk = service_brake / brake_buildup_s
                          # 2.0 -> 0.5 m/s3,  4.0 -> 0.25 m/s3 (cok daha yayvan)
 
@@ -59,7 +59,7 @@ SHOW_PLANNED    = False  # surucunun PLANLADIGI sabit oranli egriyi de ciz
                          # (kesikli). Acarsan gercek hareketle 1 m icinde
                          # ortustugu gorulur - okunakli degil ama dogrulama.
                          # (kesikli). Gercek hareketle arasindaki fark
-                         # kabarma payinin ne ise yaradigini gosterir.
+                         # build-up payinin ne ise yaradigini gosterir.
 SHOW_BANDS      = True   # tepki ve emniyet payi bantlari
 LABEL_OFFSETS   = [3.5, 12.5, 3.5]   # ust uste binen toplam etiketlerini ayir
 
@@ -184,15 +184,14 @@ def main(target):
 
         left.plot([0.0, react_m] + xs, [LINE_KMH, LINE_KMH] + ys,
                   linewidth=2.2, color=colour, label=label, zorder=3)
-        left.plot([xs[-1], total], [0, 0], linewidth=2.0, color=colour,
-                  linestyle=(0, (2, 2)), zorder=3)
-        left.plot([total], [0], "o", color=colour, markersize=8, zorder=4)
+        # Emniyet payi cizilmiyor - egri trenin yaptigi hareket, pay ondan
+        # sonra birakilan bos mesafe. Toplam etiketi yine de payi iceriyor.
         dy = LABEL_OFFSETS[i] if i < len(LABEL_OFFSETS) else 3.5
-        left.text(total, dy, "%.0f m" % total, color=colour, fontsize=12,
+        left.text(xs[-1], dy, "%.0f m" % total, color=colour, fontsize=12,
                   fontweight="bold", ha="center", va="bottom")
 
         if SHOW_PLANNED and grade == 0.0 and not emergency:
-            # Surucunun planladigi egri: sabit oran + ayri bir kabarma payi.
+            # Surucunun planladigi egri: sabit oran + ayri bir build-up payi.
             plan = stopping_distance(stock, config, v0, grade)
             rate = dynamics.braking_rate_on_grade(stock, grade,
                                                   emergency=emergency)
@@ -206,7 +205,7 @@ def main(target):
                       linewidth=1.4, color=MUTED, linestyle=(0, (5, 3)),
                       zorder=2, label=u"Planlanan eğri (sabit oran)")
             far = max(far, plan)
-            print("  planlanan  %6.1f m   (fren %.1f + kabarma %.1f + tepki "
+            print("  planlanan  %6.1f m   (fren %.1f + build-up %.1f + tepki "
                   "%.1f + pay %.1f)"
                   % (plan, plan - build - react_m - margin, build, react_m,
                      margin))
