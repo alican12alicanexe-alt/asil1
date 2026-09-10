@@ -1,0 +1,7 @@
+tightest interval held with nobody more than 1 s late
+12 non-stop laps, all under virtual_coupling, each booked at times its own fleet achieves alone.
+
+  line speed         25 s   (144.0 trains an hour)    8 runs
+  capped 70          23 s   (156.5 trains an hour)    6 runs
+  incentive + 800    17 s   (211.8 trains an hour)    6 runs
+EXIT 0

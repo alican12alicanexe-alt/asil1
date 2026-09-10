@@ -1,0 +1,3 @@
+# Kosu ciktilari buraya yazilir; iz dosyalari (.csv) buyuk oldugu icin
+# depoya girmiyor. run_all.sh yeniden uretir.
+*.csv
