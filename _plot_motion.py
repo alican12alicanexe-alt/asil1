@@ -29,7 +29,7 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg
 
 from trainsim.core import dynamics
 from trainsim.core.driver import stopping_distance
-from trainsim.core.units import kmh_to_ms, ms_to_kmh
+from trainsim.core.units import braking_distance, kmh_to_ms, ms_to_kmh
 from trainsim.scenario.loader import load_scenario
 
 # ===================================================================== AYAR
@@ -54,13 +54,16 @@ BRAKE_BUILDUP_S = None   # fren kabarma suresi, s. Jerk sinirini bu belirler:
                          # jerk = service_brake / brake_buildup_s
                          # 2.0 -> 0.5 m/s3,  4.0 -> 0.25 m/s3 (cok daha yayvan)
 
-SHOW_PLANNED    = True   # surucunun PLANLADIGI sabit oranli egriyi de ciz
+STATION_GAP_M   = 3100.0 # istasyondan istasyona mesafe, m (bu hatta ortalama)
+SHOW_PLANNED    = False  # surucunun PLANLADIGI sabit oranli egriyi de ciz
+                         # (kesikli). Acarsan gercek hareketle 1 m icinde
+                         # ortustugu gorulur - okunakli degil ama dogrulama.
                          # (kesikli). Gercek hareketle arasindaki fark
                          # kabarma payinin ne ise yaradigini gosterir.
 SHOW_BANDS      = True   # tepki ve emniyet payi bantlari
 LABEL_OFFSETS   = [3.5, 12.5, 3.5]   # ust uste binen toplam etiketlerini ayir
 
-FIGSIZE   = (13.2, 3.9)  # sunumdaki resim kutusunun oranina gore
+FIGSIZE   = (13.2, 3.6)  # sunumdaki resim kutusunun oranina gore
 DPI       = 220
 XLIM      = None         # None -> otomatik.  Elle: (0, 420)
 
@@ -119,6 +122,38 @@ def integrate(stock, v0, demand, grade, top=None, limit_s=600.0):
     return out
 
 
+def trip(stock, config, top_ms, gap_m):
+    """Istasyondan istasyona tam bir seyahat. (t, x, v, a) listesi.
+
+    Surucunun yaptigi sey: durma noktasina kalan yol fren mesafesinden
+    buyukse tam guc, degilse servis freni. Ivme her tikte achievable_accel'den
+    geciyor, yani jerk siniri hem kalkista hem frende egriyi yuvarliyor.
+    """
+    t = x = v = a = 0.0
+    out = [(0.0, 0.0, 0.0, 0.0)]
+    while t < 600.0:
+        need = (braking_distance(v, dynamics.braking_rate_on_grade(stock, 0.0))
+                + dynamics.brake_buildup_distance_m(stock, v))
+        braking = gap_m - x <= need
+        # Hat hizinda surucu tam guc istemez, hizi TUTAR: talep, bir tikte
+        # kalan hiz farkini kapatacak kadar. Bunu yapmazsan seyir boyunca
+        # ivme grafigi ceki tavaninda kalir ve duz gitmeyen bir tren cizersin.
+        demand = (-stock.service_brake if braking
+                  else min(stock.max_accel, (top_ms - v) / DT))
+        stopping = braking and v + demand * DT <= 1e-9
+        a = dynamics.achievable_accel(stock, v, demand, previous_accel=a,
+                                      dt=DT, immediate=stopping)
+        v1 = min(v + a * DT, top_ms)
+        if braking and v1 <= 0.0:
+            out.append((t + (v / -a if a < 0 else 0.0), gap_m, 0.0, a))
+            break
+        x += 0.5 * (v + v1) * DT
+        t += DT
+        v = v1
+        out.append((t, x, v, a))
+    return out
+
+
 def main(target):
     scenario = load_scenario(SCENARIO)
     stock = scenario.timetable.services[0].stock
@@ -134,7 +169,8 @@ def main(target):
     react_m = v0 * react_s
 
     fig = Figure(figsize=FIGSIZE)
-    left, right = fig.subplots(1, 2, gridspec_kw={"width_ratios": [1.55, 1]})
+    left, mid, right = fig.subplots(
+        1, 3, gridspec_kw={"width_ratios": [1.45, 1, 1]})
 
     # -------------------------------------------------- fren / hareket yetkisi
     far = 0.0
@@ -192,34 +228,61 @@ def main(target):
     left.legend(loc="upper right", fontsize=10.0, frameon=False)
     quiet(left)
 
-    # ------------------------------------------------------------- kalkis
+    # --------------------------------------------- istasyondan istasyona
     top = kmh_to_ms(LINE_KMH)
-    acc = integrate(stock, 0.0, stock.max_accel, 0.0, top=top)
-    ts = [p[0] for p in acc]
-    vs = [ms_to_kmh(p[2]) for p in acc]
-    right.plot(ts, vs, linewidth=2.4, color=INK, zorder=3)
+    run = trip(stock, config, top, STATION_GAP_M)
+    ts = [p[0] for p in run]
+    vs = [ms_to_kmh(p[2]) for p in run]
+    accs = [p[3] for p in run]
 
+    mid.plot(ts, vs, linewidth=2.4, color=INK, zorder=3)
     base = ms_to_kmh(dynamics.base_speed_ms(stock))
-    at_base = next(tt for tt, vv in zip(ts, vs) if vv >= base)
-    right.axhline(base, color=GRID, linewidth=1.2, zorder=2)
-    right.text(ts[-1] * 0.99, base + 2.0, u"taban hız %.0f km/h" % base,
-               fontsize=10.5, color=MUTED, ha="right")
-    right.plot([at_base], [base], "o", color="#E8871F", markersize=8, zorder=4)
-    right.text(ts[-1] - 1.0, LINE_KMH - 12.0, u"%.0f km/h\n%.0f s · %.0f m"
-               % (LINE_KMH, ts[-1], acc[-1][1]), fontsize=12,
-               fontweight="bold", color=INK, ha="right", va="top")
-    right.set_xlabel(u"duruştan itibaren geçen süre, s")
-    right.set_ylabel(u"hız, km/h")
-    right.set_title(u"Kalkış eğrisi", loc="left", pad=12)
-    right.set_xlim(0, ts[-1] * 1.04)
-    right.set_ylim(0, LINE_KMH * 1.10)
+    mid.axhline(base, color=GRID, linewidth=1.2, zorder=2)
+    mid.text(ts[-1] * 0.99, base + 2.0, u"taban hız %.0f km/h" % base,
+             fontsize=10, color=MUTED, ha="right")
+    mid.text(ts[-1] * 0.5, LINE_KMH * 0.30,
+             u"%.0f m\n%.0f s\nort. %.0f km/h"
+             % (STATION_GAP_M, ts[-1], 3.6 * STATION_GAP_M / ts[-1]),
+             fontsize=12, fontweight="bold", color=INK, ha="center", va="center")
+    mid.set_xlabel(u"süre, s")
+    mid.set_ylabel(u"hız, km/h")
+    mid.set_title(u"İstasyondan istasyona — hız", loc="left", pad=12)
+    mid.set_xlim(0, ts[-1] * 1.02)
+    mid.set_ylim(0, LINE_KMH * 1.10)
+    quiet(mid)
+
+    right.axhline(0, color=GRID, linewidth=1.2, zorder=2)
+    right.plot(ts, accs, linewidth=2.4, color="#E8871F", zorder=3)
+    jerk = dynamics.jerk_limit_ms3(stock)
+    right.text(0.03, 0.06, u"jerk sınırı  %.2f m/s³" % jerk,
+               transform=right.transAxes, fontsize=11, color=MUTED)
+    right.set_xlabel(u"süre, s")
+    right.set_ylabel(u"ivme, m/s²")
+    right.set_title(u"İstasyondan istasyona — ivme", loc="left", pad=12)
+    right.set_xlim(0, ts[-1] * 1.02)
+    right.set_ylim(-1.25, 1.25)
     quiet(right)
 
-    fig.tight_layout(w_pad=3.0)
+    # Fren devreye girisi 164 s'lik eksende dik gorunuyor ama dik degil:
+    # jerk siniri 0'dan -1.0'a inmek icin service_brake / jerk saniye
+    # istiyor. Buyutec bunu gosteriyor - grafigin dogrulugu buna bagli.
+    brake_t = next(t for t, a in zip(ts, accs) if a < -0.02)
+    span = stock.service_brake / jerk
+    zoom = right.inset_axes([0.46, 0.26, 0.32, 0.32], facecolor="white")
+    zoom.plot(ts, accs, linewidth=2.0, color="#E8871F")
+    zoom.set_xlim(brake_t - span * 0.5, brake_t + span * 1.6)
+    zoom.set_ylim(-1.15, 0.2)
+    zoom.set_xticks([]); zoom.set_yticks([])
+    for side in ("top", "right", "left", "bottom"):
+        zoom.spines[side].set_color(GRID)
+    zoom.set_title(u"%.0f s'de kuruluyor" % span, fontsize=9.5, color=MUTED,
+                   pad=3)
+
+    fig.tight_layout(w_pad=2.6)
     fig.set_dpi(DPI)
     FigureCanvasAgg(fig).print_png(target)
-    print("  kalkis     %6.1f m   %.0f s   (%d km/h'e)"
-          % (acc[-1][1], ts[-1], LINE_KMH))
+    print("  seyahat    %6.1f m   %.0f s   ort %.0f km/h"
+          % (STATION_GAP_M, ts[-1], 3.6 * STATION_GAP_M / ts[-1]))
     print("yazildi: %s" % target)
 
 
