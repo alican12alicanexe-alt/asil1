@@ -33,10 +33,10 @@ kit.arrange([1, 3, 2, 9, 5, 8, 10, 12, 13, 14, 15, 16, 17, 11, 18, 19, 20, 21])
 # Fizik blogu: denklemler -> parametreler -> fren mesafesi -> hizlanma.
 # Dordu de lvl0/lvl1 yapisi istiyor; o yapiya sahip tek sablon 9. slayt,
 # o yuzden ucunu kopyalayip sonra hepsini sirasina yerlestiriyoruz.
-for _ in range(3):
+for _ in range(4):
     kit.duplicate(9, len(kit.order()))
-kit.arrange([1, 2, 3, 4, 5, 6, 7, 19, 9, 20, 21, 10, 11, 12, 13, 14, 15,
-             16, 17, 18])          # eski 8 (hareket egrileri) dusuyor
+kit.arrange([1, 2, 3, 4, 5, 6, 7, 19, 9, 20, 21, 22, 10, 11, 12, 13, 14,
+             15, 16, 17, 18])      # eski 8 (hareket egrileri) dusuyor
 
 # ==================================================================== 2 İÇERİK
 kit.body(2, [
@@ -307,13 +307,46 @@ kit.note(11, u"SOL: ceki egrisi iki parcali. Taban hiza kadar kuvvet sabit - "
              u"Karsilastirma icin fren: 80'den duruşa 247 metre. Yani bu arac "
              u"hizlanirken durdugundan bir buçuk kat fazla yol aliyor.")
 
-# ================================================================ 12 EXPRESS
-kit.title(12, u"DURAKSIZ (EXPRESS) İŞLETME")
-kit.body(12, [u"Peron kısıtı devrede değil — bağlayıcı olan tek şey trenler "
+# ========================================================= 12 EĞİMLİ VARYANT
+kit.title(12, u"EĞİMLİ VARYANT")
+kit.body(12, [
+    (0, u"Aynı çevrim, gerçekçi bir eğim profiliyle: ruling gradient 15‰, "
+        u"tur boyunca toplamı sıfır."),
+    (0, u"Eğim tur süresine 3 saniye ekliyor, fren mesafesine 39 metre. "
+        u"Zaman değil, pay yiyor."),
+], name="Text Placeholder")
+kit.add_pic(12, CH + "/res-gradient.png", (FULL[0], 2400000, FULL[1], 3300000),
+            "Egim")
+kit.note(12, u"Bu varyant sunulan sonuclarin gercek bir hatta da gecerli olup "
+             u"olmadigini sinamak icin var. Ayni cevrim, ayni filo, ayni tarife - "
+             u"tek fark hattin artik bir egim profili tasimasi.\n"
+             u"PROFIL: istasyon ciftleri arasina on egim yazildi, +15 ile -14 "
+             u"binde arasinda. Ayni liste iki hatta da yazildigi ve DN ters yonde "
+             u"gecildigi icin yukselti INSAAT GEREGI kapaniyor - olculen net "
+             u"degisim +0.00 metre. Tur icinde +73 metreye cikip -13 metreye "
+             u"iniyor. Peron bolgeleri duz birakildi, yani bir kesim uzunlugunun "
+             u"700 metre eksigi uzerinden egimleniyor.\n"
+             u"SURE: 79:10'dan 79:13'e. Uc saniye. Sebebi basit - kapali bir "
+             u"cevrimde tirmanista kaybedilen sey iniste geri aliniyor. Egim tur "
+             u"suresini pratikte degistirmiyor.\n"
+             u"FREN: burada degisiyor. Binde 15 iniste servis freni 1.00 degil "
+             u"0.864 m/s2 ediyor, cunku yercekimi frene karsi calisiyor. Gereken "
+             u"blok boyu 339'dan 378 metreye cikiyor ve en dar bloktaki pay 61 "
+             u"metreden 22 metreye iniyor. Yani egim zamandan degil, EMNIYET "
+             u"PAYINDAN yiyor - ve tukendigi anda blok boyunu, dolayisiyla "
+             u"kapasiteyi belirlemeye baslar.\n"
+             u"Bu, sunumun geri kalanini gecersiz kilmiyor: butun karsilastirmalar "
+             u"duz hatta yapildi ve uc sistem de ayni egimi gorurdu. Ama bir "
+             u"isletmeciye sunu soyluyor: bu hattan daha dik bir hatta, kapasiteyi "
+             u"once sinyalizasyon degil topografya sinirlar.")
+
+# ================================================================ 13 EXPRESS
+kit.title(13, u"DURAKSIZ (EXPRESS) İŞLETME")
+kit.body(13, [u"Peron kısıtı devrede değil — bağlayıcı olan tek şey trenler "
               u"arası mesafe."], name="Text Placeholder")
-kit.drop_shape(12, "Not 202")
-kit.swap_pic(12, CH + "/res-express.png", (FULL[0], 2350000, FULL[1], 3200000))
-kit.note(12, u"Bu sanal kuplaj icin en elverisli vaka: hicbir tren durmuyor, "
+kit.drop_shape(13, "Not 202")
+kit.swap_pic(13, CH + "/res-express.png", (FULL[0], 2350000, FULL[1], 3200000))
+kit.note(13, u"Bu sanal kuplaj icin en elverisli vaka: hicbir tren durmuyor, "
              u"herkes hat hizinda. Nispi fren mesafesinin kazanci hizla buyudugu "
              u"icin fark burada aciliyor - 39 saniyeden 32 saniyeye, %18.\n"
              u"Sabit blogun 139 saniyede kalmasinin sebebi sinyalizasyon felsefesi "
@@ -323,13 +356,13 @@ kit.note(12, u"Bu sanal kuplaj icin en elverisli vaka: hicbir tren durmuyor, "
              u"yan yana gostermek en carpici olani; grafigin yerine degil, "
              u"grafikten once gosterilebilir.")
 
-# ============================================================ 13 DURAKLAMALI
-kit.title(13, u"DURAKLAMALI (ALL-STOP) İŞLETME")
-kit.body(13, [u"22 duruşlu tur — bağlayıcı kısıt artık sinyalizasyon değil, "
+# ============================================================ 14 DURAKLAMALI
+kit.title(14, u"DURAKLAMALI (ALL-STOP) İŞLETME")
+kit.body(14, [u"22 duruşlu tur — bağlayıcı kısıt artık sinyalizasyon değil, "
               u"peron işgali."], name="Text Placeholder")
-kit.drop_shape(13, "Not 203")
-kit.swap_pic(13, CH + "/res-stopping.png", (FULL[0], 2350000, FULL[1], 3200000))
-kit.note(13, u"Ayni ag, ayni filo, tek fark her istasyonda durulmasi. Sanal "
+kit.drop_shape(14, "Not 203")
+kit.swap_pic(14, CH + "/res-stopping.png", (FULL[0], 2350000, FULL[1], 3200000))
+kit.note(14, u"Ayni ag, ayni filo, tek fark her istasyonda durulmasi. Sanal "
              u"kuplajin ustunlugu %18'den %9'a iniyor.\n"
              u"Neden: turun buyuk kismi hat hizinin altinda geciyor ve nispi frenin "
              u"kazanci hizla satin aliniyor - duran trende kazanc sifir. Daha "
@@ -342,19 +375,19 @@ kit.note(13, u"Ayni ag, ayni filo, tek fark her istasyonda durulmasi. Sanal "
              u"ONERI - BURAYA GIF/VIDEO: duraklamali kosunun semasi; peron "
              u"isgalinin baglayici oldugu an gorulsun.")
 
-# ========================================================== 14 BOZUCU ETKİ
-kit.title(14, u"BOZUCU ETKİ ALTINDA DAVRANIŞ")
-kit.body(14, [
+# ========================================================== 15 BOZUCU ETKİ
+kit.title(15, u"BOZUCU ETKİ ALTINDA DAVRANIŞ")
+kit.body(15, [
     u"Üç bozucu etki, iki okuma: aynı tarifede ve her sistem kendi "
     u"sürdürülebilir aralığında.",
     u"Kazanç sistemin kendisinden değil, elinde kalan paydan geliyor.",
 ], name="Text Placeholder")
 # Iki ayri grafik yan yana: solda ayni tarife, sagda kendi siniri.
-kit.swap_pic(14, CH + "/res-disruption-a.png",
+kit.swap_pic(15, CH + "/res-disruption-a.png",
              (FULL[0], 2330000, 6150000, 3350000))
-kit.add_pic(14, CH + "/res-disruption-b.png",
+kit.add_pic(15, CH + "/res-disruption-b.png",
             (6650000, 2330000, 5100000, 3350000), "Bozucu-b")
-kit.note(14, u"METODOLOJI: bir sistemi digerinin tarifesinde kosturmak haksiz "
+kit.note(15, u"METODOLOJI: bir sistemi digerinin tarifesinde kosturmak haksiz "
              u"karsilastirmadir - payi olan kazanir. O yuzden iki okuma var.\n"
              u"SOL: ikisi de 78 saniyede, yani isletmecinin bugun hareketli "
              u"blokla kostugu tarife. Uc olayin ucunde de ayni trenler, ayni "
@@ -381,16 +414,16 @@ kit.note(14, u"METODOLOJI: bir sistemi digerinin tarifesinde kosturmak haksiz "
              u"saatine farkli sayida tren sokuyor; o satir tarifeden kirleniyor. "
              u"Kayit icin: MB@71 417 s, VC@71 355 s.")
 
-# ================================================================= 15 KONVOY
-kit.title(15, u"KONVOY DAVRANIŞI")
-kit.body(15, [
+# ================================================================= 16 KONVOY
+kit.title(16, u"KONVOY DAVRANIŞI")
+kit.body(16, [
     (0, u"Kural: 70 km/h ile sınırlı; yalnızca öndekine yaklaşırken hat hızına "
         u"serbest bırakılıyor."),
     (0, u"Kural aralığı kısaltıyor, ama trenler kalıcı konvoy kurmuyor: "
         u"kuplajlar kısa ve ikişerli."),
 ], name="Text Placeholder")
-kit.swap_pic(15, CH + "/res-convoy.png", (FULL[0], 2700000, FULL[1], 2980000))
-kit.note(15, u"Sagdaki iki panel iz dosyasindan sayildi. Bir tik kuplajli "
+kit.swap_pic(16, CH + "/res-convoy.png", (FULL[0], 2700000, FULL[1], 2980000))
+kit.note(16, u"Sagdaki iki panel iz dosyasindan sayildi. Bir tik kuplajli "
              u"sayiliyor: yetki gerekcesi 'coupled to X' iceriyor ve 'uncoupled' "
              u"icermiyor - yani sanal kuplaj nispi fren mesafesi veriyor VE tren "
              u"kuplaj esiginin icinde.\n"
@@ -409,14 +442,14 @@ kit.note(15, u"Sagdaki iki panel iz dosyasindan sayildi. Bir tik kuplajli "
              u"ayrilamiyor.\n"
              u"ONERI - BURAYA GIF: iki trenin kuplaj kurup istasyonda ayrilmasi.")
 
-# ====================================================== 16 KARŞILAŞTIRMA
-kit.title(16, u"KARŞILAŞTIRMALI SONUÇLAR")
-kit.body(16, [
+# ====================================================== 17 KARŞILAŞTIRMA
+kit.title(17, u"KARŞILAŞTIRMALI SONUÇLAR")
+kit.body(17, [
     (0, u"Aynı ağ, aynı filo, aynı tarife — tek değişken sinyalizasyon."),
 ], name="Text Placeholder")
-kit.add_pic(16, CH + "/res-summary.png", (FULL[0], 2200000, FULL[1], 3450000),
+kit.add_pic(17, CH + "/res-summary.png", (FULL[0], 2200000, FULL[1], 3450000),
             "Ozet")
-kit.note(16, u"Bu slayt butun deneyleri tek karede topluyor.\n"
+kit.note(17, u"Bu slayt butun deneyleri tek karede topluyor.\n"
              u"Buyuk sicrama sabit bloktan hareketli bloga: duraklamali turda 148 "
              u"saniyeden 78'e, kapasite neredeyse ikiye katlaniyor (%47). Hareketli "
              u"bloktan sanal kuplaja gecis ise 78'den 71'e, %9.\n"
@@ -425,9 +458,9 @@ kit.note(16, u"Bu slayt butun deneyleri tek karede topluyor.\n"
              u"Duraksiz isletmede tablo degisiyor: orada sanal kuplajin katkisi "
              u"%18, yani iki kati. Kazanc isletme bicimine bagli.")
 
-# =========================================================== 17 ANA BULGULAR
-kit.title(17, u"ANA BULGULAR")
-kit.body(17, [
+# =========================================================== 18 ANA BULGULAR
+kit.title(18, u"ANA BULGULAR")
+kit.body(18, [
     (0, u"SANAL KUPLAJ NEREDE KAZANDIRIYOR"),
     (1, u"Duraksız işletme   39 s → 32 s   (%18)   ·   konvoy kuralıyla "
         u"25 s → 17 s   (%32)"),
@@ -439,7 +472,7 @@ kit.body(17, [
     (0, u"BAĞLAMI KAÇIRMAMAK İÇİN"),
     (1, u"Asıl sıçrama sabit blok → hareketli blok:   148 s → 78 s   (%47)"),
 ], name="Text Placeholder")
-kit.note(17, u"Bu slaydin isi dengeli olmak. Sanal kuplaj her kosulda daha iyi "
+kit.note(18, u"Bu slaydin isi dengeli olmak. Sanal kuplaj her kosulda daha iyi "
              u"degil; ISLETME BICIMINE bagli olarak daha iyi.\n"
              u"Duraksiz, yuksek hizli, az duraklı bir hatta kazanc gercek ve "
              u"buyuk. Her istasyonda duran bir hatta kazanc kuculuyor cunku "
@@ -452,9 +485,9 @@ kit.note(17, u"Bu slaydin isi dengeli olmak. Sanal kuplaj her kosulda daha iyi "
              u"(2) Konvoy satiri planlama payi tasiyor. (3) Tek arac tipi, tek "
              u"ag geometrisi. (4) V2V kapsama kaybi modellenmedi.")
 
-# ============================================================ 18 YEDİ SANİYE
-kit.title(18, u"YEDİ SANİYE: TRENE Mİ, DAYANIKLILIĞA MI?")
-kit.body(18, [
+# ============================================================ 19 YEDİ SANİYE
+kit.title(19, u"YEDİ SANİYE: TRENE Mİ, DAYANIKLILIĞA MI?")
+kit.body(19, [
     (0, u"Ölçüm tek bir şey söylüyor: teknoloji 7 saniye veriyor. Nereye "
         u"harcanacağı bir işletme kararı."),
     (0, u"TRENE HARCARSAN"),
@@ -467,7 +500,7 @@ kit.body(18, [
     (1, u"Bu çalışmada maliyet analizi yapılmadı; olası kazanç saha donanımına "
         u"bağımlılığın azalmasıdır"),
 ], name="Text Placeholder")
-kit.note(18, u"KAPANIS: sanal kuplaj kapasitede hareketli bloktan iyi, ama karari "
+kit.note(19, u"KAPANIS: sanal kuplaj kapasitede hareketli bloktan iyi, ama karari "
              u"kapasite vermiyor. Aoun'un olctugu agirliklara gore karar %45 "
              u"guvenlik, %32 regulasyon onayi, sadece %5.6 kapasite. Hareketli "
              u"blok bugun daha olgun oldugu icin genel skorda one geciyor.\n"

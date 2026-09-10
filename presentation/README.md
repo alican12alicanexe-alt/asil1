@@ -49,15 +49,16 @@ Adımlar tek tek de koşulur: `stats`, `headway`, `express`, `convoy`,
 | 9 | Kullanılan Parametreler | — | `python stats.py scenarios/ring` |
 | 10 | Fren Mesafesi | `res-braking.png` | `python presentation/charts/physics.py` — her terim `dynamics`/`driver` fonksiyonlarından |
 | 11 | Hızlanma | `res-traction.png` | aynı betik — `achievable_accel` ile tik tik integrasyon |
-| 12 | Duraksız İşletme | `res-express.png` | `python presentation/ring/_sweep_express.py <sistem>` |
-| 13 | Duraklamalı İşletme | `res-stopping.png` | `python presentation/ring/_sweep_headway.py <sistem>` |
-| 14 | Bozucu Etki | `res-disruption-a.png` + `res-disruption-b.png` | `python run.py presentation/ring/scenario-{78,71}-{dwell,tsr,both}.yaml --propagation/--headless --system <sistem>` |
-| 15 | Konvoy Davranışı | `res-convoy.png` | aralıklar → `_sweep_convoy.py --headway [--stopping]`; kuplaj metrikleri → `run.py ... --log` + `convoy_stats.py` |
-| 16 | Karşılaştırmalı Sonuçlar | `res-summary.png` | slayt 12 ve 13 ile aynı koşular |
-| 17 | Ana Bulgular | — | slayt 12, 13, 14, 15 |
-| 18 | Yedi Saniye | — | slayt 13 (7 s / %9) ve slayt 14 (%13 / %0.5) |
-| 19 | Kaynaklar | — | — |
-| 20 | Teşekkürler | — | — |
+| 12 | Eğimli Varyant | `res-gradient.png` | `python run.py presentation/ring/scenario-grade.yaml --check` (blok payı) · `python stats.py presentation/ring/scenario-grade.yaml` (tur, eğim) · profil `python presentation/charts/gradient.py` |
+| 13 | Duraksız İşletme | `res-express.png` | `python presentation/ring/_sweep_express.py <sistem>` |
+| 14 | Duraklamalı İşletme | `res-stopping.png` | `python presentation/ring/_sweep_headway.py <sistem>` |
+| 15 | Bozucu Etki | `res-disruption-a.png` + `res-disruption-b.png` | `python run.py presentation/ring/scenario-{78,71}-{dwell,tsr,both}.yaml --propagation/--headless --system <sistem>` |
+| 16 | Konvoy Davranışı | `res-convoy.png` | aralıklar → `_sweep_convoy.py --headway [--stopping]`; kuplaj metrikleri → `run.py ... --log` + `convoy_stats.py` |
+| 17 | Karşılaştırmalı Sonuçlar | `res-summary.png` | slayt 13 ve 14 ile aynı koşular |
+| 18 | Ana Bulgular | — | slayt 13, 14, 15, 16 |
+| 19 | Yedi Saniye | — | slayt 14 (7 s / %9) ve slayt 15 (%13 / %0.5) |
+| 20 | Kaynaklar | — | — |
+| 21 | Teşekkürler | — | — |
 
 `<sistem>` = `fixed_block_3aspect` | `etcs_moving_block` | `virtual_coupling`
 
@@ -223,6 +224,7 @@ alır.
 | `scenario.yaml` + `timetable.yaml` | temel çevrim (5 dk aralık) |
 | `scenario-express.yaml` + `timetable-express.yaml` | duraksız |
 | `scenario-convoy*.yaml` + `timetable-convoy*.yaml` | konvoy kuralı (`uncoupled_speed_kmh: 70`, `coupling_margin_m: 800`) |
+| `scenario-grade.yaml` + `infrastructure-grade.yaml` + `timetable-grade.yaml` | eğimli varyant — ruling 15‰, tur boyunca toplamı sıfır |
 | `scenario-78-*.yaml` + `timetable-78.yaml` | hareketli bloğun kendi sınırı |
 | `scenario-71-*.yaml` + `timetable-71.yaml` | sanal kuplajın kendi sınırı |
 
