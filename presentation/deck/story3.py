@@ -246,32 +246,35 @@ kit.note(9, u"Senaryo dosyasi bunlarin cogunu YAZMIYOR. Bir arac icin yazilan se
 # ========================================================= 10 FREN MESAFESİ
 kit.title(10, u"FREN MESAFESİ")
 kit.body(10, [
-    (0, u"80 km/h'ten duruşa, düz hat, servis freni:   "
-        u"44 + 22 + 247 + 25  =  339 m"),
-    (0, u"Fren eğrisi toplamın yalnızca %73'ü. Bir bloğu boyutlandıran sayı "
-        u"toplam olan."),
+    (0, u"80 km/h'ten duruşa, servis freni, düz hat:   269 m,   23 s."),
+    (0, u"Binde 15 inişte 301 m · acil frenle 197 m. Fren jerk sınırıyla "
+        u"2 saniyede kuruluyor — eğrinin başı bu yüzden yayvan."),
 ], name="Text Placeholder")
 kit.add_pic(10, CH + "/res-braking.png", (FULL[0], 2400000, FULL[1], 3300000),
             "Fren")
-kit.note(10, u"Adim adim, hepsi slayt 9'daki parametrelerden:\n"
-             u"  v0 = 80 km/h = 22.22 m/s\n"
-             u"  tepki    v0 x t_tepki      = 22.22 x 2.0        =  44.4 m\n"
-             u"  brake build-up  v0 x t_brake build-up/2  = 22.22 x 1.0        =  22.2 m\n"
-             u"  fren     v0^2 / 2b         = 493.8 / 2.0        = 246.9 m\n"
-             u"  pay      surucunun payi                          =  25.0 m\n"
-             u"  TOPLAM                                           = 338.6 m\n"
-             u"Kabarma neden yarim: ERTMS'in yaptigi gibi, brake build-up suresinin "
-             u"yarisi boyunca tren frensiz sayiliyor. Bu bir yaklasim ve dogru "
-             u"boyutta oldugunu olctum: sabit oranli plan 338.6 m diyor, jerk "
-             u"sinirli gercek hareketi tik tik integre ettigimde 337.9 m cikiyor. "
-             u"0.7 metre.\n"
-             u"EGIM: binde 15 iniste b = 1.0 - 9.80665 x 0.015 / 1.08 = 0.864, "
-             u"fren egrisi 247'den 286 metreye cikiyor, toplam 378 m. Egim "
-             u"teriminin 1.08'e bolunmesi, yercekiminin statik kutleye etki "
-             u"etmesi ama donen parcalarin eylemsizliginin de ona direnmesinden.\n"
-             u"ACIL FREN 1.5 m/s2 ile fren egrisi 165 m, toplam 256 m. Ama "
-             u"surucunun cizdigi egri SERVIS freniyle cizilir; acil fren son "
-             u"caredir, planlanan bir sey degil.\n"
+kit.note(10, u"Cizilen sey TRENIN YAPTIGI hareket: her nokta simulatorun kendi "
+             u"achievable_accel fonksiyonundan tik tik integre ediliyor, jerk "
+             u"siniri dahil. Sabit oranli formul degil - onun egrisinin basinda "
+             u"kose, sonunda dikey inis olur, ikisi de gercek bir trende yoktur.\n"
+             u"SAG PANEL bunun sebebini gosteriyor: fren aninda kurulmuyor. Jerk "
+             u"siniri 0.5 m/s3, yani servis freni 2 saniyede, acil fren 3 saniyede "
+             u"tam orana ulasiyor. Jerk siniri fren build-up suresinden "
+             u"tureti1iyor: 2 saniyede tam frene ulasan bir fren, saniyede "
+             u"0.5 m/s2 degisebilen bir frendir.\n"
+             u"EGIM: binde 15 iniste net oran 1.0 degil 0.86 m/s2. Hesap: "
+             u"9.80665 x 0.015 / 1.08 = 0.136 m/s2 dusuyor. 1.08'e bolunmesi "
+             u"yercekiminin statik kutleye etki etmesi ama donen parcalarin "
+             u"eylemsizliginin de ona direnmesinden. Mesafe 269'dan 301 metreye "
+             u"cikiyor - %12 daha uzun.\n"
+             u"SORULURSA - BIR BLOGU BOYUTLANDIRAN SAY1 BU DEGIL: sinyalizasyon "
+             u"sistemi trenin fren mesafesine ucak sey daha ekliyor. Surucunun "
+             u"tepki suresi (80 km/h'te 2 saniye = 44 m), fren build-up payi "
+             u"(22 m) ve emniyet payi (25 m). Sabit oranli plan uzerinden: "
+             u"44 + 22 + 247 + 25 = 339 metre. Yani bir blogu boyutlandiran sayi "
+             u"269 degil 339. Ilginc olan su: planin toplami 338.6 m, gercek "
+             u"hareketin toplami 44 + 269 + 25 = 338.2 m - yarim metre fark. "
+             u"Build-up payi tam olarak jerkin maliyetini karsilamak icin var ve "
+             u"dogru boyutta.\n"
              u"Fren egrisi Davis direncini kasten saymaz: bir fren egrisi tren "
              u"hafif, temiz ve arkadan ruzgar alirken de tutmali. Hata emniyetli "
              u"yonde.")

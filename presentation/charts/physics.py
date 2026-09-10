@@ -52,6 +52,39 @@ CASES = [
     (u"Acil fren, düz hat", 0.0, True, ORANGE),
 ]
 
+DT = 0.02
+
+
+def brake_run(grade, emergency):
+    """Frene basildiktan sonraki GERCEK hareket, jerk sinirli.
+
+    Sabit oranli formul surucunun PLANI; bu ise trenin yaptigi. Ivme sifirdan
+    tam fren oranina jerk siniriyla iniyor (service_brake / jerk = 2 s), o
+    yuzden egrinin basi yayvan; duruş anini ``immediate`` ile kapatiyoruz ki
+    tren durma noktasini jerkin maliyeti kadar asmasin.
+    """
+    demand = -(stock.emergency_brake if emergency else stock.service_brake)
+    v, x, a, t = v0, 0.0, 0.0, 0.0
+    xs, ys, ts, accs = [0.0], [LINE_KMH], [0.0], [0.0]
+    while v > 1e-9 and t < 200.0:
+        stopping = v + demand * DT <= 1e-9
+        a = dynamics.achievable_accel(stock, v, demand, grade_permille=grade,
+                                      previous_accel=a, dt=DT,
+                                      immediate=stopping)
+        v1 = v + a * DT
+        if v1 <= 0.0:
+            if a < 0.0:
+                x += 0.5 * v * (v / -a)
+                t += v / -a
+            xs.append(x); ys.append(0.0); ts.append(t); accs.append(a)
+            break
+        x += 0.5 * (v + v1) * DT
+        t += DT
+        v = v1
+        xs.append(x); ys.append(ms_to_kmh(v)); ts.append(t); accs.append(a)
+    return xs, ys, ts, accs, x
+
+
 print(u"v0 = %.4f m/s   tepki %.1f s   build-up %.1f s   pay %.1f m"
       % (v0, config.reaction_time_s, stock.brake_buildup_s, MARGIN))
 rows = []
@@ -66,66 +99,56 @@ for label, grade, emg, colour in CASES:
 assert abs(rows[0][6] - stopping_distance(stock, config, v0, 0.0)) < 0.05
 
 # ===================================================== 1) fren mesafesi
+# Cizilen sey TRENIN YAPTIGI hareket. Surucunun tepki suresi ve emniyet payi
+# burada yok - onlar trenin degil, isletmenin buyukleri. Sabit oranli formul
+# de yok: onun egrisinin basinda kose, sonunda dikey inis olur, ikisi de
+# gercek bir trende yoktur. Her nokta achievable_accel'den, jerk siniri dahil.
 fig = Figure(figsize=(13.2, 4.0))
-left, right = fig.subplots(1, 2, gridspec_kw={"width_ratios": [1.15, 1]})
+left, right = fig.subplots(1, 2, gridspec_kw={"width_ratios": [1.25, 1]})
 
-for label, grade, emg, colour, b, curve, total in rows:
-    start = REACT + BUILD
-    xs = [start + curve * i / 300.0 for i in range(301)]
-    ys = [ms_to_kmh(max(0.0, v0 * v0 - 2 * b * (x - start)) ** 0.5) for x in xs]
-    left.plot([0, start] + xs, [LINE_KMH, LINE_KMH] + ys, linewidth=2.2,
-              color=colour, label=label, zorder=3)
-    # Emniyet payi burada CIZILMIYOR: egri trenin gercekten yaptigi hareket,
-    # pay ise ondan sonra birakilan bos mesafe. Ikisini ayni cizgide gostermek
-    # egriyi yanlis okutuyordu. Pay sagdaki yigilmis cubukta duruyor.
-left.axvspan(0, REACT, color=GRID, alpha=0.7, zorder=1)
-left.axvspan(REACT, REACT + BUILD, color=GRID, alpha=0.35, zorder=1)
-left.text(REACT / 2, LINE_KMH * 0.55, u"tepki", rotation=90, fontsize=10,
-          color=MUTED, ha="center", va="center")
-left.text(REACT + BUILD / 2, LINE_KMH * 0.55, u"build-up", rotation=90,
-          fontsize=10, color=MUTED, ha="center", va="center")
-left.set_xlabel(u"tehlike görüldüğü andan itibaren alınan yol, m")
+ramp_s = stock.service_brake / dynamics.jerk_limit_ms3(stock)
+LABEL_DY = {CASES[0][0]: 30, CASES[1][0]: 10, CASES[2][0]: 10}
+RATE_DY = {CASES[0][0]: -19, CASES[1][0]: 9, CASES[2][0]: 9}
+runs = {}
+for label, grade, emg, colour in CASES:
+    xs, ys, ts, accs, run = brake_run(grade, emg)
+    runs[label] = (run, ts[-1])
+    left.plot(xs, ys, linewidth=2.4, color=colour, label=label, zorder=3)
+    left.plot([run], [0.0], "o", color=colour, markersize=8, zorder=4)
+    # 269 ve 301 metre yan yana dusuyor: etiketleri dikeyde ayir.
+    left.annotate(u"%.0f m" % run, (run, 0.0), textcoords="offset points",
+                  xytext=(4, LABEL_DY[label]), fontsize=14, fontweight="bold",
+                  color=colour)
+    right.plot(ts, accs, linewidth=2.4, color=colour, zorder=3)
+    # -1.0 ve -0.86 birbirine cok yakin: birini ustune, digerini altina koy.
+    right.annotate(u"%.2f m/s²" % min(accs), (ts[-1], min(accs)),
+                   textcoords="offset points", xytext=(-4, RATE_DY[label]),
+                   fontsize=12, fontweight="bold", color=colour, ha="right")
+
+left.set_xlabel(u"frene basıldıktan sonra alınan yol, m")
 left.set_ylabel(u"hız, km/h")
-left.set_title(u"80 km/h'ten duruşa", loc="left", pad=12)
-left.set_xlim(0, max(r[5] for r in rows) + REACT + BUILD + 12)
+left.set_title(u"80 km/h'ten duruşa — trenin yaptığı hareket", loc="left",
+               pad=12)
+left.set_xlim(0, max(r[0] for r in runs.values()) * 1.10)
 left.set_ylim(0, LINE_KMH * 1.10)
 left.legend(loc="upper right", fontsize=10.5)
 quiet(left)
 
-SEG = [(u"tepki", "#9AA5B5"), (u"brake build-up", "#C6CEDA"),
-       (u"fren eğrisi", None), (u"emniyet payı", "#E3E8EF")]
-for i, (label, grade, emg, colour, b, curve, total) in enumerate(rows):
-    y = len(rows) - 1 - i
-    x = 0.0
-    for name, seg_colour, width in ((SEG[0][0], SEG[0][1], REACT),
-                                    (SEG[1][0], SEG[1][1], BUILD),
-                                    (SEG[2][0], colour, curve),
-                                    (SEG[3][0], SEG[3][1], MARGIN)):
-        right.barh([y], [width], left=[x], height=0.52, color=seg_colour,
-                   zorder=3)
-        # Dar segmentler de sayisini tasisin: 22 ve 25 m'lik terimler
-        # gorunmezse "dort terim" iddiasi grafikte dogrulanmiyor.
-        narrow = width < 45
-        right.text(x + width / 2, y, "%.0f" % width, ha="center", va="center",
-                   fontsize=9.5 if narrow else 11.5, fontweight="bold",
-                   color="white" if seg_colour is colour else INK)
-        x += width
-    right.text(x + 6, y, "%.0f m" % total, va="center", ha="left",
-               fontsize=15, fontweight="bold", color=colour)
-right.set_yticks(range(len(rows)))
-right.set_yticklabels([u"Acil, düz", u"Servis, −15‰", u"Servis, düz"],
-                      fontsize=12, color=INK)
-right.set_xlim(0, max(r[6] for r in rows) * 1.16)
-right.set_xlabel(u"hareket yetkisi, m")
-right.set_title(u"Hareket yetkisinin dört terimi",
-                loc="left", pad=12)
-quiet(right, y_grid=False, x_grid=True)
-handles = [right.barh([0], [0], color=c)[0] for _, c in SEG[:2]] + \
-          [right.barh([0], [0], color=NAVY)[0],
-           right.barh([0], [0], color=SEG[3][1])[0]]
-right.legend(handles, [s[0] for s in SEG], loc="upper center",
-             bbox_to_anchor=(0.5, -0.20), ncol=4, fontsize=10.5)
-fig.subplots_adjust(left=0.055, right=0.99, top=0.87, bottom=0.235, wspace=0.22)
+right.axhline(0, color=GRID, linewidth=1.2, zorder=1)
+right.axvspan(0, ramp_s, color=GRID, alpha=0.55, zorder=1)
+right.text(ramp_s + 0.6, -0.30,
+           u"fren jerk sınırıyla kuruluyor: %.1f m/s³\nservis freni %.0f s, acil fren %.0f s"
+           % (dynamics.jerk_limit_ms3(stock), ramp_s,
+      stock.emergency_brake / dynamics.jerk_limit_ms3(stock)),
+           fontsize=10.5, color=MUTED, va="center")
+right.set_xlabel(u"frene basıldıktan sonra geçen süre, s")
+right.set_ylabel(u"ivme, m/s²")
+right.set_title(u"Aynı üç duruşun ivmesi", loc="left", pad=12)
+right.set_xlim(0, max(r[1] for r in runs.values()) * 1.04)
+right.set_ylim(-1.75, 0.30)
+quiet(right)
+
+fig.subplots_adjust(left=0.055, right=0.99, top=0.87, bottom=0.145, wspace=0.20)
 save(fig, "res-braking")
 
 # ======================================================== 2) hizlanma
