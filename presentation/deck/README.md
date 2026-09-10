@@ -2,11 +2,13 @@
 
 | dosya | ne |
 |---|---|
-| `ASELSAN-Sunum-v4.pptx` | teslim edilen sunum, 17 slayt — v3'ün elle düzenlenmiş hâli; sayfa numarası artık alan (`slidenum`), içerik listesi slayt başlıklarıyla aynı |
+| `ASELSAN-Sunum-v5.pptx` | teslim edilen sunum, 17 slayt — 11, 12 ve 14'te yüzdeler slayt metni olarak |
+| `ASELSAN-Sunum-v4.pptx` | v3'ün elle düzenlenmiş hâli; sayfa numarası alan (`slidenum`), içerik listesi slayt başlıklarıyla aynı — v5'in girdisi |
 | `ASELSAN-Sunum-v3.pptx` | `story3.py`'nin çıktısı, 21 slayt — v4'ün girdisi |
 | `ASELSAN-Sunum-v2.pptx` | `story3.py`'nin girdisi — ara sürüm |
 | `kit.py` | `.pptx` düzenleme takımı — başlık/gövde yazma, resim ekleme ve değiştirme, konuşmacı notu, slayt kopyalama ve yeniden sıralama |
 | `story3.py` | v3'ün içeriğini kuran betik: slayt sırası, her slaydın maddeleri, grafikleri ve notu |
+| `add_pcts.py` | v4 → v5: yüzdeleri metin kutusu olarak ekler; barların hizasını grafiğin PNG'sinden ve slayttaki kırpmadan hesaplar |
 | `dump.py` | bir `.pptx`'in bütün slayt metnini ve notlarını terminale döker — kontrol için |
 
 ## Sunumu yeniden kurmak
