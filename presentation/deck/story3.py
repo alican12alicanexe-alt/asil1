@@ -461,29 +461,54 @@ kit.note(17, u"Bu slayt butun deneyleri tek karede topluyor.\n"
 # =========================================================== 18 ANA BULGULAR
 kit.title(18, u"ANA BULGULAR")
 kit.body(18, [
-    (0, u"SANAL KUPLAJ NEREDE KAZANDIRIYOR"),
-    (1, u"Duraksız işletme   39 s → 32 s   (%18)   ·   konvoy kuralıyla "
-        u"25 s → 17 s   (%32)"),
-    (1, u"Aynı tarifede bozucu etki altında   %16 daha az yayılan gecikme"),
-    (0, u"NEREDE KAZANDIRMIYOR"),
-    (1, u"Duraklamalı işletme   78 s → 71 s   (%9) — kısıt peron, ve peron bir "
+    (0, u"EN GÜÇLÜ OLDUĞU YER"),
+    (1, u"Duraksız işletme   39 s → 32 s  (%18)   ·   konvoy kuralıyla   "
+        u"25 s → 17 s  (%32)"),
+    (0, u"ETKİSİNİN KAYBOLDUĞU YER"),
+    (1, u"Duraklamalı işletme   78 s → 71 s  (%9) — kısıt peron, peron bir "
         u"takip mesafesi değil"),
-    (1, u"Kendi sürdürülebilir aralığında bozucu etki altında   %0.6"),
-    (0, u"BAĞLAMI KAÇIRMAMAK İÇİN"),
-    (1, u"Asıl sıçrama sabit blok → hareketli blok:   148 s → 78 s   (%47)"),
+    (1, u"Her sistem kendi aralığında koşarken bozucu etki altında   %0.5"),
+    (0, u"KAPSAM DIŞI BIRAKILAN"),
+    (1, u"Karma trafik ve ayrılan/birleşen kavşaklar — rota ve tarife "
+        u"optimizasyonu işi"),
+    (0, u"BUGÜNÜN ASIL KISITI KAPASİTE DEĞİL"),
+    (1, u"Güvenlik ispatı   ·   protokol olgunluğu   ·   yatırımın hattı "
+        u"hak etmesi"),
 ], name="Text Placeholder")
-kit.note(18, u"Bu slaydin isi dengeli olmak. Sanal kuplaj her kosulda daha iyi "
-             u"degil; ISLETME BICIMINE bagli olarak daha iyi.\n"
-             u"Duraksiz, yuksek hizli, az duraklı bir hatta kazanc gercek ve "
-             u"buyuk. Her istasyonda duran bir hatta kazanc kuculuyor cunku "
-             u"baglayan sey artik sinyalizasyon degil.\n"
-             u"Ve buyuk resimde: asil kazanci sabit bloktan hareketli bloga gecis "
-             u"veriyor. Sanal kuplaj bunun ustune bir kat daha koyuyor - onemli "
-             u"ama ikincil bir adim.\n"
-             u"SINIRLAMALAR (sorulursa): (1) egim sinyalizasyon katmaninin yetki "
-             u"hesabinda dikkate alinmiyor, sadece trenin fren mesafesinde. "
-             u"(2) Konvoy satiri planlama payi tasiyor. (3) Tek arac tipi, tek "
-             u"ag geometrisi. (4) V2V kapsama kaybi modellenmedi.")
+kit.note(18, u"EN GUCLU OLDUGU YER: sanal kuplajin etkisi en cok duraksiz "
+             u"hatlarda belli oluyor - orada baglayici olan tek sey trenler "
+             u"arasi mesafe ve nispi fren mesafesi tam olarak onu kisaltiyor. "
+             u"Konvoy kontrol parametreleriyle (hiz tavani + one yaklasinca "
+             u"serbest birakma) bu etki daha da artiyor: 25 saniyeden 17'ye.\n"
+             u"KAPSAM DISI: makalelerde kuplajin ozellikle karma trafikli "
+             u"hatlarda ve birlesme-ayrilma yapan kavsaklarda etkisine de yer "
+             u"veriliyor - Quaglietta'nin en buyuk kazanci orada cikiyor. Ben "
+             u"kapsama almadim cunku o daha cok rota ve tarife optimizasyonuna "
+             u"giriyor. Simulasyonda bir iki deneme yaptim ama rota "
+             u"optimizasyonum o tarz bir durum icin yeterli degildi, guzel "
+             u"sonuclar alamadim. Bunu bir eksiklik olarak soyluyorum, sonuc "
+             u"olarak degil.\n"
+             u"ETKISININ KAYBOLDUGU YER: duraklamali isletmede baglayan sey "
+             u"artik sinyalizasyon degil peron isgali, ve peron bir takip "
+             u"mesafesi degildir - hicbir sinyalizasyon sistemi onu kisaltamaz. "
+             u"Bozucu etkide ise dikkat: AYNI tarifede sanal kuplaj kapi "
+             u"arizasinda %13 daha az toplam gecikme veriyor (yayilan gecikmede "
+             u"%16). Ama her sistem KENDI surdurulebilir araliginda kosarken "
+             u"fark %0.5'e iniyor. Yani ayri bir toparlanma davranisi yok; "
+             u"kazanc elinde kalan yedi saniyelik paydan geliyor.\n"
+             u"OLGUNLUK: sanal kuplaj hala gelismekte olan, olgunlasmamis bir "
+             u"alan. En buyuk kisit guvenlik standartlarini saglayabilecegin "
+             u"ispatlanmasi, uygun protokollerin gelistirilmesi, ve kurulacak "
+             u"hattin bu maliyete degmesi. Aoun'un olctugu agirliklar bunu "
+             u"sayiyla soyluyor: karar %45 guvenlik, %32 regulasyon onayi, "
+             u"sadece %5.6 kapasite.\n"
+             u"EGIM SORULURSA: egimli hatta MB ile VC arasindaki farki "
+             u"OLCMEDIM, o yuzden slaytta yok. Teorik olarak fark egimde "
+             u"BUYUYOR: nispi frenin kazandirdigi mesafe v^2/2 x (1/b_servis - "
+             u"1/b_acil), ve binde 15 iniste iki oran da dustugu icin bu fark "
+             u"82 metreden 105 metreye cikiyor - %27 artis, 80 km/h'te 3.7 "
+             u"saniye yerine 4.7 saniye. Ama duraklamali bir hatta baglayan sey "
+             u"peron oldugu icin bunun araliga yansimasi ayri bir soru.")
 
 # ============================================================ 19 YEDİ SANİYE
 kit.title(19, u"YEDİ SANİYE: TRENE Mİ, DAYANIKLILIĞA MI?")

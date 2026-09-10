@@ -221,6 +221,7 @@ alır.
 | `_sweep_headway.py` | duraklamalı tur, tüm-yeşil sınır |
 | `_sweep_express.py` | duraksız tur, tüm-yeşil sınır |
 | `_sweep_convoy.py` | konvoy kuralının üç satırı |
+| `_sweep_grade.py` | aynı duraklamalı tarama, eğimli çevrim üzerinde — **sonucu henüz sunumda yok** |
 | `scenario.yaml` + `timetable.yaml` | temel çevrim (5 dk aralık) |
 | `scenario-express.yaml` + `timetable-express.yaml` | duraksız |
 | `scenario-convoy*.yaml` + `timetable-convoy*.yaml` | konvoy kuralı (`uncoupled_speed_kmh: 70`, `coupling_margin_m: 800`) |
