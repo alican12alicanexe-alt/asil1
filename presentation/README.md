@@ -156,21 +156,35 @@ python run.py presentation/ring/scenario-71-dwell.yaml --propagation --system vi
 Kapı arızası: R06 servisi Gölbaşı 2'de 90 s fazla bekliyor, birincil gecikme
 180 s. Okunacak satır `knock-on delay`.
 
-| | MB @78 | VC @78 | VC @71 | MB @71 |
+Toplam gecikme (birincil + yayılan), s:
+
+| olay | MB @78 | VC @78 | MB @71 | VC @71 |
 |---|---|---|---|---|
-| kapı arızası, yayılan | 982 s | 829 s | 976 s | 1000 s |
-| iki olay birden, toplam | 1162 s | 1020 s | 1156 s | 1169 s |
+| hız kısıtlaması | 455 | 455 | 417 | 355 |
+| kapı arızası | 1162 | 1009 | 1169 | 1156 |
+| ikisi birden | 1162 | 1020 | 1169 | 1156 |
+
+Kapı arızasının **yayılan** kısmı ayrıca: MB@78 982 s, VC@78 829 s (%16 az),
+VC@71 976 s. Grafikteki %13 toplam üzerinden, %16 yayılan üzerinden.
+
+Hız kısıtlaması `-tsr` dosyalarında `--headless` ile ölçülür, `--propagation`
+ile değil: kısıtlama **hattın kendisine** uygulandığı için üstünden geçen her
+tren doğrudan etkilenmiş sayılır ve rapor tüm gecikmeyi birincil gösterir.
 
 **Neden iki okuma:** bir sistemi diğerinin tarifesinde koşturmak haksız
-karşılaştırmadır, payı olan kazanır. Aynı tarifede (78 s) sanal kuplaj %16
-kazanıyor; her sistem kendi sınırında koşturulduğunda fark %0.6'ya iniyor.
+karşılaştırmadır, payı olan kazanır. Aynı tarifede (78 s) sanal kuplaj kapı
+arızasında %13 kazanıyor; her sistem kendi sınırında koşturulduğunda fark
+%0.5'e iniyor.
 
-`-tsr.yaml` dosyaları hız kısıtlaması deneyidir ve `--headless` ile ölçülür
-(`--propagation` değil: kısıtlama **hattın kendisine** uygulandığı için
-üstünden geçen her tren doğrudan etkilenmiş sayılır, rapor tüm gecikmeyi
-birincil gösterir). **Sunumda kullanılmadı** — iki tarife kısıtlamanın
-saatine farklı sayıda tren sokuyor, karşılaştırma tarifeden kirleniyor.
-Kayıt için: MB@78 455 s, VC@78 455 s, MB@71 417 s, VC@71 355 s.
+**Hız kısıtlaması aynı tarifede tam olarak berabere: 455 s / 455 s.** Sebebi
+kısıtlamanın hattın kendisine uygulanması: her treni birbirinden bağımsız
+olarak aynı şekilde yavaşlatıyor, ortada kuyruk yok, nispi frenin
+kısaltacağı bir takip mesafesi yok. Sanal kuplaj gecikmeyi değil **kuyruğu**
+soğuruyor.
+
+Hız kısıtlaması **kendi sınırı** karşılaştırmasında (78 s / 71 s) yok: iki
+tarife kısıtlamanın saatine farklı sayıda tren sokuyor, o satır tarifeden
+kirleniyor. Kayıt için MB@71 417 s, VC@71 355 s.
 
 ### 7. `figures` — grafikler
 ```sh

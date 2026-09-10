@@ -270,29 +270,41 @@ kit.note(11, u"Ayni ag, ayni filo, tek fark her istasyonda durulmasi. Sanal "
 # ========================================================== 12 BOZUCU ETKİ
 kit.title(12, u"BOZUCU ETKİ ALTINDA DAVRANIŞ")
 kit.body(12, [
-    u"Aynı kapı arızası, iki farklı okuma: aynı tarifede ve her sistem kendi "
+    u"Üç bozucu etki, iki okuma: aynı tarifede ve her sistem kendi "
     u"sürdürülebilir aralığında.",
     u"Kazanç sistemin kendisinden değil, elinde kalan paydan geliyor.",
 ], name="Text Placeholder")
 # Iki ayri grafik yan yana: solda ayni tarife, sagda kendi siniri.
 kit.swap_pic(12, CH + "/res-disruption-a.png",
-             (FULL[0], 2330000, 5560000, 3350000))
+             (FULL[0], 2330000, 6150000, 3350000))
 kit.add_pic(12, CH + "/res-disruption-b.png",
-            (6190480, 2330000, 5560000, 3350000), "Bozucu-b")
+            (6650000, 2330000, 5100000, 3350000), "Bozucu-b")
 kit.note(12, u"METODOLOJI: bir sistemi digerinin tarifesinde kosturmak haksiz "
-             u"karsilastirmadir - pay sahibi olan kazanir. O yuzden iki okuma var.\n"
-             u"SOL: ikisi de 78 saniyede. Bu isletmecinin bugun hareketli blokla "
-             u"kostugu tarife. Sanal kuplaj takilirsa hicbir sey yeniden "
-             u"zamanlanmadan yayilan gecikme 982'den 829 saniyeye iniyor, %16 az.\n"
-             u"SAG: her sistem kendi tum-yesil sinirinda - hareketli blok 78, sanal "
-             u"kuplaj 71. Ikisinde de pay yok. Fark 982'ye karsi 976: alti saniye, "
-             u"%0.6. Yani ayri bir 'toparlanma davranisi' YOK.\n"
-             u"BULGU: teknoloji yedi saniye veriyor, baska bir sey degil. Onu ya "
-             u"trene harcarsin ya dayanikliliga; ikisine birden degil.\n"
-             u"Hiz kisitlamasi deneyi bu slaytta yok cunku iki tarife kisitlamanin "
-             u"saatine farkli sayida tren sokuyor - karsilastirma tarifeden "
-             u"kirleniyor ve bunu ayiramiyorum. Rakamlari sorulursa: 78 s'de her "
-             u"iki sistem de 455 s toplam gecikme.")
+             u"karsilastirmadir - payi olan kazanir. O yuzden iki okuma var.\n"
+             u"SOL: ikisi de 78 saniyede, yani isletmecinin bugun hareketli "
+             u"blokla kostugu tarife. Uc olayin ucunde de ayni trenler, ayni "
+             u"tarife; tek degisen sinyalizasyon.\n"
+             u"HIZ KISITLAMASI: 455 saniyeye karsi 455 saniye. Tam olarak "
+             u"ayni. Sebebi su: kisitlama HATTIN kendisine uygulaniyor ve her "
+             u"treni birbirinden bagimsiz olarak ayni sekilde yavaslatiyor. "
+             u"Ortada kuyruk yok, yani nispi frenin kisaltacagi bir takip "
+             u"mesafesi de yok. Sanal kuplaj burada hicbir sey veremez.\n"
+             u"KAPI ARIZASI: 1162'ye karsi 1009 saniye, %13 az. Burada kuyruk "
+             u"VAR - bir tren peronda takiliyor, arkasindakiler ona yetisiyor. "
+             u"Kuyruk tam olarak nispi frenin kisalttigi seydir.\n"
+             u"BULGU: sanal kuplaj gecikmeyi degil KUYRUGU soguruyor. Hattin "
+             u"kendisi yavassa yapabilecegi bir sey yok.\n"
+             u"Yayilan gecikme ayrica: kapi arizasinda MB 982 s, VC 829 s - "
+             u"%16 az. Slayttaki %13 toplam uzerinden, %16 yayilan uzerinden; "
+             u"ikisi de dogru, farkli buyuklukler.\n"
+             u"SAG: kontrol deneyi. Her sistem kendi tum-yesil sinirinda - "
+             u"hareketli blok 78, sanal kuplaj 71. Ikisinde de pay yok ve fark "
+             u"1162'ye karsi 1156: alti saniye, %0.5. Yani ayri bir toparlanma "
+             u"davranisi YOK. Teknoloji yedi saniye veriyor, baska bir sey "
+             u"degil; onu ya trene harcarsin ya dayanikliliga.\n"
+             u"Hiz kisitlamasi sag grafikte yok cunku iki tarife kisitlamanin "
+             u"saatine farkli sayida tren sokuyor; o satir tarifeden kirleniyor. "
+             u"Kayit icin: MB@71 417 s, VC@71 355 s.")
 
 # ================================================================= 13 KONVOY
 kit.title(13, u"KONVOY DAVRANIŞI")
