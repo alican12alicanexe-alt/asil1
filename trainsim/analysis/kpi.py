@@ -43,6 +43,13 @@ class RunMetrics:
     journey_times: Dict[str, float] = field(default_factory=dict)
     delays: Dict[str, float] = field(default_factory=dict)
     restrained_s: Dict[str, float] = field(default_factory=dict)
+    #: Seconds held down, by what the signalling said in words - "signal at
+    #: danger", "MB: train ahead". Says which mechanism is binding.
+    restrained_by: Dict[str, float] = field(default_factory=dict)
+    #: Seconds held down, by the station the train was heading for. Says where.
+    #: A line that binds on the approach to one station is a line that wants
+    #: another face there, and this is what shows that rather than a total.
+    restrained_near: Dict[str, float] = field(default_factory=dict)
     authority_samples: List[float] = field(default_factory=list)
     min_headway_s: Optional[float] = None
     min_headway_where: str = ""
@@ -62,6 +69,18 @@ class RunMetrics:
         if not self.authority_samples:
             return 0.0
         return sum(self.authority_samples) / len(self.authority_samples)
+
+    def binding(self, limit: int = 4):
+        """What held trains down, worst first: ``[(what, where, seconds), ...]``.
+
+        Two separate tallies rather than one crossed table, because the pair
+        that matters is rarely the same: "signal at danger" is the mechanism
+        wherever it happens, and the station it happens at is the thing to go
+        and change.
+        """
+        def top(counts):
+            return sorted(counts.items(), key=lambda item: -item[1])[:limit]
+        return top(self.restrained_by), top(self.restrained_near)
 
     @property
     def mean_delay_s(self) -> float:
@@ -88,6 +107,13 @@ def measure(sim, description: str = "") -> RunMetrics:
                 metrics.restrained_s[train.id] = (
                     metrics.restrained_s.get(train.id, 0.0) + sim.dt
                 )
+                why = train.authority_reason or "signalling"
+                metrics.restrained_by[why] = (
+                    metrics.restrained_by.get(why, 0.0) + sim.dt)
+                stop = train.next_stop()
+                where = stop.station if stop is not None else "open line"
+                metrics.restrained_near[where] = (
+                    metrics.restrained_near.get(where, 0.0) + sim.dt)
             if train.last_authority_m is not None:
                 metrics.authority_samples.append(train.last_authority_m)
 

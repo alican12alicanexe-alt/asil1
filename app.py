@@ -34,7 +34,7 @@ from matplotlib.figure import Figure
 from trainsim.analysis import kpi, trace
 from trainsim.core import signalling
 from trainsim.core.units import format_delay
-from trainsim.scenario.generate import LineSpec, book
+from trainsim.scenario.generate import LineSpec, book, journey_s
 from trainsim.scenario.loader import ScenarioError, build_simulation, load_scenario
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -308,7 +308,7 @@ with builder:
             else:
                 st.success("%.1f km, %d istasyon. Boş hatta sefer süresi %s."
                            % (spec.last_km, len(stations),
-                              _mmss(booked[-1][0] - spec.first_departure_s)))
+                              _mmss(journey_s(booked))))
                 st.session_state["built"] = run_systems(
                     directory, new_systems, duration_new)
         except (ScenarioError, ValueError) as exc:
