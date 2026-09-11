@@ -22,14 +22,16 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from ui_build import BuildPage
 from uicore import (CARD, GRID, HERE, INK, INK_SOFT, MUTED, ON_INK, ORANGE,
-                    ORANGE_DIM, PAPER, STRIPE, TRACK_COLOURS, TURKISH,
+                    ORANGE_DIM, PAPER, STRIPE, TRACK_COLOURS,
                     mmss, plot_box, run_one, scaler, scenario_paths, series)
+from uilang import SYSTEM_NAMES, keep, set_language, system_name, t
+import uilang
 from trainsim.core import signalling
 from trainsim.core.units import format_delay
 from trainsim.scenario.loader import ScenarioError, build_simulation, load_scenario
 
-COLUMNS = ["SİSTEM", "SEFER SÜRESİ", "FARKI", "ORT. GECİKME", "KISITLI GEÇEN",
-           "EN DAR ARALIK", "ORT. YETKİ", "BİTEN", "İHLAL"]
+COLUMNS = ["SYSTEM", "JOURNEY", "VS BASE", "MEAN DELAY", "HELD DOWN",
+           "MIN GAP", "AUTHORITY", "DONE", "BREACHES"]
 ROW_H = 38
 
 STYLE = """
@@ -61,6 +63,11 @@ QPushButton#nav    { background: transparent; color: %(ON_INK)s; border: 0;
 QPushButton#nav:hover   { background: %(INK_SOFT)s; color: #FFFFFF; }
 QPushButton#nav:checked { background: %(INK_SOFT)s; color: #FFFFFF;
                     font-weight: 700; }
+QPushButton#lang   { background: transparent; color: %(MUTED)s; border: 0;
+                    border-radius: 6px; padding: 4px 9px; font-size: 11px;
+                    font-weight: 700; }
+QPushButton#lang:hover   { color: #FFFFFF; background: %(INK_SOFT)s; }
+QPushButton#lang:checked { color: %(ORANGE)s; background: %(INK_SOFT)s; }
 QPushButton#small  { background: %(CARD)s; color: %(INK)s; border: 1px solid
                     %(GRID)s; border-radius: 7px; padding: 6px 12px;
                     font-size: 12px; }
@@ -147,7 +154,7 @@ class Graph(QtWidgets.QWidget):
         paths, (lo_x, hi_x, lo_y, hi_y) = series(self.rows)
         if not paths:
             painter.setPen(QtGui.QColor(MUTED))
-            painter.drawText(self.rect(), QtCore.Qt.AlignCenter, "bir koşu seç")
+            painter.drawText(self.rect(), QtCore.Qt.AlignCenter, t("pick a run"))
             return
 
         bold = QtGui.QFont(self.font())
@@ -187,12 +194,12 @@ class Graph(QtWidgets.QWidget):
 
         painter.setPen(QtGui.QColor(MUTED))
         painter.drawText(QtCore.QRectF(right - 240, bottom + 18, 240, 16),
-                         QtCore.Qt.AlignRight, "koşunun kaçıncı dakikası")
+                         QtCore.Qt.AlignRight, t("minute of the run"))
         painter.save()                      # dik yazi: baslikla cakismiyor
         painter.translate(16, (top + bottom) / 2.0)
         painter.rotate(-90)
         painter.drawText(QtCore.QRectF(-100, -8, 200, 16),
-                         QtCore.Qt.AlignCenter, "hat boyunca km")
+                         QtCore.Qt.AlignCenter, t("km along the line"))
         painter.restore()
 
 
@@ -211,7 +218,7 @@ class Runner(QtCore.QThread):
     def run(self):
         try:
             for name in self.chosen:
-                self.progress.emit("%s koşuyor…" % TURKISH.get(name, name))
+                self.progress.emit(t("%s running…") % system_name(name))
                 self.produced.emit(run_one(self.path, name, self.duration,
                                            self.as_fitted))
         except ScenarioError as exc:
@@ -261,14 +268,16 @@ class Window(QtWidgets.QMainWindow):
         brand = QtWidgets.QLabel("trainsim")
         brand.setObjectName("brand")
         outer.addWidget(brand)
-        tagline = QtWidgets.QLabel("Mikroskopik demiryolu benzetimi")
+        tagline = QtWidgets.QLabel()
         tagline.setObjectName("tagline")
+        keep(tagline.setText, "Microscopic railway simulation")
         outer.addWidget(tagline)
 
         outer.addSpacing(20)
         self.nav = []
-        for index, label in enumerate(("Karşılaştır", "Hat kur")):
-            button = QtWidgets.QPushButton(label)
+        for index, label in enumerate(("Compare", "Build a line")):
+            button = QtWidgets.QPushButton()
+            keep(button.setText, label)
             button.setObjectName("nav")
             button.setCheckable(True)
             button.setCursor(QtCore.Qt.PointingHandCursor)
@@ -290,7 +299,50 @@ class Window(QtWidgets.QMainWindow):
         self.status.setWordWrap(True)
         outer.addWidget(self.status)
         outer.addStretch(1)
+        outer.addWidget(self.language_switch())
         return side
+
+    def language_switch(self):
+        """Kenarin dibinde EN | TR. Pencere yeniden kurulmuyor: metinler
+        yerinde degisiyor, yani formun ve sonuclarin hali duruyor."""
+        holder = QtWidgets.QWidget()
+        box = QtWidgets.QHBoxLayout(holder)
+        box.setContentsMargins(0, 0, 0, 0)
+        box.setSpacing(4)
+        self.languages = {}
+        for code, label in (("en", "EN"), ("tr", "TR")):
+            button = QtWidgets.QPushButton(label)
+            button.setObjectName("lang")
+            button.setCheckable(True)
+            button.setChecked(uilang.LANG == code)
+            button.setCursor(QtCore.Qt.PointingHandCursor)
+            button.clicked.connect(lambda _checked, which=code:
+                                   self.speak(which))
+            box.addWidget(button)
+            self.languages[code] = button
+        box.addStretch(1)
+        return holder
+
+    def speak(self, code):
+        """Dili degistir. Tabloda duran satirlar ceviriyi kendiliginden
+        almiyor - onlar metin, pencere degil - o yuzden yeniden yaziliyorlar."""
+        for which, button in self.languages.items():
+            button.setChecked(which == code)
+        if not set_language(code):
+            return
+        chosen = self.chosen_row()          # tabloyu bosaltmadan once
+        results, self.results = self.results, []
+        self.table.setRowCount(0)
+        for result in results:
+            self.add_row(result)
+        if results:
+            self.table.selectRow(min(chosen, len(results) - 1))
+            self.status.setText(t("%d runs finished") % len(results))
+        self.graph.update()
+
+    def chosen_row(self):
+        rows = self.table.selectionModel().selectedRows()
+        return rows[0].row() if rows else 0
 
     def compare_controls(self):
         panel = QtWidgets.QWidget()
@@ -300,44 +352,50 @@ class Window(QtWidgets.QMainWindow):
 
         def head(text, space=18):
             box.addSpacing(space)
-            label = QtWidgets.QLabel(text)
+            label = QtWidgets.QLabel()
             label.setProperty("class", "sectionHead")
+            keep(label.setText, text)
             box.addWidget(label)
             box.addSpacing(6)
 
-        head("SENARYO", 14)
+        head("SCENARIO", 14)
         self.scenario = QtWidgets.QComboBox()
         self.scenario.addItems(list(self.scenarios))
         box.addWidget(self.scenario)
 
-        head("KOŞU SÜRESİ (S)")
+        head("RUN LENGTH (S)")
         self.duration = QtWidgets.QLineEdit()
-        self.duration.setPlaceholderText("boş bırakırsan senaryonunki")
+        keep(self.duration.setPlaceholderText,
+             "blank uses the scenario's own")
         self.duration.setValidator(QtGui.QDoubleValidator(0.0, 1e7, 1))
         box.addWidget(self.duration)
 
-        head("SİNYALİZASYON")
+        head("SIGNALLING")
         self.systems = {}
         for name in signalling.LADDER:
-            tick = QtWidgets.QCheckBox(TURKISH.get(name, name))
+            tick = QtWidgets.QCheckBox()
+            keep(tick.setText, SYSTEM_NAMES[name])
             tick.setChecked(name in ("fixed_block_3aspect", "etcs_moving_block",
                                      "virtual_coupling"))
             box.addWidget(tick)
             self.systems[name] = tick
 
         box.addSpacing(10)
-        self.as_fitted = QtWidgets.QCheckBox("Senaryonun kendi donanımıyla")
+        self.as_fitted = QtWidgets.QCheckBox()
+        keep(self.as_fitted.setText, "As the scenario is fitted")
         box.addWidget(self.as_fitted)
 
         box.addSpacing(22)
-        self.run_button = QtWidgets.QPushButton("KARŞILAŞTIR")
+        self.run_button = QtWidgets.QPushButton()
+        keep(self.run_button.setText, "COMPARE")
         self.run_button.setObjectName("run")
         self.run_button.setCursor(QtCore.Qt.PointingHandCursor)
         self.run_button.clicked.connect(self.start)
         box.addWidget(self.run_button)
 
         box.addSpacing(8)
-        watch = QtWidgets.QPushButton("Şematiği izle")
+        watch = QtWidgets.QPushButton()
+        keep(watch.setText, "Watch the schematic")
         watch.setObjectName("ghost")
         watch.setCursor(QtCore.Qt.PointingHandCursor)
         watch.clicked.connect(self.watch)
@@ -351,21 +409,25 @@ class Window(QtWidgets.QMainWindow):
         box.setSpacing(8)
 
         box.addSpacing(14)
-        generate = QtWidgets.QPushButton("SENARYOYU ÜRET")
+        generate = QtWidgets.QPushButton()
+        keep(generate.setText, "GENERATE SCENARIO")
         generate.setObjectName("run")
         generate.setCursor(QtCore.Qt.PointingHandCursor)
         generate.clicked.connect(lambda: self.builder.start("build"))
         box.addWidget(generate)
 
-        sweep = QtWidgets.QPushButton("Headway tara")
+        sweep = QtWidgets.QPushButton()
+        keep(sweep.setText, "Sweep the headway")
         sweep.setObjectName("ghost")
         sweep.setCursor(QtCore.Qt.PointingHandCursor)
         sweep.clicked.connect(lambda: self.builder.start("sweep"))
         box.addWidget(sweep)
 
-        hint = QtWidgets.QLabel(
-            "Üretmek boş hatta bir tren koşturur ve tarifeyi ondan yazar. "
-            "Taramak aynı filoyu her aralıkta koşturur - dakikalar sürebilir.")
+        hint = QtWidgets.QLabel()
+        keep(hint.setText,
+             "Generating runs one train over the empty line and writes the "
+             "timetable from it. Sweeping runs the same fleet at every "
+             "interval - it can take minutes.")
         hint.setObjectName("tagline")
         hint.setWordWrap(True)
         box.addWidget(hint)
@@ -380,20 +442,23 @@ class Window(QtWidgets.QMainWindow):
 
         def heading(title, note, space):
             box.addSpacing(space)
-            label = QtWidgets.QLabel(title)
+            label = QtWidgets.QLabel()
             label.setObjectName("head")
+            keep(label.setText, title)
             box.addWidget(label)
-            hint = QtWidgets.QLabel(note)
+            hint = QtWidgets.QLabel()
             hint.setObjectName("note")
+            hint.setWordWrap(True)
+            keep(hint.setText, note)
             box.addWidget(hint)
             box.addSpacing(12)
 
-        heading("Karşılaştırma",
-                "Aynı hat, aynı tarife, aynı tren. Değişen tek şey trene ne "
-                "kadar yol verildiği.", 0)
+        heading("Comparison",
+                "Same line, same timetable, same train. The only thing that "
+                "changes is how much room each train is given.", 0)
 
         self.table = QtWidgets.QTableWidget(0, len(COLUMNS))
-        self.table.setHorizontalHeaderLabels(COLUMNS)
+        keep(self.set_headers, *COLUMNS)
         self.table.setObjectName("table")
         self.table.setProperty("class", "card")
         self.table.verticalHeader().hide()
@@ -411,16 +476,13 @@ class Window(QtWidgets.QMainWindow):
         header = self.table.horizontalHeader()
         header.setHighlightSections(False)
         header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
-        for index in range(len(COLUMNS)):        # baslik da veri gibi sola dayali
-            self.table.horizontalHeaderItem(index).setTextAlignment(
-                QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
         self.table.itemSelectionChanged.connect(self.redraw)
         self.fit_table()
         box.addWidget(self.table)
 
-        heading("Tren grafiği",
-                "Yatayda zaman, dikeyde hat boyunca mesafe. Tablodan bir satır "
-                "seç.", 22)
+        heading("Train graph",
+                "Time across, distance along the line up. Pick a row from the "
+                "table.", 22)
 
         card = QtWidgets.QFrame()
         card.setProperty("class", "card")
@@ -436,6 +498,14 @@ class Window(QtWidgets.QMainWindow):
         rows = max(self.table.rowCount(), 1)
         self.table.setFixedHeight(self.table.horizontalHeader().height()
                                   + rows * ROW_H + 16)
+
+    def set_headers(self, *labels):
+        """Basliklari yaz ve sola daya. setHorizontalHeaderLabels ogeleri
+        yeniden kurdugu icin hizalama her seferinde yeniden veriliyor."""
+        self.table.setHorizontalHeaderLabels(list(labels))
+        for index in range(len(labels)):
+            self.table.horizontalHeaderItem(index).setTextAlignment(
+                QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
 
     def show_page(self, index):
         self.pages.setCurrentIndex(index)
@@ -456,7 +526,7 @@ class Window(QtWidgets.QMainWindow):
             if label.startswith(wanted + " /"):
                 self.scenario.setCurrentIndex(index)
                 break
-        self.status.setText("%s listeye eklendi" % wanted)
+        self.status.setText(t("%s added to the list") % wanted)
 
     # -------------------------------------------------------------- actions
 
@@ -464,7 +534,7 @@ class Window(QtWidgets.QMainWindow):
         chosen = [name for name, tick in self.systems.items() if tick.isChecked()]
         if not self.scenario.currentText() or not chosen:
             QtWidgets.QMessageBox.information(
-                self, "trainsim", "Bir senaryo ve en az bir sistem seç.")
+                self, "trainsim", t("Pick a scenario and at least one system."))
             return
         self.results = []
         self.table.setRowCount(0)
@@ -488,7 +558,7 @@ class Window(QtWidgets.QMainWindow):
     def settle(self):
         self.run_button.setEnabled(True)
         if self.results:
-            self.status.setText("%d koşu bitti" % len(self.results))
+            self.status.setText(t("%d runs finished") % len(self.results))
             if not self.table.selectedItems():
                 self.table.selectRow(0)
 
@@ -500,8 +570,8 @@ class Window(QtWidgets.QMainWindow):
             delta = "—"
         else:
             difference = metrics.mean_journey_s - baseline.mean_journey_s
-            delta = "aynı" if abs(difference) < 0.5 else format_delay(difference)
-        cells = [TURKISH.get(metrics.system, metrics.system),
+            delta = t("same") if abs(difference) < 0.5 else format_delay(difference)
+        cells = [system_name(metrics.system),
                  mmss(metrics.mean_journey_s),
                  delta,
                  "%.1f s" % metrics.mean_delay_s,
@@ -527,7 +597,7 @@ class Window(QtWidgets.QMainWindow):
         if 0 <= index < len(self.results):
             result = self.results[index]
             self.graph.show_run(result["rows"],
-                                TURKISH.get(result["name"], result["name"]))
+                                system_name(result["name"]))
 
     def watch(self):
         """Sematik gorunum kendi tk.Tk() kokunu aciyor (schematic_tk.py:66), o
@@ -558,6 +628,7 @@ def main():
         if family in QtGui.QFontDatabase.families():
             app.setFont(QtGui.QFont(family, 10))
             break
+    uilang.load()
     window = Window()
     window.show()
     sys.exit(app.exec())

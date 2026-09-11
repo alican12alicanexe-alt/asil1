@@ -21,15 +21,6 @@ COL = {name: index for index, name in enumerate(trace.COLUMNS)}
 #: Her besinci benzetim saniyesi bir tren grafigi icin fazlasiyla yeterli.
 SAMPLE_S = 5.0
 
-TURKISH = {
-    "fixed_block_3aspect": "Sabit blok (3 aspektli)",
-    "etcs_l1": "ETCS Seviye 1",
-    "etcs_l2": "ETCS Seviye 2",
-    "etcs_hybrid_l3": "ETCS Hibrit Seviye 3",
-    "etcs_moving_block": "Hareketli blok (ETCS L3)",
-    "virtual_coupling": "Sanal kuplaj",
-}
-
 # ------------------------------------------------------------------- palet
 # Sunumun paleti: grafikler, slaytlar ve arayuz ayni dili konusuyor.
 

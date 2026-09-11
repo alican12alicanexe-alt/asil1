@@ -32,8 +32,10 @@ import tkinter.font as tkfont
 from tkinter import ttk, messagebox
 
 from uicore import (CARD, GRID, HERE, INK, INK_SOFT, MUTED, ON_INK, ORANGE,
-                    ORANGE_DIM, PAPER, STRIPE, TRACK_COLOURS, TURKISH,
+                    ORANGE_DIM, PAPER, STRIPE, TRACK_COLOURS,
                     mmss, plot_box, run_one, scaler, scenario_paths, series)
+from uilang import SYSTEM_NAMES, keep, set_language, system_name, t
+import uilang
 from trainsim.core import signalling
 from trainsim.core.units import format_delay
 from trainsim.scenario.loader import ScenarioError, build_simulation, load_scenario
@@ -88,7 +90,7 @@ def draw_train_graph(canvas, rows, title, font):
     paths, (lo_x, hi_x, lo_y, hi_y) = series(rows)
     if not paths:
         canvas.create_text(width / 2, height / 2, fill=MUTED, font=(font, 10),
-                           text="bir koşu seç")
+                           text=t("pick a run"))
         return
     to_x = scaler(lo_x, hi_x, left, right)
     to_y = scaler(lo_y, hi_y, bottom, top)                  # yukari dogru artiyor
@@ -111,9 +113,9 @@ def draw_train_graph(canvas, rows, title, font):
                                fill=TRACK_COLOURS[index % len(TRACK_COLOURS)])
 
     canvas.create_text(left, top - 8, anchor="sw", fill=MUTED, font=(font, 8),
-                       text="hat boyunca km")
+                       text=t("km along the line"))
     canvas.create_text(right, bottom + 28, anchor="e", fill=MUTED, font=(font, 8),
-                       text="koşunun kaçıncı dakikası")
+                       text=t("minute of the run"))
 
 
 # ------------------------------------------------------------------- the chrome
@@ -182,11 +184,11 @@ def build_theme(style, font):
 
 class App(object):
 
-    COLUMNS = [("system", "SİSTEM", 210), ("journey", "SEFER SÜRESİ", 110),
-               ("delta", "FARKI", 90), ("delay", "ORT. GECİKME", 120),
-               ("restrained", "KISITLI GEÇEN", 130), ("headway", "EN DAR ARALIK", 130),
-               ("authority", "ORT. YETKİ", 110), ("done", "BİTEN", 80),
-               ("violations", "İHLAL", 70)]
+    COLUMNS = [("system", "SYSTEM", 210), ("journey", "JOURNEY", 110),
+               ("delta", "VS BASE", 90), ("delay", "MEAN DELAY", 120),
+               ("restrained", "HELD DOWN", 130), ("headway", "MIN GAP", 130),
+               ("authority", "AUTHORITY", 110), ("done", "DONE", 80),
+               ("violations", "BREACHES", 70)]
 
     def __init__(self, root):
         self.root = root
@@ -211,18 +213,20 @@ class App(object):
         side.pack_propagate(False)
 
         def head(text, pad=(0, 6)):
-            ttk.Label(box, text=text, style="SideHead.TLabel").pack(
-                anchor="w", pady=pad)
+            label = ttk.Label(box, style="SideHead.TLabel")
+            keep(lambda written: label.configure(text=written), text)
+            label.pack(anchor="w", pady=pad)
 
         box = ttk.Frame(side, style="Side.TFrame", padding=(24, 26, 24, 24))
         box.pack(fill="both", expand=True)
 
         ttk.Label(box, text="trainsim", style="SideTitle.TLabel").pack(anchor="w")
-        ttk.Label(box, style="SideNote.TLabel", wraplength=220,
-                  text="Mikroskopik demiryolu benzetimi").pack(anchor="w",
-                                                               pady=(2, 22))
+        tagline = ttk.Label(box, style="SideNote.TLabel", wraplength=220)
+        keep(lambda text: tagline.configure(text=text),
+             "Microscopic railway simulation")
+        tagline.pack(anchor="w", pady=(2, 22))
 
-        head("SENARYO")
+        head("SCENARIO")
         self.scenario = ttk.Combobox(box, values=list(self.scenarios),
                                      state="readonly", style="Side.TCombobox",
                                      font=(self.font, 10))
@@ -230,64 +234,94 @@ class App(object):
         if self.scenarios:
             self.scenario.current(0)
 
-        head("KOŞU SÜRESİ (S)")
+        head("RUN LENGTH (S)")
         self.duration = ttk.Entry(box, style="Side.TEntry", font=(self.font, 10))
         self.duration.pack(fill="x")
-        ttk.Label(box, text="boş bırakırsan senaryonunki",
-                  style="SideNote.TLabel").pack(anchor="w", pady=(4, 18))
+        note = ttk.Label(box, style="SideNote.TLabel")
+        keep(lambda text: note.configure(text=text),
+             "blank uses the scenario's own")
+        note.pack(anchor="w", pady=(4, 18))
 
-        head("SİNYALİZASYON")
+        head("SIGNALLING")
         self.systems = {}
         for name in signalling.LADDER:
             chosen = tk.BooleanVar(value=name in ("fixed_block_3aspect",
                                                   "etcs_moving_block",
                                                   "virtual_coupling"))
-            ttk.Checkbutton(box, text=TURKISH.get(name, name), variable=chosen,
-                            style="Side.TCheckbutton").pack(anchor="w", pady=1)
+            tick = ttk.Checkbutton(box, variable=chosen,
+                                   style="Side.TCheckbutton")
+            keep(lambda text, widget=tick: widget.configure(text=text),
+                 SYSTEM_NAMES[name])
+            tick.pack(anchor="w", pady=1)
             self.systems[name] = chosen
 
         self.as_fitted = tk.BooleanVar(value=False)
-        ttk.Checkbutton(box, variable=self.as_fitted, style="Side.TCheckbutton",
-                        text="Senaryonun kendi donanımıyla").pack(anchor="w",
-                                                                  pady=(10, 0))
+        fitted = ttk.Checkbutton(box, variable=self.as_fitted,
+                                 style="Side.TCheckbutton")
+        keep(lambda text: fitted.configure(text=text),
+             "As the scenario is fitted")
+        fitted.pack(anchor="w", pady=(10, 0))
 
-        self.run_button = ttk.Button(box, text="KARŞILAŞTIR", style="Accent.TButton",
+        self.run_button = ttk.Button(box, style="Accent.TButton",
                                      command=self.start)
+        keep(lambda text: self.run_button.configure(text=text), "COMPARE")
         self.run_button.pack(fill="x", pady=(22, 8))
-        ttk.Button(box, text="Şematiği izle", style="Ghost.TButton",
-                   command=self.watch).pack(fill="x")
+        watch = ttk.Button(box, style="Ghost.TButton", command=self.watch)
+        keep(lambda text: watch.configure(text=text), "Watch the schematic")
+        watch.pack(fill="x")
 
         self.status = ttk.Label(box, text="", style="SideNote.TLabel",
                                 wraplength=220)
         self.status.pack(anchor="w", pady=(16, 0))
 
+        # Kenarin dibinde EN | TR. Metinler yerinde degisiyor, pencere yeniden
+        # kurulmuyor, yani duran sonuclar ve secimler kaliyor.
+        switch = ttk.Frame(box, style="Side.TFrame")
+        switch.pack(anchor="w", pady=(14, 0))
+        self.languages = {}
+        for code, label in (("en", "EN"), ("tr", "TR")):
+            button = ttk.Button(switch, text=label, width=4,
+                                style="Ghost.TButton",
+                                command=lambda which=code: self.speak(which))
+            button.pack(side="left", padx=(0, 4))
+            self.languages[code] = button
+        self.mark_language()
+
     def build_body(self, root):
         body = ttk.Frame(root, style="Body.TFrame", padding=(26, 24, 26, 24))
         body.pack(side="right", fill="both", expand=True)
 
-        ttk.Label(body, text="Karşılaştırma", style="Head.TLabel").pack(anchor="w")
-        ttk.Label(body, style="Note.TLabel",
-                  text="Aynı hat, aynı tarife, aynı tren. Değişen tek şey "
-                       "trene ne kadar yol verildiği.").pack(anchor="w",
-                                                             pady=(2, 12))
+        title = ttk.Label(body, style="Head.TLabel")
+        keep(lambda text: title.configure(text=text), "Comparison")
+        title.pack(anchor="w")
+        note = ttk.Label(body, style="Note.TLabel", wraplength=760)
+        keep(lambda text: note.configure(text=text),
+             "Same line, same timetable, same train. The only thing that "
+             "changes is how much room each train is given.")
+        note.pack(anchor="w", pady=(2, 12))
 
         card = ttk.Frame(body, style="Card.TFrame", padding=10)
         card.pack(fill="x")
         self.table = ttk.Treeview(card, columns=[c[0] for c in self.COLUMNS],
                                   show="headings", height=7, style="Data.Treeview")
         for key, heading, width in self.COLUMNS:
-            self.table.heading(key, text=heading, anchor="w")
+            keep(lambda text, column=key: self.table.heading(column, text=text,
+                                                             anchor="w"),
+                 heading)
             self.table.column(key, width=width, anchor="w", stretch=False)
         self.table.tag_configure("odd", background=STRIPE)
         self.table.tag_configure("even", background=CARD)
         self.table.pack(fill="x")
         self.table.bind("<<TreeviewSelect>>", lambda _event: self.redraw())
 
-        ttk.Label(body, text="Tren grafiği", style="Head.TLabel").pack(
-            anchor="w", pady=(20, 2))
-        ttk.Label(body, style="Note.TLabel",
-                  text="Yatayda zaman, dikeyde hat boyunca mesafe. Tablodan bir "
-                       "satır seç.").pack(anchor="w", pady=(0, 12))
+        graph_title = ttk.Label(body, style="Head.TLabel")
+        keep(lambda text: graph_title.configure(text=text), "Train graph")
+        graph_title.pack(anchor="w", pady=(20, 2))
+        graph_note = ttk.Label(body, style="Note.TLabel", wraplength=760)
+        keep(lambda text: graph_note.configure(text=text),
+             "Time across, distance along the line up. Pick a row from the "
+             "table.")
+        graph_note.pack(anchor="w", pady=(0, 12))
 
         graph_card = ttk.Frame(body, style="Card.TFrame", padding=2)
         graph_card.pack(fill="both", expand=True)
@@ -296,17 +330,42 @@ class App(object):
         self.canvas.pack(fill="both", expand=True)
         self.canvas.bind("<Configure>", lambda _event: self.redraw())
 
+    def speak(self, code):
+        """Dili degistir. Tablodaki satirlar metin - onlar yeniden yaziliyor."""
+        if not set_language(code):
+            return
+        self.mark_language()
+        chosen = self.table.index(self.table.selection()[0]) \
+            if self.table.selection() else 0        # tabloyu bosaltmadan once
+        results, self.results = self.results, []
+        self.table.delete(*self.table.get_children())
+        for result in results:
+            self.results.append(result)
+            self.add_row(result)
+        if self.results:
+            rows = self.table.get_children()
+            self.table.selection_set(rows[min(chosen, len(rows) - 1)])
+            self.status.configure(text=t("%d runs finished") % len(results))
+        self.redraw()
+
+    def mark_language(self):
+        for code, button in self.languages.items():
+            button.configure(style="Accent.TButton" if code == uilang.LANG
+                             else "Ghost.TButton")
+
     # -------------------------------------------------------------- actions
 
     def start(self):
         chosen = [n for n, v in self.systems.items() if v.get()]
         if not self.scenario.get() or not chosen:
-            messagebox.showinfo("trainsim", "Bir senaryo ve en az bir sistem seç.")
+            messagebox.showinfo(
+                "trainsim", t("Pick a scenario and at least one system."))
             return
         try:
             duration = float(self.duration.get() or 0)
         except ValueError:
-            messagebox.showerror("trainsim", "Koşu süresi bir sayı olmalı.")
+            messagebox.showerror("trainsim",
+                                 t("The run length must be a number."))
             return
         self.run_button.state(["disabled"])
         self.results = []
@@ -320,8 +379,8 @@ class App(object):
         """Is parcacigi. Tk'ye dokunmuyor - her sey kuyruktan geciyor."""
         try:
             for name in chosen:
-                self.messages.put(("status", "%s koşuyor…"
-                                   % TURKISH.get(name, name)))
+                self.messages.put(("status", t("%s running…")
+                                   % system_name(name)))
                 self.messages.put(("result", run_one(path, name, duration, as_fitted)))
         except ScenarioError as exc:
             self.messages.put(("error", str(exc)))
@@ -343,8 +402,9 @@ class App(object):
                     self.status.configure(text="")
                     messagebox.showerror("trainsim", payload)
                 elif kind == "done":
-                    self.status.configure(text="%d koşu bitti" % len(self.results)
-                                          if self.results else "")
+                    self.status.configure(
+                        text=t("%d runs finished") % len(self.results)
+                        if self.results else "")
                     self.run_button.state(["!disabled"])
                     if self.results and not self.table.selection():
                         self.table.selection_set(self.table.get_children()[0])
@@ -359,10 +419,11 @@ class App(object):
             delta = "—"
         else:
             difference = metrics.mean_journey_s - baseline.mean_journey_s
-            delta = "aynı" if abs(difference) < 0.5 else format_delay(difference)
+            delta = (t("same") if abs(difference) < 0.5
+                     else format_delay(difference))
         stripe = "odd" if len(self.table.get_children()) % 2 else "even"
         self.table.insert("", "end", tags=(stripe,), values=(
-            TURKISH.get(metrics.system, metrics.system),
+            system_name(metrics.system),
             mmss(metrics.mean_journey_s),
             delta,
             "%.1f s" % metrics.mean_delay_s,
@@ -380,7 +441,7 @@ class App(object):
         if index < len(self.results):
             result = self.results[index]
             draw_train_graph(self.canvas, result["rows"],
-                             TURKISH.get(result["name"], result["name"]), self.font)
+                             system_name(result["name"]), self.font)
 
     def watch(self):
         """Sematik gorunum kendi tk.Tk() kokunu aciyor (schematic_tk.py:66), o
@@ -412,6 +473,7 @@ if __name__ == "__main__":
     elif "--watch" in sys.argv:
         watch_scenario(sys.argv[sys.argv.index("--watch") + 1])
     else:
+        uilang.load()
         set_dpi_awareness()
         root = tk.Tk()
         App(root)

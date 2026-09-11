@@ -24,7 +24,8 @@ import re
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from uicore import CARD, GRID, HERE, INK, MUTED, ORANGE, TURKISH
+from uicore import CARD, GRID, HERE, INK, MUTED, ORANGE
+from uilang import SYSTEM_NAMES, keep, system_name, t
 from trainsim.core import signalling
 from trainsim.scenario.generate import (LineSpec, HEADWAYS, book, evenly,
                                         gradient_profile, sweep_headway)
@@ -35,12 +36,12 @@ OUT_ROOT = os.path.join(HERE, "scenarios")
 
 #: Gercek hatlarda gorulen anma egimleri. Tek bir sayi degil bir karakter
 #: seciyorsun: profil bu degeri en dik kesime koyup gerisini yaymaya birakiyor.
-TERRAIN = [("Düz (0 ‰)", 0), ("Ova (4 ‰)", 4), ("Ana hat (10 ‰)", 10),
-           ("Dağlık (18 ‰)", 18), ("Yüksek hızlı (25 ‰)", 25),
-           ("Metro / banliyö (35 ‰)", 35)]
+TERRAIN = [("Level (0 ‰)", 0), ("Plain (4 ‰)", 4), ("Main line (10 ‰)", 10),
+           ("Mountain (18 ‰)", 18), ("High speed (25 ‰)", 25),
+           ("Metro / suburban (35 ‰)", 35)]
 
-LEADER_BRAKE = [("Acil fren (ihtiyatlı)", "emergency"),
-                ("Servis freni (konvoy kuralı)", "service")]
+LEADER_BRAKE = [("Emergency brake (cautious)", "emergency"),
+                ("Service brake (convoy rule)", "service")]
 
 
 def spin(lo, hi, value, step=1, decimals=0, suffix=""):
@@ -61,7 +62,7 @@ def spin(lo, hi, value, step=1, decimals=0, suffix=""):
 def grid_table(headers, rows=0):
     """Duzenlenebilir kucuk tablo - istasyonlar, egimler, limitler, seferler."""
     table = QtWidgets.QTableWidget(rows, len(headers))
-    table.setHorizontalHeaderLabels(headers)
+    keep(lambda *names: table.setHorizontalHeaderLabels(list(names)), *headers)
     table.verticalHeader().hide()
     table.setShowGrid(False)
     table.setAlternatingRowColors(True)
@@ -99,12 +100,14 @@ class Card(QtWidgets.QFrame):
         self.box = QtWidgets.QVBoxLayout(self)
         self.box.setContentsMargins(16, 14, 16, 16)
         self.box.setSpacing(8)
-        heading = QtWidgets.QLabel(title)
+        heading = QtWidgets.QLabel()
+        keep(heading.setText, title)
         heading.setStyleSheet("font-size: 14px; font-weight: 700; color: %s;"
                               % INK)
         self.box.addWidget(heading)
         if note:
-            hint = QtWidgets.QLabel(note)
+            hint = QtWidgets.QLabel()
+            keep(hint.setText, note)
             hint.setWordWrap(True)
             hint.setStyleSheet("color: %s; font-size: 11px;" % MUTED)
             self.box.addWidget(hint)
@@ -124,7 +127,9 @@ class Card(QtWidgets.QFrame):
         self.box.addLayout(self.form)
 
     def row(self, label, widget):
-        tag = QtWidgets.QLabel(label)
+        tag = QtWidgets.QLabel()
+        if label:
+            keep(tag.setText, label)
         tag.setStyleSheet("color: %s; font-size: 12px;" % MUTED)
         self.form.addRow(tag, widget)
         return widget
@@ -149,21 +154,24 @@ class Worker(QtCore.QThread):
     def run(self):
         try:
             if self.job == "build":
-                self.note.emit("Hat yazılıyor, boş hatta bir tren koşuyor…")
+                self.note.emit(t("Writing the line, running one train over "
+                                 "it…"))
                 booked = book(self.directory, self.spec)
                 if booked is None:
-                    self.failed.emit(
-                        "Tek başına koşan tren bile hattı bitiremedi. Koşu "
-                        "süresi kısa, ya da bu plan bu hatta yürümüyor.")
+                    self.failed.emit(t(
+                        "Even one train alone could not finish the line. The "
+                        "run is too short, or this plan does not work on this "
+                        "railway."))
                     return
                 self.done.emit(("build", booked))
             else:
-                self.note.emit("Tarama başlıyor: her aralık bir koşu…")
+                self.note.emit(t("Sweep starting: one run per interval…"))
                 rows, limit, binding = sweep_headway(
                     self.directory, self.spec, self.system,
                     progress=lambda row: self.note.emit(
                         "%d s: %s" % (row["headway_s"],
-                                      "temiz" if row["ok"] else "sıkışık")),
+                                      t("clean") if row["ok"]
+                                      else t("tight"))),
                     **self.sweep_args)
                 self.done.emit(("sweep", (rows, limit, binding)))
         except Exception as exc:                   # kullanici gorsun, log'a degil
@@ -182,12 +190,15 @@ class BuildPage(QtWidgets.QWidget):
         body.setContentsMargins(28, 26, 28, 26)
         body.setSpacing(0)
 
-        head = QtWidgets.QLabel("Hat kur")
+        head = QtWidgets.QLabel()
         head.setObjectName("head")
+        keep(head.setText, "Build a line")
         body.addWidget(head)
-        note = QtWidgets.QLabel(
-            "İstasyonları, yeri, filoyu ve tarifeyi buradan tarif et; senaryo "
-            "yazıldıktan sonra karşılaştırma listesinde belirir.")
+        note = QtWidgets.QLabel()
+        note.setWordWrap(True)
+        keep(note.setText,
+             "Describe the stations, the ground, the fleet and the timetable "
+             "here; once written the scenario appears in the comparison list.")
         note.setObjectName("note")
         body.addWidget(note)
         body.addSpacing(12)
@@ -220,49 +231,56 @@ class BuildPage(QtWidgets.QWidget):
     # ----------------------------------------------------------------- cards
 
     def build_line_card(self):
-        card = Card("Hat", "İstasyon sayısını ve aralığını gir, Uygula'ya bas; "
-                           "tablodaki adları, kilometreleri ve peron sayılarını "
-                           "sonra tek tek değiştirebilirsin.")
-        self.name = card.row("Adı", QtWidgets.QLineEdit("yenihat"))
-        self.count = card.row("İstasyon sayısı", spin(2, 60, 6))
-        self.spacing = card.row("İstasyon arası", spin(0.5, 200, 9.0, 0.5, 1, "km"))
-        self.line_speed = card.row("Hat hızı", spin(20, 350, 100, 5, 0, "km/h"))
-        self.block = card.row("Blok uzunluğu", spin(100, 5000, 1200, 50, 0, "m"))
-        self.zone = card.row("Peron bölgesi", spin(100, 2000, 700, 50, 0, "m"))
-        self.default_roads = card.row("Varsayılan peron", spin(1, 6, 1))
+        card = Card("Line",
+                    "Set the number of stations and the spacing, then press "
+                    "Apply; the names, kilometres and platform counts in the "
+                    "table can each be changed afterwards.")
+        self.name = card.row("Name", QtWidgets.QLineEdit("newline"))
+        self.count = card.row("Stations", spin(2, 60, 6))
+        self.spacing = card.row("Station spacing", spin(0.5, 200, 9.0, 0.5, 1, "km"))
+        self.line_speed = card.row("Line speed", spin(20, 350, 100, 5, 0, "km/h"))
+        self.block = card.row("Block length", spin(100, 5000, 1200, 50, 0, "m"))
+        self.zone = card.row("Platform zone", spin(100, 2000, 700, 50, 0, "m"))
+        self.default_roads = card.row("Platforms by default", spin(1, 6, 1))
 
-        apply_button = QtWidgets.QPushButton("Uygula")
+        apply_button = QtWidgets.QPushButton()
+        keep(apply_button.setText, "Apply")
         apply_button.setObjectName("small")
         apply_button.clicked.connect(self.refresh_stations)
         card.row("", apply_button)
 
-        self.stations = card.add(grid_table(["İSTASYON", "AD", "KM", "PERON",
-                                             "DEPO"]))
-        self.stations.setMinimumHeight(190)
+        self.stations = card.add(grid_table(["STATION", "NAME", "KM", "PLATFORMS",
+                                             "DEPOT"]))
+        self.stations.setMinimumHeight(230)
         self.grid.addWidget(card, 0, 0)
 
     def build_terrain_card(self):
-        card = Card("Yer", "Eğim kesim kesim, binde olarak ve gidiş yönünde: "
-                           "artı tırmanış. Profil en dik kesimi anma eğimine "
-                           "koyar, gerisini gerçek bir güzergâh gibi yayar ve "
-                           "toplamı sıfırlar. Hız limitleri kilometreyle "
-                           "verilir - bir kurp tarifeye değil yere aittir.")
+        card = Card("Ground",
+                    "Gradients stretch by stretch, per thousand and in the "
+                    "direction of travel: positive is a climb. The profile "
+                    "puts the ruling gradient on the steepest stretch, spreads "
+                    "the rest like a real alignment and levels the total. "
+                    "Speed limits are given in kilometres - a curve belongs to "
+                    "the ground, not to the timetable.")
         self.terrain = QtWidgets.QComboBox()
-        for label, _ in TERRAIN:
+        for index, (label, _) in enumerate(TERRAIN):
             self.terrain.addItem(label)
+            keep(lambda text, at=index: self.terrain.setItemText(at, text),
+                 label)
         self.terrain.setCurrentIndex(2)
-        card.row("Arazi", self.terrain)
-        fill = QtWidgets.QPushButton("Profili doldur")
+        card.row("Terrain", self.terrain)
+        fill = QtWidgets.QPushButton()
+        keep(fill.setText, "Fill the profile")
         fill.setObjectName("small")
         fill.clicked.connect(self.fill_gradients)
         card.row("", fill)
 
-        self.gradients = card.add(grid_table(["KESİM", "EĞİM ‰"]))
+        self.gradients = card.add(grid_table(["STRETCH", "GRADE ‰"]))
         self.gradients.setMinimumHeight(130)
         self.gradients.setMaximumHeight(230)
 
-        self.section(card, "Hız limitleri")
-        self.limits = card.add(grid_table(["KM BAŞI", "KM SONU", "KM/H"]))
+        self.section(card, "Speed limits")
+        self.limits = card.add(grid_table(["FROM KM", "TO KM", "KM/H"]))
         self.limits.setMinimumHeight(90)
         self.limits.setMaximumHeight(150)
         card.add(self.row_buttons(self.limits, lambda table, row: cells(
@@ -270,48 +288,53 @@ class BuildPage(QtWidgets.QWidget):
         self.grid.addWidget(card, 0, 1)
 
     def build_fleet_card(self):
-        card = Card("Filo", "Bir satır bir tren tipi: uzunluk m, azami km/h, "
-                            "ivme ve frenler m/s². İlk satır hattın varsayılan "
-                            "treni; ikinci bir satır eklersen tarifede sefer "
-                            "sefer hangisinin koşacağını seçebilirsin.")
+        card = Card("Fleet",
+                    "One row is one kind of train: length m, top km/h, "
+                    "acceleration and brakes m/s². The first row is the line's "
+                    "default train; add a second and the timetable can say "
+                    "which one runs each service.")
         self.fleet = card.add(grid_table(
-            ["ID", "AD", "UZUNLUK", "AZAMİ", "İVME", "SERVİS", "ACİL"]))
+            ["ID", "NAME", "LENGTH", "TOP", "ACCEL", "SERVICE", "EMERGENCY"]))
         self.fleet.setMinimumHeight(110)
         self.fleet.setMaximumHeight(200)
         cells(self.fleet, self.add_row(self.fleet),
-              ["EMU", "Banliyö", 120, 90, 1.0, 1.0, 1.5])
+              ["EMU", t("Suburban"), 120, 90, 1.0, 1.0, 1.5])
         card.add(self.row_buttons(self.fleet, lambda table, row: cells(
-            table, row, ["EXP", "Ekspres", 160, 140, 0.8, 0.9, 1.4])))
+            table, row, ["EXP", t("Express"), 160, 140, 0.8, 0.9, 1.4])))
         self.grid.addWidget(card, 1, 0)
 
     def build_service_card(self):
-        card = Card("Tarife", "Varsayılan otomatik: aynı tren, seçtiğin "
-                              "aralıkta birbiri ardına. Elle geçersen her "
-                              "seferin kalkışını, trenini ve duraklarını tek "
-                              "tek yazarsın - duraklar boşsa hepsinde durur.")
-        self.auto = QtWidgets.QRadioButton("Otomatik")
+        card = Card("Timetable",
+                    "Automatic by default: the same train, one after another "
+                    "at the interval you choose. Switch to by hand and you "
+                    "write each service's departure, train and calls yourself "
+                    "- empty calls means it stops everywhere.")
+        self.auto = QtWidgets.QRadioButton()
+        keep(self.auto.setText, "Automatic")
         self.auto.setChecked(True)
-        self.manual = QtWidgets.QRadioButton("Elle")
+        self.manual = QtWidgets.QRadioButton()
+        keep(self.manual.setText, "By hand")
         mode = QtWidgets.QHBoxLayout()
         mode.addWidget(self.auto)
         mode.addWidget(self.manual)
         mode.addStretch(1)
         holder = QtWidgets.QWidget()
         holder.setLayout(mode)
-        card.row("Yazım", holder)
+        card.row("Written as", holder)
 
-        self.trains = card.row("Tren sayısı", spin(1, 60, 10))
-        self.headway = card.row("Aralık", spin(20, 1800, 180, 5, 0, "s"))
-        self.dwell = card.row("Bekleme", spin(0, 600, 30, 5, 0, "s"))
-        self.first = card.row("İlk kalkış", QtWidgets.QTimeEdit(
+        self.trains = card.row("Trains", spin(1, 60, 10))
+        self.headway = card.row("Interval", spin(20, 1800, 180, 5, 0, "s"))
+        self.dwell = card.row("Dwell", spin(0, 600, 30, 5, 0, "s"))
+        self.first = card.row("First departure", QtWidgets.QTimeEdit(
             QtCore.QTime(7, 0)))
         self.first.setDisplayFormat("HH:mm")
 
         self.services = card.add(grid_table(
-            ["SEFER", "TREN", "KALKIŞ", "DURAKLAR", "BEKLEME S"]))
+            ["SERVICE", "TRAIN", "DEPARTURE", "CALLS", "DWELL S"]))
         self.services.setMinimumHeight(110)
         self.services.setMaximumHeight(220)
-        fill = QtWidgets.QPushButton("Otomatikten doldur")
+        fill = QtWidgets.QPushButton()
+        keep(fill.setText, "Fill from automatic")
         fill.setObjectName("small")
         fill.clicked.connect(self.fill_services)
         card.add(fill)
@@ -322,44 +345,55 @@ class BuildPage(QtWidgets.QWidget):
         self.grid.addWidget(card, 1, 1)
 
     def build_signalling_card(self):
-        card = Card("Sinyalizasyon ve arama",
-                    "Aralığı elle verirsen senaryo o aralıkla yazılır. "
-                    "Taratırsan aynı filo her aralıkta koşulur, çalışan en "
-                    "sıkı aralık saniyesine kadar bulunur ve bir saniye "
-                    "altında neyin bağladığı söylenir.")
+        card = Card("Signalling and search",
+                    "Give the interval yourself and the scenario is written "
+                    "at it. Sweep and the same fleet is run at every interval, "
+                    "the tightest working one is found to the second, and what "
+                    "binds one second below it is named.")
         self.system = QtWidgets.QComboBox()
-        for name in signalling.LADDER:
-            self.system.addItem(TURKISH.get(name, name), name)
+        for index, name in enumerate(signalling.LADDER):
+            self.system.addItem(system_name(name), name)
+            keep(lambda text, at=index: self.system.setItemText(at, text),
+                 SYSTEM_NAMES[name])
         self.system.currentIndexChanged.connect(self.system_changed)
-        card.row("Sistem", self.system)
+        card.row("System", self.system)
 
-        self.capped = QtWidgets.QCheckBox("Kuplajsız hız limiti uygula")
+        self.capped = QtWidgets.QCheckBox()
+        keep(self.capped.setText, "Apply an uncoupled speed limit")
         card.row("", self.capped)
-        self.cap_kmh = card.row("Kuplajsız hız", spin(10, 300, 70, 5, 0, "km/h"))
-        self.coupling_margin = card.row("Kuplaj marjı",
+        self.cap_kmh = card.row("Uncoupled speed", spin(10, 300, 70, 5, 0, "km/h"))
+        self.coupling_margin = card.row("Coupling margin",
                                         spin(0, 5000, 800, 50, 0, "m"))
-        self.latency = card.row("V2V gecikmesi", spin(0, 5, 0.5, 0.1, 2, "s"))
+        self.latency = card.row("V2V latency", spin(0, 5, 0.5, 0.1, 2, "s"))
         self.leader_brake = QtWidgets.QComboBox()
-        for label, value in LEADER_BRAKE:
+        for index, (label, value) in enumerate(LEADER_BRAKE):
             self.leader_brake.addItem(label, value)
-        card.row("Lider freni", self.leader_brake)
+            keep(lambda text, at=index: self.leader_brake.setItemText(at, text),
+                 label)
+        card.row("Leader brake", self.leader_brake)
         self.capped.toggled.connect(self.system_changed)
 
-        self.section(card, "Arama")
-        self.do_sweep = QtWidgets.QCheckBox("Aralığı tarayarak bul")
+        self.section(card, "Search")
+        self.do_sweep = QtWidgets.QCheckBox()
+        keep(self.do_sweep.setText, "Find the interval by sweeping")
         card.row("", self.do_sweep)
-        self.sweep_hi = card.row("Aramanın üstü", spin(30, 1800, 300, 10, 0, "s"))
-        self.sweep_lo = card.row("Aramanın altı", spin(10, 900, 30, 5, 0, "s"))
-        self.sweep_steps = card.row("Basamak", spin(3, 40, len(HEADWAYS)))
+        self.sweep_hi = card.row("Top of the search",
+                                 spin(30, 1800, 300, 10, 0, "s"))
+        self.sweep_lo = card.row("Bottom of the search",
+                                 spin(10, 900, 30, 5, 0, "s"))
+        self.sweep_steps = card.row("Steps", spin(3, 40, len(HEADWAYS)))
         self.rule = QtWidgets.QComboBox()
-        self.rule.addItem("Hiç sinyalle tutulmadan (all-green)", "clean")
-        self.rule.addItem("Tutulsa da tarifeye uyarak", "ontime")
-        card.row("Ölçüt", self.rule)
+        for index, (label, value) in enumerate(
+                (("Never held by a signal (all-green)", "clean"),
+                 ("Held, but still to time", "ontime"))):
+            self.rule.addItem(label, value)
+            keep(lambda text, at=index: self.rule.setItemText(at, text), label)
+        card.row("Rule", self.rule)
         self.do_sweep.toggled.connect(self.system_changed)
         self.grid.addWidget(card, 2, 0)
 
     def build_log_card(self):
-        card = Card("Sonuç")
+        card = Card("Result")
         self.log = QtWidgets.QPlainTextEdit()
         self.log.setReadOnly(True)
         self.log.setMinimumHeight(260)
@@ -375,7 +409,8 @@ class BuildPage(QtWidgets.QWidget):
 
     def section(self, card, title):
         """Kart icinde bir ara baslik, ve ardindan temiz bir form."""
-        label = QtWidgets.QLabel(title.upper())
+        label = QtWidgets.QLabel()
+        keep(lambda text: label.setText(text.upper()), title)
         label.setStyleSheet("color: %s; font-size: 11px; font-weight: 700; "
                             "letter-spacing: 1px; padding-top: 10px;" % MUTED)
         card.add(label)
@@ -393,10 +428,12 @@ class BuildPage(QtWidgets.QWidget):
         box = QtWidgets.QHBoxLayout(holder)
         box.setContentsMargins(0, 0, 0, 0)
         box.setSpacing(8)
-        add = QtWidgets.QPushButton("Satır ekle")
+        add = QtWidgets.QPushButton()
+        keep(add.setText, "Add row")
         add.setObjectName("small")
         add.clicked.connect(lambda: make(table, self.add_row(table)))
-        drop = QtWidgets.QPushButton("Seçileni sil")
+        drop = QtWidgets.QPushButton()
+        keep(drop.setText, "Delete selected")
         drop.setObjectName("small")
         drop.clicked.connect(lambda: self.drop_row(table))
         box.addWidget(add)
@@ -421,7 +458,7 @@ class BuildPage(QtWidgets.QWidget):
             depot = index in (0, len(laid) - 1)
             cells(self.stations, row, [sid, name, "%.1f" % km,
                                        self.default_roads.value(),
-                                       "evet" if depot else "hayır"])
+                                       t("yes") if depot else t("no")])
         self.fill_gradients()
 
     def station_rows(self):
@@ -495,13 +532,13 @@ class BuildPage(QtWidgets.QWidget):
         """Formdaki her seyi tek bir LineSpec'e topla."""
         laid = self.station_rows()
         if len(laid) < 2:
-            raise ValueError("Bir hat en az iki istasyon ister.")
+            raise ValueError(t("A line needs at least two stations."))
         ids = [sid for sid, _, _ in laid]
         if len(set(ids)) != len(ids):
-            raise ValueError("İki istasyon aynı id'yi taşıyamaz: %s"
+            raise ValueError(t("Two stations cannot share an id: %s")
                              % ", ".join(sorted(ids)))
         if sorted(km for _, _, km in laid) != [km for _, _, km in laid]:
-            raise ValueError("İstasyonlar kilometre sırasında olmalı.")
+            raise ValueError(t("Stations must be in kilometre order."))
 
         platforms, depots = {}, []
         for row in range(self.stations.rowCount()):
@@ -540,7 +577,7 @@ class BuildPage(QtWidgets.QWidget):
                 "service_brake": number_at(self.fleet, row, 5, 1.0),
                 "emergency_brake": number_at(self.fleet, row, 6, 1.5)})
         if not units:
-            raise ValueError("Filoda en az bir tren tipi olmalı.")
+            raise ValueError(t("The fleet needs at least one kind of train."))
 
         away = self.first.time()
         first_s = away.hour() * 3600 + away.minute() * 60
@@ -588,8 +625,9 @@ class BuildPage(QtWidgets.QWidget):
                      if name]
             unknown = [name for name in stops if name not in ids]
             if unknown:
-                raise ValueError("%s seferi olmayan istasyonda duruyor: %s"
-                                 % (service_id, ", ".join(unknown)))
+                raise ValueError(
+                    t("%s calls at a station that does not exist: %s")
+                    % (service_id, ", ".join(unknown)))
             found.append({"id": service_id,
                           "stock": text_at(self.services, row, 1)
                                    or self.fleet_ids()[0],
@@ -597,8 +635,9 @@ class BuildPage(QtWidgets.QWidget):
                           "calls": stops or None,
                           "dwell_s": number_at(self.services, row, 4, 30.0)})
         if not found:
-            raise ValueError("Elle tarife seçili ama tabloda sefer yok - "
-                             "\"Otomatikten doldur\" iyi bir başlangıç.")
+            raise ValueError(t("A by-hand timetable is selected but the "
+                               "table is empty - \"Fill from automatic\" is a "
+                               "good start."))
         return found
 
     # --------------------------------------------------------------- running
@@ -609,19 +648,20 @@ class BuildPage(QtWidgets.QWidget):
         try:
             spec = self.spec()
         except Exception as exc:
-            QtWidgets.QMessageBox.warning(self, "Hat kur", str(exc))
+            QtWidgets.QMessageBox.warning(self, "trainsim", str(exc))
             return
         directory = os.path.join(OUT_ROOT, re.sub(r"[^\w.-]+", "-", spec.name))
         self.log.clear()
         self.say("%s  ·  %d istasyon  ·  %.1f km  ·  %s"
                  % (spec.name, len(spec.stations), spec.last_km,
-                    TURKISH.get(spec.system, spec.system)))
+                    system_name(spec.system)))
         arguments = None
         if job == "sweep":
             hi, lo = self.sweep_hi.value(), self.sweep_lo.value()
             if lo >= hi:
                 QtWidgets.QMessageBox.warning(
-                    self, "Hat kur", "Aramanın altı üstünden küçük olmalı.")
+                    self, "trainsim",
+                    t("The bottom of the search must be below the top."))
                 return
             steps = self.sweep_steps.value()
             span = [int(round(hi - (hi - lo) * index / float(steps - 1)))
@@ -639,8 +679,8 @@ class BuildPage(QtWidgets.QWidget):
 
     def complain(self, message):
         self.say("")
-        self.say("HATA: " + message)
-        QtWidgets.QMessageBox.critical(self, "Hat kur", message)
+        self.say(t("ERROR: %s") % message)
+        QtWidgets.QMessageBox.critical(self, "trainsim", message)
 
     def settle(self, payload, directory):
         job, result = payload
@@ -649,7 +689,7 @@ class BuildPage(QtWidgets.QWidget):
         else:
             self.report_sweep(result)
         self.say("")
-        self.say("Yazıldı: %s" % directory)
+        self.say(t("Written: %s") % directory)
         self.built.emit(directory)
 
     def report_build(self, bookings):
@@ -658,13 +698,14 @@ class BuildPage(QtWidgets.QWidget):
             unit, stops = key[0], key[1:]
             start = times[0][1] or times[0][0]
             end = times[-1][0]
-            self.say("%-6s %2d durak   boş hatta %s"
+            self.say(t("%-6s %2d calls   %s alone on the line")
                      % (unit, len(stops), _mmss((end or 0) - (start or 0))))
 
     def report_sweep(self, result):
         rows, limit, binding = result
         self.say("")
-        self.say("  aralık    sinyalle tutulan   ort. gecikme    en kötü   biten")
+        self.say(t("  interval    held by signals    mean delay      worst"
+                   "   done"))
         self.say("  " + "-" * 60)
         for row in rows:
             if row.get("refined"):
@@ -672,27 +713,29 @@ class BuildPage(QtWidgets.QWidget):
             self.say("  %5d s   %12.0f s   %10.1f s   %7.0f s   %d/%d %s"
                      % (row["headway_s"], row["restrained_s"],
                         row["mean_delay_s"], row["worst_s"], row["completed"],
-                        row["services"], "" if row["ok"] else "<-- sıkışık"))
+                        row["services"],
+                        "" if row["ok"] else t("<-- tight")))
         self.say("")
         if limit is None:
-            self.say("Aralığın hiçbir yerinde sınır geçilmedi. Arama sınırlarını "
-                     "genişlet: ya üstü zaten sıkışıksa yukarı, ya altı hâlâ "
-                     "temizse aşağı.")
+            self.say(t("Nothing in the range crossed the boundary. Widen "
+                       "the search: upwards if even the top is tight, "
+                       "downwards if even the bottom is still clean."))
         else:
-            self.say("Çalışan en sıkı aralık: %d s  (saatte %.1f tren)"
-                     % (limit, 3600.0 / limit))
-            self.say("Senaryo bu aralıkla yazıldı.")
+            self.say(t("Tightest working interval: %d s  (%.1f trains an "
+                       "hour)") % (limit, 3600.0 / limit))
+            self.say(t("The scenario was written at this interval."))
         why, where = binding
         if why:
             self.say("")
-            self.say("Bir saniye altında bağlayan:")
+            self.say(t("What binds one second tighter:"))
             for reason, seconds in why:
                 self.say("    %-28s %6.0f s" % (reason, seconds))
-            self.say("Nerede (trenin gitmekte olduğu istasyona göre):")
+            self.say(t("Where (by the station the train was heading for):"))
             for station, seconds in where:
                 self.say("    %-28s %6.0f s" % (station, seconds))
-            self.say("Bir istasyon tek başına öne çıkıyorsa oraya bir peron "
-                     "eklemek sinyalizasyonu değiştirmekten ucuzdur.")
+            self.say(t("If one station stands out on its own, adding a "
+                       "platform there is cheaper than changing the "
+                       "signalling system."))
 
 
 def _mmss(seconds):
@@ -765,6 +808,22 @@ def selfcheck():
 
     page.auto.setChecked(True)
     assert page.spec().services_spec is None, "otomatige donunce elle plan biter"
+
+    # Dil yerinde degisiyor: yazdiklarin duruyor, etiketler ceviriliyor.
+    import uilang
+    was = uilang.LANG
+    english = page.stations.horizontalHeaderItem(0).text()
+    uilang.set_language("tr")
+    assert page.stations.horizontalHeaderItem(0).text() == "İSTASYON", \
+        page.stations.horizontalHeaderItem(0).text()
+    assert page.terrain.itemText(2) == "Ana hat (10 ‰)", page.terrain.itemText(2)
+    assert page.system.itemText(5) == "Sanal kuplaj", page.system.itemText(5)
+    assert text_at(page.stations, 1, 1) == "Bala", "girilen veri kaybolmamali"
+    assert page.spacing.value() == 9.0, "girilen sayi kaybolmamali"
+    assert len(page.spec().stations) == 4, "spec dil degisince de cikmali"
+    uilang.set_language("en")
+    assert page.stations.horizontalHeaderItem(0).text() == english
+    uilang.LANG = was
     print("ui_build selfcheck tamam")
 
 
