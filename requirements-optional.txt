@@ -5,8 +5,9 @@
 # locked-down machine where pip may be blocked. Running a scenario, checking one,
 # comparing systems and writing a trace all hold to it.
 #
-# The one exception is drawing: the charts are matplotlib's, so graph.py and
-# _plot_curves.py do need it installed. Nothing else does.
+# Two things sit outside that. The charts are matplotlib's, so graph.py and
+# _plot_curves.py need it installed; and ui_qt.py is built on Qt. Neither is on
+# the path of a run - ui_tk.py is the front end that needs nothing at all.
 #
 # All of these install without admin rights:
 #     pip install --user -r requirements-optional.txt
@@ -17,5 +18,8 @@ matplotlib>=3.5  # draws every chart: graph.py and _plot_curves.py need it, and
                  # nothing else does - a run, a --check and a --log spreadsheet
                  # all still work with none of these installed
 pygame>=2.1      # an alternative rendering backend, if smoother zoom/pan is wanted
-streamlit>=1.30  # the browser front end, app.py - a form for building a line and a
-                 # place to read the comparison off. Nothing else imports it
+PySide6-Essentials>=6.5
+                 # the Qt front end, ui_qt.py - the comparison page plus the line
+                 # builder. ui_tk.py does the comparison with no packages at all,
+                 # so this buys drawing quality and the builder, not the numbers.
+                 # PySide6-Addons is NOT needed (3D, multimedia, WebEngine)

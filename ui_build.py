@@ -22,9 +22,9 @@ Agir isler ayri bir is parcaciginda: bir tarama onlarca kosu demek.
 import os
 import re
 
-from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6 import QtCore, QtWidgets
 
-from uicore import CARD, GRID, HERE, INK, MUTED, ORANGE
+from uicore import CARD, GRID, HERE, INK, MUTED
 from uilang import SYSTEM_NAMES, keep, system_name, t
 from trainsim.core import signalling
 from trainsim.scenario.generate import (LineSpec, HEADWAYS, book, evenly,

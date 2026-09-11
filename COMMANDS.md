@@ -126,43 +126,90 @@ Two other things carry "margin" in the name and are neither of these:
 mark sits inside a platform zone, and `coupling_margin_m` under virtual coupling
 is how close counts as coupled — an incentive threshold, not a separation.
 
-## The browser front end
+## The front ends
 
-Optional, and the one thing here that needs a package.
+Two of them, same numbers, different toolkit. Both open on a comparison page:
+pick a scenario, tick the signalling systems, read the KPI table `--compare`
+prints and the train graph underneath it.
 
 ```
-pip install --user streamlit
-streamlit run app.py
+python ui_tk.py     # tkinter - nothing to install, works where pip is blocked
+python ui_qt.py     # Qt - antialiased curves, real DPI scaling, the line builder
 ```
 
-Two tabs, because there are only two questions.
+`ui_tk.py` holds to the repository's no-dependency rule and is the one to reach
+for on a locked-down machine. `ui_qt.py` needs PySide6 and is worth it if you can
+install one package: it draws better and it carries the second page.
 
-**Hazır hat** — pick any `scenario*.yaml` under `scenarios/`, pick the
-signalling systems to put it under, and read the comparison off: the same KPI
-table `--compare` prints, a train graph per system, and the per-service
-arrivals. It is `--compare` with pictures.
+Runs go on a worker thread in both, because a twelve-thousand-second lap would
+otherwise freeze the window until it finished.
 
-**Yeni hat kur** — a table of station names and kilometres, and about a dozen
-sliders. The line speed, the block length, the platforms, the rolling stock and
-the whole timetable are written from those, the railway is run once empty to
-book it, and then the same comparison comes back for a railway that did not
-exist a minute ago. The generated YAML is shown at the bottom of the page, so
-the form is a way into the file format rather than a replacement for it.
+**Language.** Both open in English. `EN | TR` at the foot of the sidebar switches
+to Turkish without rebuilding the window, so a half-filled form, a sweep result
+and the selected row all survive the change. The choice is remembered in
+`~/.trainsim-ui.json`; if that cannot be written — a home directory on a network
+share may refuse — the switch still works for the session. Every string lives in
+`uilang.py`: English is the source, Turkish is a lookup beside it, and a phrase
+with no translation falls back to English rather than breaking the screen.
+
+### Build a line (`ui_qt.py`, second page)
+
+The loop this replaces is: open the YAML, count the stations out by hand, work
+the gradients, guess a headway, run it, change the headway, run it again.
+
+| card | what it sets |
+|---|---|
+| **Line** | station count and spacing lay the table out; each station's name, kilometre, **platform count** and depot flag are then editable one by one |
+| **Ground** | pick a terrain and the gradient profile is filled stretch by stretch — ruling gradient on the steepest, the rest spread like a real alignment, the total levelled so the line does not climb into the sky. Every cell stays editable. Speed limits go in below, in kilometres |
+| **Fleet** | one row per kind of train. A 90 km/h suburban unit is there by default; add a second row and the timetable can say which one runs each service |
+| **Timetable** | automatic by default (n trains, every m seconds). Switch to by hand and each service's departure, train and calls are yours — empty calls means it stops everywhere, `A D` makes it an express |
+| **Signalling** | the system, and for virtual coupling the uncoupled speed limit, coupling margin, V2V latency and leader brake |
+
+Two buttons. **Senaryoyu üret** writes the line and books it by running one train
+over the empty railway, so the plan always works in isolation and any delay in a
+full run is trains getting in each other's way. **Headway tara** runs the same
+fleet at every interval, bisects the boundary to the second, and then says what
+was binding one second the wrong side of it:
+
+```
+  interval    held by signals    mean delay      worst   done
+     300 s                0 s          0.0 s         0 s   8/8
+     120 s              166 s          8.2 s        10 s   8/8 <-- tight
+      60 s             1555 s        171.1 s       335 s   8/8 <-- tight
+
+Tightest working interval: 140 s  (25.7 trains an hour)
+
+What binds one second tighter:
+    obeying caution                 129 s
+Where (by the station the train was heading for):
+    B                                70 s
+    C                                40 s
+```
+
+That last block is the point of the page. A line that binds on the approach to
+one station wants another face there; a line whose load is spread across three
+wants shorter blocks. Knowing which is the difference between a platform and a
+signalling system, and platforms are cheaper. It is why platform count is a
+per-station column rather than one number for the railway.
+
+The generated scenario is written into `scenarios/<name>/` and appears in the
+comparison page's list straight away.
 
 There is deliberately **no track editor**. The layout is one-dimensional, so a
 table of names and kilometres says everything a drawing would, and drawing rails
 with a mouse is the largest part of every commercial simulator without answering
 any question this repository asks.
 
-`trainsim/scenario/generate.py` is the piece that writes a scenario directory
-from a `LineSpec`; it is stdlib-only and runs without streamlit:
+`trainsim/scenario/generate.py` is the piece underneath, and it is stdlib-only —
+the form is a way into the file format rather than a replacement for it:
 
 ```
-python -m trainsim.scenario.generate      # builds a four-station line and books it
+python -m trainsim.scenario.generate      # builds a four-station line, books it, sweeps it
 ```
 
-Nothing under `trainsim/core` or `trainsim/scenario` imports `app.py`, so a run,
-a `--check` and a `--log` still work on a bare Python install with pip blocked.
+Nothing under `trainsim/core` or `trainsim/scenario` imports a front end, so a
+run, a `--check` and a `--log` still work on a bare Python install with pip
+blocked.
 
 ## The run trace
 
@@ -479,6 +526,16 @@ plan to stop where the leader will stop.
 calling pattern, evenly spaced stations and a flat line speed, so that running it
 under each system in turn measures the system and nothing else.
 
+Those sweeps are hand-written, one per railway, because each is tied to a
+geometry that already exists. The same search runs on a line that does not exist
+yet through `trainsim.scenario.generate.sweep_headway()` — the builder page's
+**Headway tara** button — which books the line first and then sweeps it. That one
+reports a third thing the hand-written sweeps do not: **what was binding** one
+second below the boundary, named both as a mechanism (`signal at danger`,
+`obeying caution`) and by the station the train was heading for. Load concentrated
+on one station is a platform problem; load spread across several is a block
+spacing problem, and the two have very different price tags.
+
 Both sweeps fit the train to the system as well as switching the system. That is
 not a detail: full moving block falls back to block granularity unless the train
 in front reports its integrity, and virtual coupling needs both trains talking to
@@ -490,7 +547,7 @@ each system to that fleet. Quote the sweeps for capacity.
 ## Tests
 
 ```
-python run_tests.py                 all 283, stdlib unittest, no pytest needed, ~15 s
+python run_tests.py                 all 292, stdlib unittest, no pytest needed, ~15 s
 cd tests && python -m unittest test_junction -v      one file, verbose
 ```
 
