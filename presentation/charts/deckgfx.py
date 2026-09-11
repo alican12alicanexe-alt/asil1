@@ -59,12 +59,12 @@ save(fig, "flow")
 
 # --------------------------------------------------------- 2) makale kartlari
 CARDS = [
-    (u"Quaglietta vd. (2020)", NAVY, [
+    (u"[1]  Quaglietta vd. (2020)", NAVY, [
         (u"YÖNTEM", u"Çok durumlu tren takip modeli\n20 km hat · 2 tren"),
         (u"BULGU", u"ETCS L3'e göre headway\n%13 – %53 daha kısa"),
         (u"ÖLÇTÜĞÜ", u"iki trenin anlık mesafesi"),
     ]),
-    (u"Aoun vd. (2021)", SKY, [
+    (u"[2]  Aoun vd. (2021)", SKY, [
         (u"YÖNTEM", u"Delphi-AHP çok ölçütlü analiz\n15 uzman · 66 senaryo"),
         (u"BULGU", u"Kapasite kazancı %1.8 – %14\nGüvenlik %45 · kapasite %5.6"),
         (u"ÖLÇTÜĞÜ", u"karar ölçütlerinin ağırlığı"),
