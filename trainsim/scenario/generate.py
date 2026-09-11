@@ -47,6 +47,9 @@ class LineSpec:
     platforms_per_station: int = 1
 
     # the train
+    #: What the default unit is called. Services that name no stock get this
+    #: one, so renaming it renames what a hand-written timetable refers to.
+    stock_id: str = "EMU"
     stock_length_m: float = 120.0
     max_speed_kmh: float = 100.0
     max_accel: float = 1.0
@@ -232,7 +235,7 @@ def _infrastructure(spec: LineSpec) -> str:
 
 def units(spec: LineSpec) -> List[Dict]:
     """Every unit on this railway, the default one first."""
-    base = {"id": "EMU", "name": "%s unit" % spec.name,
+    base = {"id": spec.stock_id, "name": "%s unit" % spec.name,
             "length_m": spec.stock_length_m, "max_speed_kmh": spec.max_speed_kmh,
             "max_accel": spec.max_accel, "service_brake": spec.service_brake,
             "emergency_brake": spec.emergency_brake}
@@ -256,7 +259,7 @@ def flight(spec: LineSpec, count=None) -> List[Dict]:
         made = [dict(entry) for entry in spec.services_spec]
         return made if count is None else made[:count]
     total = spec.trains if count is None else count
-    return [{"id": "S%02d" % (index + 1), "stock": "EMU",
+    return [{"id": "S%02d" % (index + 1), "stock": spec.stock_id,
              "departure_s": spec.first_departure_s
                             + int(round(index * spec.headway_s)),
              "calls": None, "dwell_s": spec.dwell_s}
@@ -269,7 +272,7 @@ def booking_key(spec: LineSpec, service: Dict) -> Tuple[str, ...]:
     The unit is part of it because a 160 unit and a 90 unit over the same stops
     do not run the same times.
     """
-    return (service.get("stock", "EMU"),) + pattern_of(spec, service)
+    return (service.get("stock", spec.stock_id),) + pattern_of(spec, service)
 
 
 def pattern_of(spec: LineSpec, service: Dict) -> Tuple[str, ...]:
@@ -320,7 +323,7 @@ def _timetable(spec: LineSpec, booked, services) -> str:
         lines += [
             "  - id: %s" % service["id"],
             '    name: "%s %s"' % (format_clock(away), spec.stations[-1][1]),
-            "    stock: %s" % service.get("stock", "EMU"),
+            "    stock: %s" % service.get("stock", spec.stock_id),
             '    departure: "%s"' % format_clock(away),
             "    ready_lead_s: %d" % spec.ready_lead_s,
             "    calls:",
@@ -416,7 +419,7 @@ def _probe(directory: str, spec: LineSpec, service: Dict) -> Optional[list]:
 
     pattern = pattern_of(spec, service)
     alone = replace(spec, services_spec=[
-        {"id": "S01", "stock": service.get("stock", "EMU"),
+        {"id": "S01", "stock": service.get("stock", spec.stock_id),
          "departure_s": spec.first_departure_s, "calls": list(pattern),
          "dwell_s": service.get("dwell_s", spec.dwell_s)}])
     write(directory, alone, booked=None)

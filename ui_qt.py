@@ -20,6 +20,7 @@ import sys
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from ui_build import BuildPage
 from uicore import (CARD, GRID, HERE, INK, INK_SOFT, MUTED, ON_INK, ORANGE,
                     ORANGE_DIM, PAPER, STRIPE, TRACK_COLOURS, TURKISH,
                     mmss, plot_box, run_one, scaler, scenario_paths, series)
@@ -54,6 +55,40 @@ QPushButton#run:disabled { background: %(INK_SOFT)s; color: %(ON_INK)s; }
 QPushButton#ghost { background: transparent; color: #FFFFFF; border: 1px solid
                     %(INK_SOFT)s; border-radius: 8px; padding: 10px; }
 QPushButton#ghost:hover { background: %(INK_SOFT)s; }
+QPushButton#nav    { background: transparent; color: %(ON_INK)s; border: 0;
+                    border-radius: 8px; padding: 10px 12px; text-align: left;
+                    font-size: 13px; }
+QPushButton#nav:hover   { background: %(INK_SOFT)s; color: #FFFFFF; }
+QPushButton#nav:checked { background: %(INK_SOFT)s; color: #FFFFFF;
+                    font-weight: 700; }
+QPushButton#small  { background: %(CARD)s; color: %(INK)s; border: 1px solid
+                    %(GRID)s; border-radius: 7px; padding: 6px 12px;
+                    font-size: 12px; }
+QPushButton#small:hover    { background: %(STRIPE)s; border-color: %(ORANGE)s; }
+QPushButton#small:disabled { color: %(MUTED)s; }
+
+QRadioButton      { color: %(INK)s; spacing: 8px; background: transparent; }
+QRadioButton::indicator { width: 15px; height: 15px; border-radius: 8px;
+                    background: %(CARD)s; border: 1px solid %(GRID)s; }
+QRadioButton::indicator:checked { background: %(ORANGE)s;
+                    border: 4px solid %(CARD)s; }
+QSpinBox, QDoubleSpinBox, QTimeEdit, QPlainTextEdit {
+                    background: %(CARD)s; color: %(INK)s; border: 1px solid
+                    %(GRID)s; border-radius: 7px; padding: 6px 8px; }
+QSpinBox:focus, QDoubleSpinBox:focus, QTimeEdit:focus { border-color: %(ORANGE)s; }
+QSpinBox:disabled, QDoubleSpinBox:disabled, QTimeEdit:disabled,
+QComboBox:disabled { color: %(MUTED)s; background: %(STRIPE)s; }
+#body QComboBox, #body QLineEdit { background: %(CARD)s; color: %(INK)s;
+                    border: 1px solid %(GRID)s; }
+#body QLineEdit:focus { border-color: %(ORANGE)s; }
+#body QComboBox::down-arrow { border-top-color: %(MUTED)s; }
+#body QComboBox QAbstractItemView { background: %(CARD)s; color: %(INK)s;
+                    border: 1px solid %(GRID)s; }
+#body QCheckBox   { color: %(INK)s; }
+#body QCheckBox::indicator { background: %(CARD)s; border: 1px solid %(GRID)s; }
+#body QCheckBox::indicator:checked { background: %(ORANGE)s;
+                    border-color: %(ORANGE)s; }
+#body QCheckBox:disabled, #body QRadioButton:disabled { color: %(MUTED)s; }
 
 QComboBox, QLineEdit { background: %(INK_SOFT)s; color: #FFFFFF; border: 0;
                     border-radius: 8px; padding: 9px 10px; selection-background-color:
@@ -201,18 +236,66 @@ class Window(QtWidgets.QMainWindow):
         layout = QtWidgets.QHBoxLayout(centre)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
+        self.builder = BuildPage()
+        self.builder.built.connect(self.adopt)
+        self.pages = QtWidgets.QStackedWidget()
+
         layout.addWidget(self.build_sidebar())
-        layout.addWidget(self.build_body(), 1)
+        self.pages.addWidget(self.build_body())
+        self.pages.addWidget(self.builder)
+        layout.addWidget(self.pages, 1)
         self.setCentralWidget(centre)
+        self.show_page(0)
 
     # --------------------------------------------------------------- chrome
 
     def build_sidebar(self):
+        """Marka, gezinme, sayfanin kendi denetimleri, durum satiri."""
         side = QtWidgets.QFrame()
         side.setObjectName("side")
         side.setFixedWidth(280)
-        box = QtWidgets.QVBoxLayout(side)
-        box.setContentsMargins(24, 26, 24, 24)
+        outer = QtWidgets.QVBoxLayout(side)
+        outer.setContentsMargins(24, 26, 24, 24)
+        outer.setSpacing(0)
+
+        brand = QtWidgets.QLabel("trainsim")
+        brand.setObjectName("brand")
+        outer.addWidget(brand)
+        tagline = QtWidgets.QLabel("Mikroskopik demiryolu benzetimi")
+        tagline.setObjectName("tagline")
+        outer.addWidget(tagline)
+
+        outer.addSpacing(20)
+        self.nav = []
+        for index, label in enumerate(("Karşılaştır", "Hat kur")):
+            button = QtWidgets.QPushButton(label)
+            button.setObjectName("nav")
+            button.setCheckable(True)
+            button.setCursor(QtCore.Qt.PointingHandCursor)
+            button.clicked.connect(lambda _checked, page=index:
+                                   self.show_page(page))
+            outer.addWidget(button)
+            self.nav.append(button)
+
+        # Her sayfanin kendi denetimleri; gezinme ikisinin de ustunde kaliyor.
+        self.controls = QtWidgets.QStackedWidget()
+        self.controls.addWidget(self.compare_controls())
+        self.controls.addWidget(self.build_controls())
+        outer.addSpacing(4)
+        outer.addWidget(self.controls)
+
+        outer.addSpacing(16)
+        self.status = QtWidgets.QLabel("")
+        self.status.setObjectName("status")
+        self.status.setWordWrap(True)
+        outer.addWidget(self.status)
+        outer.addStretch(1)
+        return side
+
+    def compare_controls(self):
+        panel = QtWidgets.QWidget()
+        box = QtWidgets.QVBoxLayout(panel)
+        box.setContentsMargins(0, 0, 0, 0)
         box.setSpacing(0)
 
         def head(text, space=18):
@@ -222,14 +305,7 @@ class Window(QtWidgets.QMainWindow):
             box.addWidget(label)
             box.addSpacing(6)
 
-        brand = QtWidgets.QLabel("trainsim")
-        brand.setObjectName("brand")
-        box.addWidget(brand)
-        tagline = QtWidgets.QLabel("Mikroskopik demiryolu benzetimi")
-        tagline.setObjectName("tagline")
-        box.addWidget(tagline)
-
-        head("SENARYO", 22)
+        head("SENARYO", 14)
         self.scenario = QtWidgets.QComboBox()
         self.scenario.addItems(list(self.scenarios))
         box.addWidget(self.scenario)
@@ -266,14 +342,34 @@ class Window(QtWidgets.QMainWindow):
         watch.setCursor(QtCore.Qt.PointingHandCursor)
         watch.clicked.connect(self.watch)
         box.addWidget(watch)
+        return panel
 
-        box.addSpacing(16)
-        self.status = QtWidgets.QLabel("")
-        self.status.setObjectName("status")
-        self.status.setWordWrap(True)
-        box.addWidget(self.status)
-        box.addStretch(1)
-        return side
+    def build_controls(self):
+        panel = QtWidgets.QWidget()
+        box = QtWidgets.QVBoxLayout(panel)
+        box.setContentsMargins(0, 0, 0, 0)
+        box.setSpacing(8)
+
+        box.addSpacing(14)
+        generate = QtWidgets.QPushButton("SENARYOYU ÜRET")
+        generate.setObjectName("run")
+        generate.setCursor(QtCore.Qt.PointingHandCursor)
+        generate.clicked.connect(lambda: self.builder.start("build"))
+        box.addWidget(generate)
+
+        sweep = QtWidgets.QPushButton("Headway tara")
+        sweep.setObjectName("ghost")
+        sweep.setCursor(QtCore.Qt.PointingHandCursor)
+        sweep.clicked.connect(lambda: self.builder.start("sweep"))
+        box.addWidget(sweep)
+
+        hint = QtWidgets.QLabel(
+            "Üretmek boş hatta bir tren koşturur ve tarifeyi ondan yazar. "
+            "Taramak aynı filoyu her aralıkta koşturur - dakikalar sürebilir.")
+        hint.setObjectName("tagline")
+        hint.setWordWrap(True)
+        box.addWidget(hint)
+        return panel
 
     def build_body(self):
         body = QtWidgets.QFrame()
@@ -340,6 +436,27 @@ class Window(QtWidgets.QMainWindow):
         rows = max(self.table.rowCount(), 1)
         self.table.setFixedHeight(self.table.horizontalHeader().height()
                                   + rows * ROW_H + 16)
+
+    def show_page(self, index):
+        self.pages.setCurrentIndex(index)
+        self.controls.setCurrentIndex(index)
+        for position, button in enumerate(self.nav):
+            button.setChecked(position == index)
+
+    def adopt(self, directory):
+        """Yeni uretilen hatti listeye al ve sec - kurup karsilastirmaya
+        gecerken ayrica aramak gerekmesin."""
+        self.scenarios = scenario_paths()
+        self.scenario.blockSignals(True)
+        self.scenario.clear()
+        self.scenario.addItems(list(self.scenarios))
+        self.scenario.blockSignals(False)
+        wanted = os.path.basename(directory)
+        for index, label in enumerate(self.scenarios):
+            if label.startswith(wanted + " /"):
+                self.scenario.setCurrentIndex(index)
+                break
+        self.status.setText("%s listeye eklendi" % wanted)
 
     # -------------------------------------------------------------- actions
 
