@@ -3,14 +3,24 @@
 
     python ui_tk.py
 
-app.py ile ayni isi yapiyor, ama tarayici yok, sunucu yok, port yok, pip yok.
-Sadece tkinter - Python'un kendi icinde geliyor. Kurulumun engellendigi ya da
-localhost'un guvenlik duvarina takildigi bir makinede calisan tek surum bu.
+Tarayici yok, sunucu yok, port yok, pip yok - sadece tkinter, yani Python'un
+kendi icinde geleni. Kurulumun engellendigi ya da localhost'un guvenlik
+duvarina takildigi bir makinede calisan surum bu. Grafik de matplotlib'e
+gitmiyor, Canvas'a ciziliyor.
 
-Grafik de tkinter'in kendi Canvas'ina ciziliyor; matplotlib de gerekmiyor.
+GORUNUM
 
-Kosular ayri bir is parcaciginda donuyor, sonuclar kuyrukla geri geliyor:
-tek parcacikta kossaydi 12000 saniyelik bir tur boyunca pencere donardi.
+tkinter'in "eski" durmasinin sebebi tkinter degil, varsayilan temasi. Burada
+``clam`` kullaniliyor: native gorunmuyor ama her rengi, her kenari, her satir
+yuksekligini veriyor - bir tema secmek yerine bir arayuz tasarlayabiliyorsun.
+Windows'taki bulanikligin sebebi ayri: surec DPI farkindaligini bildirmedigi
+icin sistem pencereyi buyutup bulanik birakiyor. set_dpi_awareness() onu
+kapatiyor ve tek basina en buyuk farki o yapiyor.
+
+Renkler sunumun paleti, yani grafikler ve slaytlar ayni dili konusuyor.
+
+Kosular ayri bir is parcaciginda donuyor, sonuclar kuyrukla geri geliyor: tek
+parcacikta kossaydi 12000 saniyelik bir tur boyunca pencere donardi.
 """
 import os
 import queue
@@ -18,6 +28,7 @@ import subprocess
 import sys
 import threading
 import tkinter as tk
+import tkinter.font as tkfont
 from tkinter import ttk, messagebox
 
 #: PyInstaller ile paketlendiginde senaryolar gecici bir klasore aciliyor ve
@@ -44,10 +55,41 @@ TURKISH = {
     "virtual_coupling": "Sanal kuplaj",
 }
 
-#: Sunumun paleti, sonra tekrar basa donuyor.
-TRACK_COLOURS = ["#355FA8", "#58B0E8", "#E8871F", "#5B6478", "#7B9FD4",
-                 "#9AD0F2", "#F0A855", "#2A4478"]
-INK, MUTED, GRID, PAPER = "#1D2A4D", "#5B6478", "#D6DAE3", "#FFFFFF"
+# ------------------------------------------------------------------- palette
+
+INK = "#1D2A4D"        # kenar menu, baslik metni
+INK_SOFT = "#2C3A63"   # kenar menude bir tik acik - ayirici yerine
+NAVY = "#355FA8"       # sabit blok
+SKY = "#58B0E8"        # hareketli blok
+ORANGE = "#E8871F"     # sanal kuplaj, vurgu
+ORANGE_DIM = "#C9741A"
+MUTED = "#5B6478"
+GRID = "#D6DAE3"
+PAPER = "#F4F6F9"      # icerik zemini
+CARD = "#FFFFFF"
+STRIPE = "#F7F9FC"
+ON_INK = "#C7D0E6"     # koyu zemindeki ikincil metin
+
+TRACK_COLOURS = [NAVY, SKY, ORANGE, MUTED, "#7B9FD4", "#9AD0F2", "#F0A855",
+                 "#2A4478"]
+
+
+def set_dpi_awareness():
+    """Windows'ta pencereyi bulanik buyutmeyi birak - en buyuk tek kazanc."""
+    try:
+        import ctypes
+        ctypes.windll.shcore.SetProcessDpiAwareness(1)
+    except Exception:
+        pass                                   # Windows disi, ya da eski surum
+
+
+def pick_font():
+    """Sistemde varsa Segoe UI, yoksa tkinter'in kendi secimi."""
+    families = set(tkfont.families())
+    for name in ("Segoe UI", "Inter", "Helvetica Neue", "DejaVu Sans"):
+        if name in families:
+            return name
+    return tkfont.nametofont("TkDefaultFont").actual("family")
 
 
 def scenario_paths():
@@ -92,7 +134,7 @@ def run_one(path, name, duration_s, as_fitted):
 
 def plot_box(width, height):
     """Cizim alani: (sol, ust, sag, alt). Eksen etiketlerine yer birakiyor."""
-    return 56, 14, max(60, width - 14), max(20, height - 30)
+    return 58, 30, max(62, width - 18), max(36, height - 34)
 
 
 def scaler(lo, hi, start, end):
@@ -105,123 +147,235 @@ def scaler(lo, hi, start, end):
     return lambda value: start + (value - lo) * (end - start) / span
 
 
-def draw_train_graph(canvas, rows, title):
+def draw_train_graph(canvas, rows, title, font):
     """Yatayda zaman, dikeyde hat boyunca mesafe, tren basina bir cizgi -
     demiryolunun en eski resmi."""
     canvas.delete("all")
-    width = int(canvas.winfo_width()) or 700
+    width = int(canvas.winfo_width()) or 760
     height = int(canvas.winfo_height()) or 320
     left, top, right, bottom = plot_box(width, height)
+
+    canvas.create_text(18, 16, anchor="w", text=title, fill=INK,
+                       font=(font, 11, "bold"))
 
     paths = {}
     for row in rows:
         paths.setdefault(row[COL["train"]], []).append(
             (row[COL["time_s"]], row[COL["chainage_m"]]))
     if not paths:
-        canvas.create_text(width / 2, height / 2, text="veri yok", fill=MUTED)
+        canvas.create_text(width / 2, height / 2, fill=MUTED, font=(font, 10),
+                           text="bir koşu seç")
         return
 
     origin = min(p[0] for points in paths.values() for p in points)
     minutes = [(t - origin) / 60.0 for points in paths.values() for t, _ in points]
     kms = [c / 1000.0 for points in paths.values() for _, c in points]
-    to_x = scaler(min(minutes), max(minutes), left, right)
-    to_y = scaler(min(kms), max(kms), bottom, top)          # yukari dogru artiyor
+    lo_x, hi_x, lo_y, hi_y = min(minutes), max(minutes), min(kms), max(kms)
+    to_x = scaler(lo_x, hi_x, left, right)
+    to_y = scaler(lo_y, hi_y, bottom, top)                  # yukari dogru artiyor
 
-    canvas.create_rectangle(left, top, right, bottom, outline=GRID, fill=PAPER)
     for fraction in (0.0, 0.25, 0.5, 0.75, 1.0):
-        x = left + (right - left) * fraction
-        y = bottom - (bottom - top) * fraction
+        x, y = to_x(lo_x + (hi_x - lo_x) * fraction), to_y(lo_y + (hi_y - lo_y) * fraction)
         canvas.create_line(x, top, x, bottom, fill=GRID)
         canvas.create_line(left, y, right, y, fill=GRID)
-        canvas.create_text(x, bottom + 12, fill=MUTED, font=("", 8),
-                           text="%.0f" % (min(minutes) + (max(minutes) - min(minutes)) * fraction))
-        canvas.create_text(left - 6, y, anchor="e", fill=MUTED, font=("", 8),
-                           text="%.0f" % (min(kms) + (max(kms) - min(kms)) * fraction))
+        canvas.create_text(x, bottom + 14, fill=MUTED, font=(font, 8),
+                           text="%.0f" % (lo_x + (hi_x - lo_x) * fraction))
+        canvas.create_text(left - 8, y, anchor="e", fill=MUTED, font=(font, 8),
+                           text="%.0f" % (lo_y + (hi_y - lo_y) * fraction))
 
     for index, train_id in enumerate(sorted(paths)):
         points = []
         for t, c in paths[train_id]:
             points.extend((to_x((t - origin) / 60.0), to_y(c / 1000.0)))
         if len(points) >= 4:
-            canvas.create_line(*points, width=1.4,
+            canvas.create_line(*points, width=1.5, capstyle="round",
                                fill=TRACK_COLOURS[index % len(TRACK_COLOURS)])
 
-    canvas.create_text(left, top - 6, anchor="sw", text=title, fill=INK,
-                       font=("", 9, "bold"))
-    canvas.create_text((left + right) / 2, height - 6, text="kosunun kacinci dakikasi",
-                       fill=MUTED, font=("", 8))
+    canvas.create_text(left, top - 8, anchor="sw", fill=MUTED, font=(font, 8),
+                       text="hat boyunca km")
+    canvas.create_text(right, bottom + 28, anchor="e", fill=MUTED, font=(font, 8),
+                       text="koşunun kaçıncı dakikası")
 
 
-# ---------------------------------------------------------------------- the app
+# ------------------------------------------------------------------- the chrome
+
+def build_theme(style, font):
+    """clam'i temel alip her seyi yeniden boyuyoruz. clam secilmesinin sebebi
+    native gorunmesi degil - tam tersi, tek yeniden boyanabilen tema o."""
+    style.theme_use("clam")
+
+    style.configure("Side.TFrame", background=INK)
+    style.configure("Body.TFrame", background=PAPER)
+    style.configure("Card.TFrame", background=CARD)
+
+    style.configure("SideTitle.TLabel", background=INK, foreground="#FFFFFF",
+                    font=(font, 17, "bold"))
+    style.configure("SideNote.TLabel", background=INK, foreground=ON_INK,
+                    font=(font, 9))
+    style.configure("SideHead.TLabel", background=INK, foreground=ON_INK,
+                    font=(font, 8, "bold"))
+    style.configure("Head.TLabel", background=PAPER, foreground=INK,
+                    font=(font, 13, "bold"))
+    style.configure("Note.TLabel", background=PAPER, foreground=MUTED,
+                    font=(font, 9))
+
+    # Duz, kenarligi olmayan butonlar. clam'de kenarligi kaldirmanin yolu
+    # borderwidth degil relief - ikisi birden verilmezse ince bir cerceve kaliyor.
+    style.configure("Accent.TButton", background=ORANGE, foreground="#FFFFFF",
+                    font=(font, 10, "bold"), borderwidth=0, relief="flat",
+                    padding=(10, 9), focuscolor=ORANGE)
+    style.map("Accent.TButton",
+              background=[("pressed", ORANGE_DIM), ("active", ORANGE_DIM),
+                          ("disabled", INK_SOFT)],
+              foreground=[("disabled", ON_INK)])
+    style.configure("Ghost.TButton", background=INK_SOFT, foreground="#FFFFFF",
+                    font=(font, 10), borderwidth=0, relief="flat",
+                    padding=(10, 8), focuscolor=INK_SOFT)
+    style.map("Ghost.TButton", background=[("pressed", INK), ("active", "#3A4C7E")])
+
+    style.configure("Side.TCheckbutton", background=INK, foreground="#FFFFFF",
+                    font=(font, 10), focuscolor=INK, indicatorcolor=INK_SOFT,
+                    indicatorbackground=INK_SOFT)
+    style.map("Side.TCheckbutton",
+              background=[("active", INK)], foreground=[("active", "#FFFFFF")],
+              indicatorcolor=[("selected", ORANGE)])
+
+    style.configure("Side.TCombobox", fieldbackground=INK_SOFT, background=INK_SOFT,
+                    foreground="#FFFFFF", arrowcolor=ON_INK, borderwidth=0,
+                    relief="flat", padding=6)
+    style.map("Side.TCombobox", fieldbackground=[("readonly", INK_SOFT)],
+              foreground=[("readonly", "#FFFFFF")])
+    style.configure("Side.TEntry", fieldbackground=INK_SOFT, foreground="#FFFFFF",
+                    insertcolor="#FFFFFF", borderwidth=0, relief="flat", padding=6)
+
+    # Kenarliksiz tablo: satir yuksekligi ve baslik cizgisi disinda her sey duz.
+    style.configure("Data.Treeview", background=CARD, fieldbackground=CARD,
+                    foreground=INK, rowheight=30, borderwidth=0, relief="flat",
+                    font=(font, 10))
+    style.configure("Data.Treeview.Heading", background=CARD, foreground=MUTED,
+                    font=(font, 9, "bold"), relief="flat", borderwidth=0,
+                    padding=(8, 8))
+    style.map("Data.Treeview.Heading", background=[("active", CARD)])
+    style.map("Data.Treeview", background=[("selected", "#E3ECF9")],
+              foreground=[("selected", INK)])
+    style.layout("Data.Treeview", [("Data.Treeview.treearea", {"sticky": "nswe"})])
+
 
 class App(object):
 
-    COLUMNS = [("system", "Sistem", 200), ("journey", "Sefer süresi", 90),
-               ("delta", "Farkı", 80), ("delay", "Ort. gecikme", 100),
-               ("restrained", "Kısıtlı geçen", 100), ("headway", "En dar aralık", 105),
-               ("authority", "Ort. yetki", 90), ("done", "Biten", 70),
-               ("violations", "İhlal", 60)]
+    COLUMNS = [("system", "SİSTEM", 210), ("journey", "SEFER SÜRESİ", 110),
+               ("delta", "FARKI", 90), ("delay", "ORT. GECİKME", 120),
+               ("restrained", "KISITLI GEÇEN", 130), ("headway", "EN DAR ARALIK", 130),
+               ("authority", "ORT. YETKİ", 110), ("done", "BİTEN", 80),
+               ("violations", "İHLAL", 70)]
 
     def __init__(self, root):
         self.root = root
         self.results = []
         self.messages = queue.Queue()
         self.scenarios = scenario_paths()
+        self.font = pick_font()
+
         root.title("trainsim")
-        root.geometry("1180x760")
+        root.geometry("1280x820")
+        root.minsize(1040, 660)
+        root.configure(background=PAPER)
+        build_theme(ttk.Style(root), self.font)
 
-        panel = ttk.Frame(root, padding=10)
-        panel.pack(side="left", fill="y")
-        board = ttk.Frame(root, padding=(0, 10, 10, 10))
-        board.pack(side="right", fill="both", expand=True)
+        self.build_sidebar(root)
+        self.build_body(root)
+        root.after(120, self.drain)
 
-        ttk.Label(panel, text="Senaryo").pack(anchor="w")
-        self.scenario = ttk.Combobox(panel, values=list(self.scenarios),
-                                     state="readonly", width=34)
-        self.scenario.pack(fill="x", pady=(0, 10))
+    def build_sidebar(self, root):
+        side = ttk.Frame(root, style="Side.TFrame", width=272)
+        side.pack(side="left", fill="y")
+        side.pack_propagate(False)
+
+        def head(text, pad=(0, 6)):
+            ttk.Label(box, text=text, style="SideHead.TLabel").pack(
+                anchor="w", pady=pad)
+
+        box = ttk.Frame(side, style="Side.TFrame", padding=(24, 26, 24, 24))
+        box.pack(fill="both", expand=True)
+
+        ttk.Label(box, text="trainsim", style="SideTitle.TLabel").pack(anchor="w")
+        ttk.Label(box, style="SideNote.TLabel", wraplength=220,
+                  text="Mikroskopik demiryolu benzetimi").pack(anchor="w",
+                                                               pady=(2, 22))
+
+        head("SENARYO")
+        self.scenario = ttk.Combobox(box, values=list(self.scenarios),
+                                     state="readonly", style="Side.TCombobox",
+                                     font=(self.font, 10))
+        self.scenario.pack(fill="x", pady=(0, 18))
         if self.scenarios:
             self.scenario.current(0)
 
-        ttk.Label(panel, text="Koşu süresi (s, boş = senaryonunki)").pack(anchor="w")
-        self.duration = ttk.Entry(panel, width=34)
-        self.duration.pack(fill="x", pady=(0, 10))
+        head("KOŞU SÜRESİ (S)")
+        self.duration = ttk.Entry(box, style="Side.TEntry", font=(self.font, 10))
+        self.duration.pack(fill="x")
+        ttk.Label(box, text="boş bırakırsan senaryonunki",
+                  style="SideNote.TLabel").pack(anchor="w", pady=(4, 18))
 
-        ttk.Label(panel, text="Sinyalizasyon").pack(anchor="w")
+        head("SİNYALİZASYON")
         self.systems = {}
         for name in signalling.LADDER:
             chosen = tk.BooleanVar(value=name in ("fixed_block_3aspect",
                                                   "etcs_moving_block",
                                                   "virtual_coupling"))
-            ttk.Checkbutton(panel, text=TURKISH.get(name, name),
-                            variable=chosen).pack(anchor="w")
+            ttk.Checkbutton(box, text=TURKISH.get(name, name), variable=chosen,
+                            style="Side.TCheckbutton").pack(anchor="w", pady=1)
             self.systems[name] = chosen
 
         self.as_fitted = tk.BooleanVar(value=False)
-        ttk.Checkbutton(panel, variable=self.as_fitted,
+        ttk.Checkbutton(box, variable=self.as_fitted, style="Side.TCheckbutton",
                         text="Senaryonun kendi donanımıyla").pack(anchor="w",
-                                                                  pady=(8, 0))
+                                                                  pady=(10, 0))
 
-        self.run_button = ttk.Button(panel, text="Karşılaştır", command=self.start)
-        self.run_button.pack(fill="x", pady=(14, 4))
-        ttk.Button(panel, text="İzle (şematik)", command=self.watch).pack(fill="x")
+        self.run_button = ttk.Button(box, text="KARŞILAŞTIR", style="Accent.TButton",
+                                     command=self.start)
+        self.run_button.pack(fill="x", pady=(22, 8))
+        ttk.Button(box, text="Şematiği izle", style="Ghost.TButton",
+                   command=self.watch).pack(fill="x")
 
-        self.status = ttk.Label(panel, text="", foreground=MUTED, wraplength=240)
-        self.status.pack(anchor="w", pady=(12, 0))
+        self.status = ttk.Label(box, text="", style="SideNote.TLabel",
+                                wraplength=220)
+        self.status.pack(anchor="w", pady=(16, 0))
 
-        self.table = ttk.Treeview(board, columns=[c[0] for c in self.COLUMNS],
-                                  show="headings", height=8)
+    def build_body(self, root):
+        body = ttk.Frame(root, style="Body.TFrame", padding=(26, 24, 26, 24))
+        body.pack(side="right", fill="both", expand=True)
+
+        ttk.Label(body, text="Karşılaştırma", style="Head.TLabel").pack(anchor="w")
+        ttk.Label(body, style="Note.TLabel",
+                  text="Aynı hat, aynı tarife, aynı tren. Değişen tek şey "
+                       "trene ne kadar yol verildiği.").pack(anchor="w",
+                                                             pady=(2, 12))
+
+        card = ttk.Frame(body, style="Card.TFrame", padding=10)
+        card.pack(fill="x")
+        self.table = ttk.Treeview(card, columns=[c[0] for c in self.COLUMNS],
+                                  show="headings", height=7, style="Data.Treeview")
         for key, heading, width in self.COLUMNS:
-            self.table.heading(key, text=heading)
-            self.table.column(key, width=width, anchor="w")
+            self.table.heading(key, text=heading, anchor="w")
+            self.table.column(key, width=width, anchor="w", stretch=False)
+        self.table.tag_configure("odd", background=STRIPE)
+        self.table.tag_configure("even", background=CARD)
         self.table.pack(fill="x")
         self.table.bind("<<TreeviewSelect>>", lambda _event: self.redraw())
 
-        self.canvas = tk.Canvas(board, background=PAPER, highlightthickness=1,
-                                highlightbackground=GRID)
-        self.canvas.pack(fill="both", expand=True, pady=(10, 0))
-        self.canvas.bind("<Configure>", lambda _event: self.redraw())
+        ttk.Label(body, text="Tren grafiği", style="Head.TLabel").pack(
+            anchor="w", pady=(20, 2))
+        ttk.Label(body, style="Note.TLabel",
+                  text="Yatayda zaman, dikeyde hat boyunca mesafe. Tablodan bir "
+                       "satır seç.").pack(anchor="w", pady=(0, 12))
 
-        root.after(120, self.drain)
+        graph_card = ttk.Frame(body, style="Card.TFrame", padding=2)
+        graph_card.pack(fill="both", expand=True)
+        self.canvas = tk.Canvas(graph_card, background=CARD, highlightthickness=0,
+                                borderwidth=0)
+        self.canvas.pack(fill="both", expand=True)
+        self.canvas.bind("<Configure>", lambda _event: self.redraw())
 
     # -------------------------------------------------------------- actions
 
@@ -238,6 +392,7 @@ class App(object):
         self.run_button.state(["disabled"])
         self.results = []
         self.table.delete(*self.table.get_children())
+        self.canvas.delete("all")
         path = self.scenarios[self.scenario.get()]
         threading.Thread(target=self.work, daemon=True,
                          args=(path, chosen, duration, self.as_fitted.get())).start()
@@ -246,7 +401,7 @@ class App(object):
         """Is parcacigi. Tk'ye dokunmuyor - her sey kuyruktan geciyor."""
         try:
             for name in chosen:
-                self.messages.put(("status", "%s koşuyor..."
+                self.messages.put(("status", "%s koşuyor…"
                                    % TURKISH.get(name, name)))
                 self.messages.put(("result", run_one(path, name, duration, as_fitted)))
         except ScenarioError as exc:
@@ -269,8 +424,8 @@ class App(object):
                     self.status.configure(text="")
                     messagebox.showerror("trainsim", payload)
                 elif kind == "done":
-                    self.status.configure(
-                        text="bitti - bir satır seç, grafiği o koşuya döner")
+                    self.status.configure(text="%d koşu bitti" % len(self.results)
+                                          if self.results else "")
                     self.run_button.state(["!disabled"])
                     if self.results and not self.table.selection():
                         self.table.selection_set(self.table.get_children()[0])
@@ -282,17 +437,18 @@ class App(object):
         metrics = result["metrics"]
         baseline = self.results[0]["metrics"]
         if metrics is baseline:
-            delta = "-"
+            delta = "—"
         else:
             difference = metrics.mean_journey_s - baseline.mean_journey_s
             delta = "aynı" if abs(difference) < 0.5 else format_delay(difference)
-        self.table.insert("", "end", values=(
+        stripe = "odd" if len(self.table.get_children()) % 2 else "even"
+        self.table.insert("", "end", tags=(stripe,), values=(
             TURKISH.get(metrics.system, metrics.system),
             mmss(metrics.mean_journey_s),
             delta,
             "%.1f s" % metrics.mean_delay_s,
             "%d s" % round(metrics.total_restrained_s),
-            "%d s" % round(metrics.min_headway_s) if metrics.min_headway_s else "-",
+            "%d s" % round(metrics.min_headway_s) if metrics.min_headway_s else "—",
             "%d m" % round(metrics.mean_authority_m),
             "%d/%d" % (metrics.completed, metrics.services),
             metrics.violations))
@@ -305,7 +461,7 @@ class App(object):
         if index < len(self.results):
             result = self.results[index]
             draw_train_graph(self.canvas, result["rows"],
-                             TURKISH.get(result["name"], result["name"]))
+                             TURKISH.get(result["name"], result["name"]), self.font)
 
     def watch(self):
         """Sematik gorunum kendi tk.Tk() kokunu aciyor (schematic_tk.py:66), o
@@ -322,20 +478,6 @@ class App(object):
         subprocess.Popen(command, cwd=HERE)
 
 
-def selfcheck():
-    """Olceklemenin iki ucu ve sifir genislikteki aralik."""
-    to_x = scaler(0.0, 10.0, 100.0, 200.0)
-    assert to_x(0.0) == 100.0 and to_x(10.0) == 200.0 and to_x(5.0) == 150.0
-    flat = scaler(3.0, 3.0, 100.0, 200.0)
-    assert flat(3.0) == 150.0, "tek noktali kosu bolme hatasi vermemeli"
-    to_y = scaler(0.0, 10.0, 300.0, 20.0)                  # dikeyde ters
-    assert to_y(0.0) == 300.0 and to_y(10.0) == 20.0
-    left, top, right, bottom = plot_box(700, 320)
-    assert left < right and top < bottom
-    assert plot_box(10, 10)[0] < plot_box(10, 10)[2], "kucuk pencerede de cizilebilmeli"
-    print("selfcheck tamam")
-
-
 def watch_scenario(path):
     """Sematik gorunumu ac. App.watch bunun icin kendini yeniden cagiriyor."""
     from trainsim.viz.schematic_tk import TkSchematicView
@@ -344,12 +486,27 @@ def watch_scenario(path):
                     speed=float(scenario.view.get("speed", 30))).run()
 
 
+def selfcheck():
+    """Olceklemenin iki ucu ve sifir genislikteki aralik."""
+    to_x = scaler(0.0, 10.0, 100.0, 200.0)
+    assert to_x(0.0) == 100.0 and to_x(10.0) == 200.0 and to_x(5.0) == 150.0
+    flat = scaler(3.0, 3.0, 100.0, 200.0)
+    assert flat(3.0) == 150.0, "tek noktali kosu bolme hatasi vermemeli"
+    to_y = scaler(0.0, 10.0, 300.0, 20.0)                  # dikeyde ters
+    assert to_y(0.0) == 300.0 and to_y(10.0) == 20.0
+    left, top, right, bottom = plot_box(760, 320)
+    assert left < right and top < bottom
+    assert plot_box(10, 10)[0] < plot_box(10, 10)[2], "kucuk pencerede de cizilebilmeli"
+    print("selfcheck tamam")
+
+
 if __name__ == "__main__":
     if "--selfcheck" in sys.argv:
         selfcheck()
     elif "--watch" in sys.argv:
         watch_scenario(sys.argv[sys.argv.index("--watch") + 1])
     else:
+        set_dpi_awareness()
         root = tk.Tk()
         App(root)
         root.mainloop()
