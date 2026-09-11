@@ -21,7 +21,7 @@ import sys
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from ui_build import BuildPage
-from uicore import (CARD, GRID, HERE, INK, INK_SOFT, MUTED, ON_INK, ORANGE,
+from uicore import (CARD, DATA, GRID, INK, INK_SOFT, MUTED, ON_INK, ORANGE,
                     ORANGE_DIM, PAPER, STRIPE, TRACK_COLOURS,
                     mmss, plot_box, run_one, scaler, scenario_paths, series)
 from uilang import SYSTEM_NAMES, keep, set_language, system_name, t
@@ -611,7 +611,7 @@ class Window(QtWidgets.QMainWindow):
         if not getattr(sys, "frozen", False):
             command.append(os.path.abspath(__file__))
         command += ["--watch", self.scenarios[self.scenario.currentText()]]
-        subprocess.Popen(command, cwd=HERE)
+        subprocess.Popen(command, cwd=DATA)
 
 
 def watch_scenario(path):
@@ -634,8 +634,34 @@ def main():
     sys.exit(app.exec())
 
 
+def selfcheck():
+    """Donmus bir yapinin dogru kuruldugunu sinar.
+
+    Paketledikten sonra kosulacak sey bu: senaryolar pakete girmis mi, kurulan
+    hatlarin yazilacagi yer kalici mi, ceviri ve form calisiyor mu. Uc soru da
+    ancak calistirilabilir dosyanin kendi icinden dogru cevaplaniyor.
+    """
+    import ui_build
+    import uicore
+    uilang.selfcheck()
+    uicore.selfcheck()
+    ui_build.selfcheck()
+    print("")
+    print("paket    %s" % uicore.HERE)
+    print("veri     %s" % uicore.DATA)
+    print("senaryo  %d" % len(scenario_paths()))
+    print("donmus   %s" % bool(getattr(sys, "frozen", False)))
+    assert scenario_paths(), "senaryolar pakete girmemis"
+    if getattr(sys, "frozen", False):
+        assert uicore.DATA != uicore.HERE, \
+            "kurulan hatlar gecici klasore yazilacakti"
+    print("\nyapi saglam")
+
+
 if __name__ == "__main__":
-    if "--watch" in sys.argv:
+    if "--selfcheck" in sys.argv:
+        selfcheck()
+    elif "--watch" in sys.argv:
         watch_scenario(sys.argv[sys.argv.index("--watch") + 1])
     else:
         main()

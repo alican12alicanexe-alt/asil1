@@ -211,6 +211,50 @@ Nothing under `trainsim/core` or `trainsim/scenario` imports a front end, so a
 run, a `--check` and a `--log` still work on a bare Python install with pip
 blocked.
 
+## Making an executable
+
+For a machine that should not need Python installed at all.
+
+```
+pip install pyinstaller
+python build.py                 a folder - opens instantly, recommended
+python build.py --onefile       one portable file - slow to open
+python build.py --windowed      hide the console window
+```
+
+Output lands in `dist/trainsim/`. PyInstaller does not cross-compile: build on
+Windows to get a `.exe`, on Linux to get a Linux binary. With Qt in it the build
+is around 150 MB either way.
+
+Check it before trusting it:
+
+```
+dist\trainsim\trainsim.exe --selfcheck
+```
+
+That runs from inside the bundle and answers the three questions a frozen build
+actually gets wrong — did the scenarios come along, will a line built in the app
+be written somewhere that survives, does the form still work. It prints the
+resolved paths and the scenario count, then says `yapi saglam`.
+
+**The console is on by default** because a `--windowed` build that crashes closes
+without saying anything. Hide it once it is known to work.
+
+**A folder is the default** because the *Watch the schematic* button restarts the
+program with `--watch` in a second process. One-file re-extracts the whole ~150 MB
+bundle every time it does that; a folder opens instantly. One-file still works,
+it is just slow.
+
+**Lines you build go next to the executable**, in `scenarios/` — not into the
+bundle. A one-file bundle is unpacked into a temporary directory that is deleted
+on exit, so a line written there would disappear with the program. `uicore.DATA`
+is the one place that decides this.
+
+One thing the build cannot be checked for from here: the schematic view imports
+tkinter, which ships with Python on Windows and so is collected there, but is
+absent from the container these instructions were tested in. Run `--watch` once
+after the first Windows build.
+
 ## The run trace
 
 The summary says how a run came out; `--log` says how it got there. One row per

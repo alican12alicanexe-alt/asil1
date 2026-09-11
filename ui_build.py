@@ -24,15 +24,16 @@ import re
 
 from PySide6 import QtCore, QtWidgets
 
-from uicore import CARD, GRID, HERE, INK, MUTED
+from uicore import CARD, DATA, GRID, INK, MUTED
 from uilang import SYSTEM_NAMES, keep, system_name, t
 from trainsim.core import signalling
 from trainsim.scenario.generate import (LineSpec, HEADWAYS, book, evenly,
                                         gradient_profile, sweep_headway)
 
 #: Uretilen senaryolar buraya, cunku karsilastirma sayfasi scenarios/*/ altina
-#: bakiyor - baska bir yere yazmak hatti listede gorunmez yapardi.
-OUT_ROOT = os.path.join(HERE, "scenarios")
+#: bakiyor - baska bir yere yazmak hatti listede gorunmez yapardi. Donmus
+#: programda burasi calistirilabilir dosyanin yani; bkz. uicore.DATA.
+OUT_ROOT = os.path.join(DATA, "scenarios")
 
 #: Gercek hatlarda gorulen anma egimleri. Tek bir sayi degil bir karakter
 #: seciyorsun: profil bu degeri en dik kesime koyup gerisini yaymaya birakiyor.

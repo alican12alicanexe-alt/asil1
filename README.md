@@ -43,6 +43,7 @@ python run_tests.py                             # 292 tests, ~15 s
 
 python ui_tk.py                                 # desktop front end, nothing to install
 python ui_qt.py                                 # the same, on Qt (needs PySide6)
+python build.py                                 # package ui_qt.py as an executable
 ```
 
 **[COMMANDS.md](COMMANDS.md)** is the full command reference. Every scenario
@@ -192,6 +193,7 @@ trainsim/scenario/    YAML in, railway out - builder, loader, schema, minyaml
 trainsim/analysis/    KPIs, per-tick trace, event log
 trainsim/viz/         the schematic view, stdlib tkinter
 
+build.py              packages ui_qt.py with PyInstaller
 uicore.py             what both front ends share - scenarios, runs, axis scaling
 uilang.py             every interface string, English with a Turkish lookup
 ui_tk.py              the front end that needs nothing installed
@@ -199,9 +201,8 @@ ui_qt.py              the same comparison on Qt, plus the line builder
 ui_build.py           the builder page - terrain, fleet, timetable, headway sweep
 ```
 
-17,600 lines of production Python, 4,900 of tests. The simulator, its schematic
-view and `ui_tk.py` have no dependencies at all; `ui_qt.py` is the one part that
-asks for a package.
+The simulator, its schematic view and `ui_tk.py` have no dependencies at all;
+`ui_qt.py` is the one part that asks for a package.
 
 ### Motion and authority are two different models
 

@@ -31,7 +31,7 @@ import tkinter as tk
 import tkinter.font as tkfont
 from tkinter import ttk, messagebox
 
-from uicore import (CARD, GRID, HERE, INK, INK_SOFT, MUTED, ON_INK, ORANGE,
+from uicore import (CARD, DATA, GRID, INK, INK_SOFT, MUTED, ON_INK, ORANGE,
                     ORANGE_DIM, PAPER, STRIPE, TRACK_COLOURS,
                     mmss, plot_box, run_one, scaler, scenario_paths, series)
 from uilang import SYSTEM_NAMES, keep, set_language, system_name, t
@@ -455,7 +455,7 @@ class App(object):
         if not getattr(sys, "frozen", False):
             command.append(os.path.abspath(__file__))
         command += ["--watch", self.scenarios[self.scenario.get()]]
-        subprocess.Popen(command, cwd=HERE)
+        subprocess.Popen(command, cwd=DATA)
 
 
 def watch_scenario(path):

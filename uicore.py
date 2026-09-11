@@ -7,11 +7,19 @@ Burada ne tkinter var ne Qt - ikisi de bunu ice aktariyor.
 import os
 import sys
 
-#: PyInstaller ile paketlendiginde senaryolar gecici bir klasore aciliyor ve
-#: __file__ artik depoyu gostermiyor; _MEIPASS o klasoru veriyor.
+#: Programin kendi dosyalari. PyInstaller ile paketlendiginde senaryolar gecici
+#: bir klasore aciliyor ve __file__ artik depoyu gostermiyor; _MEIPASS o klasoru
+#: veriyor.
 HERE = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
+
+#: Kullanicinin kendi urettigi dosyalar. Donmus programda HERE cikista silinen
+#: gecici bir klasordur - oraya yazilan bir hat uygulamayla birlikte yok olur -
+#: o yuzden calistirilabilir dosyanin yanina yaziliyor. Kaynaktan kosarken ikisi
+#: ayni yer.
+DATA = (os.path.dirname(os.path.abspath(sys.executable))
+        if getattr(sys, "frozen", False) else HERE)
 
 from trainsim.analysis import kpi, trace                       # noqa: E402
 from trainsim.core import signalling                           # noqa: E402
@@ -41,18 +49,33 @@ TRACK_COLOURS = [NAVY, SKY, ORANGE, MUTED, "#7B9FD4", "#9AD0F2", "#F0A855",
                  "#2A4478"]
 
 
+def scenario_roots():
+    """Senaryolarin arandigi klasorler: programla gelenler, sonra kurulanlar.
+
+    Kaynaktan kosarken tek bir klasor; donmus programda iki ayri yer, cunku
+    kurulan hatlar pakete degil calistirilabilir dosyanin yanina yaziliyor.
+    """
+    roots = [os.path.join(HERE, "scenarios")]
+    if DATA != HERE:
+        roots.append(os.path.join(DATA, "scenarios"))
+    return roots
+
+
 def scenario_paths():
-    """scenarios/ altindaki her scenario*.yaml, {etiket: yol}."""
+    """Her scenario*.yaml, {etiket: yol}. Ayni ada sahip olursa kullanicininki
+    kazaniyor - kendi kurdugu hat, programla gelenin onunde."""
     found = {}
-    root = os.path.join(HERE, "scenarios")
-    for railway in sorted(os.listdir(root)):
-        directory = os.path.join(root, railway)
-        if not os.path.isdir(directory):
+    for root in scenario_roots():
+        if not os.path.isdir(root):
             continue
-        for filename in sorted(os.listdir(directory)):
-            if filename.startswith("scenario") and filename.endswith(".yaml"):
-                found["%s / %s" % (railway, filename[:-5])] = os.path.join(
-                    directory, filename)
+        for railway in sorted(os.listdir(root)):
+            directory = os.path.join(root, railway)
+            if not os.path.isdir(directory):
+                continue
+            for filename in sorted(os.listdir(directory)):
+                if filename.startswith("scenario") and filename.endswith(".yaml"):
+                    found["%s / %s" % (railway, filename[:-5])] = os.path.join(
+                        directory, filename)
     return found
 
 
@@ -143,6 +166,20 @@ def selfcheck():
     assert paths["A"][1] == (1.0, 1.5), "saniye dakikaya, metre km'ye"
     assert (lo_x, hi_x, lo_y, hi_y) == (0.0, 2.0, 0.0, 1.5)
     assert series([]) == ({}, (0.0, 0.0, 0.0, 0.0)), "bos kosu patlamamali"
+
+    # Donmus programda senaryolar iki yerde aranmali, kaynaktan kosarken bir.
+    # Ikisi de burada kuruluyor: denetim icinde kosuldugu duruma bakmamali,
+    # yoksa paketin icinden kosturuldugunda kendi dogru davranisina takiliyor.
+    global DATA
+    was = DATA
+    DATA = HERE
+    assert scenario_roots() == [os.path.join(HERE, "scenarios")], scenario_roots()
+    DATA = os.path.join(HERE, "somewhere-else")
+    roots = scenario_roots()
+    assert len(roots) == 2 and roots[1].startswith(DATA), roots
+    DATA = was
+    found = scenario_paths()
+    assert found and all(os.path.isfile(path) for path in found.values())
     print("uicore selfcheck tamam")
 
 
