@@ -2,7 +2,7 @@
 
 | dosya | ne |
 |---|---|
-| `ASELSAN-Sunum-v6.pptx` | teslim edilen sunum, 19 slayt — bulgular başlığı, kaynaklar [1]-[2]'ye indi, sona iki örnek slayt |
+| `ASELSAN-Sunum-v6.pptx` | **sunumun son hâli**, 19 slayt — ekran görüntüleri yerleştirilmiş, iki örnek slayt teşekkürlerin önüne alınmış |
 | `ASELSAN-Sunum-v5.pptx` | 11, 12 ve 14'te yüzdeler slayt metni olarak — v6'nın girdisi |
 | `ASELSAN-Sunum-v4.pptx` | v3'ün elle düzenlenmiş hâli; sayfa numarası alan (`slidenum`), içerik listesi slayt başlıklarıyla aynı — v5'in girdisi |
 | `ASELSAN-Sunum-v3.pptx` | `story3.py`'nin çıktısı, 21 slayt — v4'ün girdisi |
