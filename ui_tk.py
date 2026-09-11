@@ -31,47 +31,12 @@ import tkinter as tk
 import tkinter.font as tkfont
 from tkinter import ttk, messagebox
 
-#: PyInstaller ile paketlendiginde senaryolar gecici bir klasore aciliyor ve
-#: __file__ artik depoyu gostermiyor; _MEIPASS o klasoru veriyor.
-HERE = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, HERE)
-
-from trainsim.analysis import kpi, trace                       # noqa: E402
-from trainsim.core import signalling                           # noqa: E402
-from trainsim.core.units import format_delay                   # noqa: E402
-from trainsim.scenario.loader import (ScenarioError,           # noqa: E402
-                                      build_simulation, load_scenario)
-
-COL = {name: index for index, name in enumerate(trace.COLUMNS)}
-#: Her besinci benzetim saniyesi bir tren grafigi icin fazlasiyla yeterli.
-SAMPLE_S = 5.0
-
-TURKISH = {
-    "fixed_block_3aspect": "Sabit blok (3 aspektli)",
-    "etcs_l1": "ETCS Seviye 1",
-    "etcs_l2": "ETCS Seviye 2",
-    "etcs_hybrid_l3": "ETCS Hibrit Seviye 3",
-    "etcs_moving_block": "Hareketli blok (ETCS L3)",
-    "virtual_coupling": "Sanal kuplaj",
-}
-
-# ------------------------------------------------------------------- palette
-
-INK = "#1D2A4D"        # kenar menu, baslik metni
-INK_SOFT = "#2C3A63"   # kenar menude bir tik acik - ayirici yerine
-NAVY = "#355FA8"       # sabit blok
-SKY = "#58B0E8"        # hareketli blok
-ORANGE = "#E8871F"     # sanal kuplaj, vurgu
-ORANGE_DIM = "#C9741A"
-MUTED = "#5B6478"
-GRID = "#D6DAE3"
-PAPER = "#F4F6F9"      # icerik zemini
-CARD = "#FFFFFF"
-STRIPE = "#F7F9FC"
-ON_INK = "#C7D0E6"     # koyu zemindeki ikincil metin
-
-TRACK_COLOURS = [NAVY, SKY, ORANGE, MUTED, "#7B9FD4", "#9AD0F2", "#F0A855",
-                 "#2A4478"]
+from uicore import (CARD, GRID, HERE, INK, INK_SOFT, MUTED, ON_INK, ORANGE,
+                    ORANGE_DIM, PAPER, STRIPE, TRACK_COLOURS, TURKISH,
+                    mmss, plot_box, run_one, scaler, scenario_paths, series)
+from trainsim.core import signalling
+from trainsim.core.units import format_delay
+from trainsim.scenario.loader import ScenarioError, build_simulation, load_scenario
 
 
 def set_dpi_awareness():
@@ -90,44 +55,6 @@ def pick_font():
         if name in families:
             return name
     return tkfont.nametofont("TkDefaultFont").actual("family")
-
-
-def scenario_paths():
-    """scenarios/ altindaki her scenario*.yaml, {etiket: yol}."""
-    found = {}
-    root = os.path.join(HERE, "scenarios")
-    for railway in sorted(os.listdir(root)):
-        directory = os.path.join(root, railway)
-        if not os.path.isdir(directory):
-            continue
-        for filename in sorted(os.listdir(directory)):
-            if filename.startswith("scenario") and filename.endswith(".yaml"):
-                found["%s / %s" % (railway, filename[:-5])] = os.path.join(
-                    directory, filename)
-    return found
-
-
-def mmss(seconds):
-    if not seconds:
-        return "-"
-    total = int(round(seconds))
-    return "%d:%02d" % (total // 60, total % 60)
-
-
-def run_one(path, name, duration_s, as_fitted):
-    """Tek sistem, tek kosu. Senaryo her seferinde yeniden okunuyor: bir
-    sinyalizasyon sistemi durum tutabilir, tarife de bir oncekinden bir sey
-    tasimamali."""
-    scenario = load_scenario(path)
-    scenario.signalling_spec = {"system": name}
-    if not as_fitted:
-        signalling.fit_timetable(scenario.timetable, name)
-        scenario.driver_config = signalling.fit_driver(scenario.driver_config, name)
-    sim = build_simulation(scenario,
-                           {"duration_s": duration_s} if duration_s else {})
-    recorder = trace.TraceRecorder(interval_s=SAMPLE_S)
-    sim.step_hooks.append(recorder)
-    return {"name": name, "metrics": kpi.measure(sim), "rows": recorder.rows}
 
 
 # ------------------------------------------------------------------- the graph
@@ -158,19 +85,11 @@ def draw_train_graph(canvas, rows, title, font):
     canvas.create_text(18, 16, anchor="w", text=title, fill=INK,
                        font=(font, 11, "bold"))
 
-    paths = {}
-    for row in rows:
-        paths.setdefault(row[COL["train"]], []).append(
-            (row[COL["time_s"]], row[COL["chainage_m"]]))
+    paths, (lo_x, hi_x, lo_y, hi_y) = series(rows)
     if not paths:
         canvas.create_text(width / 2, height / 2, fill=MUTED, font=(font, 10),
                            text="bir koşu seç")
         return
-
-    origin = min(p[0] for points in paths.values() for p in points)
-    minutes = [(t - origin) / 60.0 for points in paths.values() for t, _ in points]
-    kms = [c / 1000.0 for points in paths.values() for _, c in points]
-    lo_x, hi_x, lo_y, hi_y = min(minutes), max(minutes), min(kms), max(kms)
     to_x = scaler(lo_x, hi_x, left, right)
     to_y = scaler(lo_y, hi_y, bottom, top)                  # yukari dogru artiyor
 
@@ -185,8 +104,8 @@ def draw_train_graph(canvas, rows, title, font):
 
     for index, train_id in enumerate(sorted(paths)):
         points = []
-        for t, c in paths[train_id]:
-            points.extend((to_x((t - origin) / 60.0), to_y(c / 1000.0)))
+        for minute, km in paths[train_id]:
+            points.extend((to_x(minute), to_y(km)))
         if len(points) >= 4:
             canvas.create_line(*points, width=1.5, capstyle="round",
                                fill=TRACK_COLOURS[index % len(TRACK_COLOURS)])
@@ -486,23 +405,10 @@ def watch_scenario(path):
                     speed=float(scenario.view.get("speed", 30))).run()
 
 
-def selfcheck():
-    """Olceklemenin iki ucu ve sifir genislikteki aralik."""
-    to_x = scaler(0.0, 10.0, 100.0, 200.0)
-    assert to_x(0.0) == 100.0 and to_x(10.0) == 200.0 and to_x(5.0) == 150.0
-    flat = scaler(3.0, 3.0, 100.0, 200.0)
-    assert flat(3.0) == 150.0, "tek noktali kosu bolme hatasi vermemeli"
-    to_y = scaler(0.0, 10.0, 300.0, 20.0)                  # dikeyde ters
-    assert to_y(0.0) == 300.0 and to_y(10.0) == 20.0
-    left, top, right, bottom = plot_box(760, 320)
-    assert left < right and top < bottom
-    assert plot_box(10, 10)[0] < plot_box(10, 10)[2], "kucuk pencerede de cizilebilmeli"
-    print("selfcheck tamam")
-
-
 if __name__ == "__main__":
     if "--selfcheck" in sys.argv:
-        selfcheck()
+        import uicore
+        uicore.selfcheck()
     elif "--watch" in sys.argv:
         watch_scenario(sys.argv[sys.argv.index("--watch") + 1])
     else:
